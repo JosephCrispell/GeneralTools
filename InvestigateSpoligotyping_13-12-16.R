@@ -7,10 +7,11 @@ library(geiger) # For the tips function
 ####################
 
 # Set the path
-path <- "/Users/josephcrisp1/Dropbox/Joseph project/OxfordVisit/Analysis/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
 
 # Read in the newick tree
-file <- paste(path, "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "InvestigatingCattleMislabelling/",
+              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
 tree <- read.tree(file=file)
 tips <- tree$tip.label
 
