@@ -28,5 +28,9 @@ done
 TODAY=`date +%d-%m-%Y.%H:%M:%S`
 git commit -m "Automated commit"$TODAY
 
+#### Remove any files that have been deleted
+git add . -A
+git commit -m "Automated File Removal"$TODAY
+
 #### Push any changes in repository to git server
 git push
