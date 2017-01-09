@@ -8,15 +8,7 @@
 # Note create permissions first ---> chmod +x script.sh
 
 # Command Line Structure:
-# bash SyncGitRepository.sh username password
-
-###################
-# Necessary Input #
-###################
-
-####Github account details - from command line
-USERNAME=$1
-PASSWORD=$2
+# bash SyncGitRepository.sh
 
 #####################
 # Update Repository #
@@ -29,4 +21,12 @@ NEWFILES=`git ls-files --others --exclude-standard`
 for FILE in ${NEWFILES[@]}; 
 do
     git add $FILE
+	echo "Added "$FILE" to git repository."
 done
+
+#### Commit changes to repository
+TODAY=`date +%d-%m-%Y.%H:%M:%S`
+git commit -m "Automated commit"$TODAY
+
+#### Push any changes in repository to git server
+git push
