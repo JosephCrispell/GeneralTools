@@ -24,11 +24,13 @@ tree$edge.length <- tree$edge.length * fastaLength
 ####################################################
 
 # Cattle Isolates
-file <- paste(path, "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+file <- paste(path, "IsolateData/",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Badger Isolates
-file <- paste(path, "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+file <- paste(path, "IsolateData/",
+              "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
 badgerInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Initialise an array to store the tip spoligotypes
@@ -66,7 +68,8 @@ for(tipIndex in 1:length(tree$tip.label)){
 # Get the Isolate Coverage Table #
 ##################################
 
-file <- paste(path, "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
+file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
+              "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
 coverageInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
 coverageInfo$IsolateID <- getIsolateIDFromFileNames(coverageInfo$IsolateID)
@@ -89,7 +92,8 @@ isolateQuality <- getIsolateQuality(coverageInfo)
 tipSizes <- defineTipSizeBySequencingQuality(tips, isolateQuality)
 
 # Open an output file
-file <- paste(path, "mlTree_Spoligotypes_13-12-16.pdf")
+file <- paste(path, "InvestigatingCattleMislabelling/",
+              "mlTree_Spoligotypes_13-12-16.pdf", sep="")
 pdf(file)
 
 # Plot the phylogenetic tree
