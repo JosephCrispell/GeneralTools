@@ -25,7 +25,7 @@ do
 done
 
 #### Commit changes to repository
-TODAY=`date +%d-%m-%Y %H:%M`
+TODAY=`date +%d-%m-%Y`
 git commit -m "Automated commit "$TODAY
 
 #### Remove any files that have been deleted
