@@ -13,15 +13,19 @@ library(geiger)
 library(plotrix)
 library(lubridate)
 
+# Current date
+date <- format(Sys.Date(), "%d-%m-%y")
+
 ############################################
 # Get a list of the isolates in main clade #
 ############################################
 
 # Set the path
-path <- "/Users/josephcrisp1/Dropbox/Joseph project/OxfordVisit/Analysis/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
 
 # Read in the newick tree
-file <- paste(path, "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
+              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
 tree <- read.tree(file=file)
 
 # Plot tree with node numbers
@@ -44,7 +48,8 @@ isolatesInClade <- convertVectorToList(cladeTips)
 #############################
 
 # Read in the FASTA file
-file <- paste(path, "sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta", sep="")
+file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
+              "sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta", sep="")
 sequences <- readFASTA(file, skip=1)
 
 # Get the sequences for the isolates
@@ -66,11 +71,13 @@ for(i in 1:length(cladeTips)){
 ######################################
 
 # Cattle Isolates
-file <- paste(path, "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+file <- paste(path, "IsolateData/",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Badger Isolates
-file <- paste(path, "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+file <- paste(path, "IsolateData/",
+              "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
 badgerInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 tipInfo <- as.data.frame(matrix(nrow=length(cladeTips), ncol=5))
@@ -111,7 +118,8 @@ tipInfo[grepl(pattern="TB", tipInfo$IsolateID), "Species"] <- "COW"
 ###################################
 
 # Read in genome coverage table
-file <- paste(path, "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
+file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
+              "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
 coverageInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 coverageInfo$IsolateID <- getIsolateIDFromFileNames(coverageInfo$IsolateID)
 
@@ -169,6 +177,7 @@ selectedIsolatesInfo <- tipInfo[rowsToKeep, ]
 
 # Define inner circle radius
 thresholdDistance <- 3000
+outerDistance <- 6500
 
 # Note Mansion Location
 mansionX <- 380909
@@ -176,6 +185,10 @@ mansionY <- 201377
 
 # Set an expansion
 expand <- 7000
+
+# Open a PDF
+file <- paste(path, "BASTA/DefinedDemes_", date, ".pdf", sep="")
+pdf(file)
 
 # Create empty plot
 plot(1, type="n", yaxt="n", xaxt="n",
@@ -200,7 +213,9 @@ badgerCentre <- c()
 badgerCentre[1] <- mean(selectedIsolatesInfo[selectedIsolatesInfo$Species == "BADGER", "X"], na.rm=TRUE)
 badgerCentre[2] <- mean(selectedIsolatesInfo[selectedIsolatesInfo$Species == "BADGER", "Y"], na.rm=TRUE)
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance, border="black")
-draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=5500, border="black")
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance, border="black")
+text(x=381938.4, y=198779.4, labels=paste(paste(thresholdDistance / 1000, "km")))
+text(x=381938.4, y=194594, labels=paste(paste(outerDistance / 1000, "km")))
 
 # Note all isolates that are within 3km of the badger centre point
 selectedIsolatesInfo$Distance <- rep(NA, nrow(selectedIsolatesInfo))
@@ -214,14 +229,16 @@ for(row in 1:nrow(selectedIsolatesInfo)){
   }  
 }
 plot(selectedIsolatesInfo$Distance,
-     col=ifelse(selectedIsolatesInfo$Species == "COW", rgb(0,0,1, 0.5), rgb(1,0,0, 0.5)),
+     col=ifelse(selectedIsolatesInfo$Species == "COW", rgb(0,0,1, 0.75),
+                rgb(1,0,0, 0.75)),
      xaxt="n", xlab="", ylab="Distance (m)", main="Distance to Badger Centre Point", las=1, pch=19)
 legend("top", legend=c("Cow", "Badger"),
        text.col=c("blue", "red"), cex=1, bty='n')
 points(x=c(0, nrow(selectedIsolatesInfo)), y=c(thresholdDistance, thresholdDistance), type="l", lty=2, col="black")
+dev.off()
 
 # Define demes
-# A - anything within 2km of badger centre
+# A - anything within Xkm of badger centre
 # B - everything else
 
 selectedIsolatesInfo$Deme <- rep("NA", nrow(selectedIsolatesInfo))
@@ -291,7 +308,8 @@ fileLines[length(fileLines) + 1] <- paste("\t<data id='alignment' spec='Filtered
 ######################
 
 # Convert the sampling dates to date objects - 23/02/1999
-selectedIsolatesInfo$SamplingDate <- as.Date(selectedIsolatesInfo$SamplingDate, format="%d/%m/%Y")
+selectedIsolatesInfo$SamplingDate <- as.Date(selectedIsolatesInfo$SamplingDate,
+                                             format="%d/%m/%Y")
 
 # Create a decimal date column
 selectedIsolatesInfo$DecimalDate <- decimal_date(selectedIsolatesInfo$SamplingDate)
@@ -343,7 +361,7 @@ fileLines[length(fileLines) + 1] <- "\t\t<taxa spec='TaxonSet' alignment='@align
 fileLines[length(fileLines) + 1] <- "\t</typeTraitSet>"
 
 # Open an output file
-fileName <- paste(path, "xmlInput_13-12-16.xml", sep="")
+fileName <- paste(path, "BASTA/", "xmlInput_", date, ".xml", sep="")
 fileConnection <- file(fileName)
 
 # Print out file lines

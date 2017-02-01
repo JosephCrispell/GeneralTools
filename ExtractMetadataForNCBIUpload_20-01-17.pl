@@ -7,16 +7,11 @@ use strict;
 # Extract the sampling information needed to accompany the FASTQ files on NCBI
 
 # Command Line Structure
-# perl ExtractMetadataForNCBIUpload.pl isolatesToIgnore.csv samplingInformation.csv output.txt
+# perl ExtractMetadataForNCBIUpload.pl isolatesUsed.csv output.txt
 
-# IsolatesToIgnore.csv file structure:
-# StrainID	SangerID	Reason	Removed
-# 0			1			2		3
-
-# Combined Sampling Info file structure:
-# FileID	AgRID	Year	Host	Latitude	Longitude	Location	Area		REA	Source	Removed
-# AgR288	NA		2011	BOVINE	-42.7324	171.15633	HOKITIKA	WESTCOAST	1	Farmed	0
-# 0			1		2		3		4			5			6			7			8	9		10
+# IsolatesUsed.csv file structure:
+# IsolateID	Year	Host	Region	Area	REA
+# 0			1		2		3		4		5
 
 # NCBI Metadata file:
 # *sample_name	sample_title	bioproject_accession	*organism	strain	isolate	host	isolation_source	*collection_date
@@ -31,80 +26,40 @@ use strict;
 # temp	description
 # 27	28
 
-###############################
-# Note the Isolates to Ignore #
-###############################
-
-# Open the isolates to ignore file
-my $ignoreFile = shift @ARGV;
-open IGNORE, $ignoreFile or die "Couldn't open file:$!";
-
-# Initialise the variables necessary for parsing the file
-my $line;
-my @cols;
-my $isolate;
-
-# Create a hashtable to note the isolates to remove
-my %ignore = ();
-
-# Begin reading the file
-while(<IGNORE>){
-	$line = $_;
-	chomp($line);
-	
-	# Skip the header line
-	next if $line =~ /^StrainID/;
-	
-	# Split the current line into its columns
-	@cols = split /,/, $line;
-	
-	# Note any isolateIDs
-	$isolate = $cols[0];
-	$isolate = $cols[1] if $line =~ /#/;
-	$ignore{$isolate} = 1;
-}
-close(IGNORE);
-
-# Add a couple more isolates whose files aren't available
-$ignore{"AgR288"} = 1;
-$ignore{"12754_7#1"} = 1;
-
-###############################################################
-# Read in the Sampling Information and Store Necessary Fields #
-###############################################################
+#############################################################
+# Read in the Isolates Used File and Store Necessary Fields #
+#############################################################
 
 # Open the sampling information file
-my $samplingInfo = shift @ARGV;
-open SAMPLING, $samplingInfo or die "Couldn't open file:$!";
+my $isolatesUsed = shift @ARGV;
+open USED, $isolatesUsed or die "Couldn't open file:$!";
+
+# Initialise the necessary variables for parsing the file
+my $line;
+my @cols;
 
 # Create a Hashtable to store the isolate metadata - removes duplicates
 my %isolateInfo = ();
 my $info;
 
-# Begin reading the sampling information file
-while(<SAMPLING>){
+# Begin reading the file
+while(<USED>){
 	$line = $_;
 	chomp($line);
 	
-	# Skip the header lline
-	next if $line =~ /^FileID/;
+	# Skip the header line
+	next if $line =~ /^IsolateID/;
 	
 	# Split the current line into its columns
 	@cols = split /,/, $line;
 	
 	# Print out the columns into the output files if we don't want to ignore isolate
-	unless(exists($ignore{$cols[0]})){
-		$info =  "$cols[0]" . "\t\t\tMycobacterium bovis\t\t$cols[0]\t". $cols[3] . "\t\t". $cols[2] . "\tNew Zealand: " . $cols[7] . "\tCulture\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
-		if(exists($isolateInfo{$cols[0]})){
-			print "Isolate: $cols[0] already present in table with the following information: CURRENT:\t$isolateInfo{$cols[0]}\nNEW:\t$info\n";
-		}else{
-			$isolateInfo{$cols[0]} = $info;
-		}
-	}
+	$info =  "$cols[0]" . "\t\t\tMycobacterium bovis\t\t$cols[0]\t". $cols[2] . "\t\t". $cols[1] . "\tNew Zealand: " . $cols[3] . "\tCulture\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+	$isolateInfo{$cols[0]} = $info;
 }
 
-# Close the sampling information file
-close(SAMPLING);
+# Close the input file
+close(USED);
 
 #############################
 # Print the Metadata needed #
@@ -133,7 +88,6 @@ my @keys = keys(%isolateInfo);
 for(my $i = 0; $i < scalar(@keys); $i++){
 
 	$line = $isolateInfo{$keys[$i]};
-	#$line =~ s/#/-/g;
 	print OUTPUT "$line\n";
 }
 

@@ -93,7 +93,7 @@ tipSizes <- defineTipSizeBySequencingQuality(tips, isolateQuality)
 
 # Open an output file
 file <- paste(path, "InvestigatingCattleMislabelling/",
-              "mlTree_Spoligotypes_13-12-16.pdf", sep="")
+              "mlTree_Spoligotypes_26-01-16.pdf", sep="")
 pdf(file)
 
 # Plot the phylogenetic tree
@@ -109,9 +109,13 @@ nodelabels(node=1:length(tree$tip.label),
 # Add Legends
 addLegendForQuality("bottomright", 0.8)
 legend("bottomleft", legend=c("COW", "BADGER"),
-       pch=c(17, 16), cex=0.65, col=c("blue", "red"), 
-       text.col=c("blue", "red"), bty='n')
+       pch=c(17, 16), cex=0.65, bty='n')
 legend("topleft", legend=uniqueSpoligotypes, text.col=c("green","cyan","gold","blue","grey"), bty="n", cex=0.8)
+
+points(x=c(80, 76, 96, 105, -114, 75), y=c(105, 106, 87, 82, -62, -100), pch=16,
+       cex=2.5, col=rgb(0,0,0, 0.5))
+
+
 
 dev.off()
 
