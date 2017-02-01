@@ -265,6 +265,17 @@ for(row in 1:nrow(selectedIsolatesInfo)){
   }
 }
 
+# Create a plot to demonstrate rates being estimated
+states <- c("innerCow", "outerCow", "innerBadger", "outerBadger")
+rates <- matrix(data=c(NA, "innerCow->outerCow", "innerCow->innerBadger", "-",
+                       "outerCow->innerCow", NA, "-", "outerCow->outerCow",
+                       "innerBadger->innerCow", "-", NA, "innerBadger->outerBadger",
+                       "-", "outerBadger->outerCow", "outerBadger->innerBadger", NA),
+                ncol=4, nrow=4, byrow=TRUE)
+
+
+
+
 ######################
 # Print out sequence #
 ######################
@@ -283,6 +294,7 @@ for(row in 1:nrow(selectedIsolatesInfo)){
 fileLines <- c()
 
 # Attach Sampling Information to name: ID_Species_Deme
+fileLines[length(fileLines) + 1] <- "\t<!-- Sequence Alignment -->"
 fileLines[length(fileLines) + 1] <- "\t<data id=\"alignmentVar\" dataType=\"nucleotide\">"
 
 for(row in 1:nrow(selectedIsolatesInfo)){
@@ -300,6 +312,8 @@ fileLines[length(fileLines) + 1] <- "\t</data>"
 ########################
 
 counts <- "700377 1322380 1316990 699795"
+fileLines[length(fileLines) + 1] <- ""
+fileLines[length(fileLines) + 1] <- "\t<!-- Constant Site Counts -->"
 fileLines[length(fileLines) + 1] <- paste("\t<data id='alignment' spec='FilteredAlignment' filter='-' data='@alignmentVar' constantSiteWeights='",
                                           counts, "'/>", sep="")  
 
@@ -316,6 +330,7 @@ selectedIsolatesInfo$DecimalDate <- decimal_date(selectedIsolatesInfo$SamplingDa
 
 # Print out tip dates
 fileLines[length(fileLines) + 1] <- ""
+fileLines[length(fileLines) + 1] <- "\t<!-- Tip Dates -->"
 fileLines[length(fileLines) + 1] <- "\t<timeTraitSet spec='beast.evolution.tree.TraitSet' id='timeTraitSet' traitname=\"date-forward\""
 output <- "\t\tvalue=\""
 for(row in 1:nrow(selectedIsolatesInfo)){
@@ -343,6 +358,7 @@ fileLines[length(fileLines) + 1] <- "\t</timeTraitSet>"
 #   2   outerCow      Sampled
 #   3   outerBadger   UnSampled
 fileLines[length(fileLines) + 1] <- ""
+fileLines[length(fileLines) + 1] <- "\t<!-- Deme Assignment -->"
 output <- "\t<typeTraitSet id=\"typeTraitSet\" spec=\"TraitSet\" traitname=\"type\" value=\""
 for(row in 1:nrow(selectedIsolatesInfo)){
   
@@ -359,6 +375,7 @@ output <- paste(output, "\">", sep="")
 fileLines[length(fileLines) + 1] <- output
 fileLines[length(fileLines) + 1] <- "\t\t<taxa spec='TaxonSet' alignment='@alignment'/>"
 fileLines[length(fileLines) + 1] <- "\t</typeTraitSet>"
+fileLines[length(fileLines) + 1] <- ""
 
 # Open an output file
 fileName <- paste(path, "BASTA/", "xmlInput_", date, ".xml", sep="")
