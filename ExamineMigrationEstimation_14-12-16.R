@@ -1,14 +1,10 @@
 # Read in the log file
-path <- "/Users/josephcrisp1/Dropbox/Joseph project/OxfordVisit/Analysis/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/BASTA/"
 
-file <- paste(path, "BASTA_13-12-16_4Demes_FixedPopSize/",
-              "MBovis_BASTA_4pops.log", sep="")
-#file <- paste(path, "BASTA_13-12-16_4Demes_PopSizePrior/",
-#              "MBovis_BASTA_4pops.log", sep="")
-#file <- paste(path, "BASTA_13-12-16_4Demes_LowMigrationPrior/",
-#              "MBovis_BASTA_4pops.log", sep="")
-#file <- paste(path, "BASTA_13-12-16_4Demes/",
-#              "MBovis_BASTA_4pops.log", sep="")
+folderName <- "BASTA_Test_01-02-17/"
+
+file <- paste(path, folderName,
+              "BASTA_Test_01-02-17.log", sep="")
 
 logTable <- read.table(file, header=TRUE, sep="\t")
 
@@ -17,7 +13,7 @@ burnIn <- round(0.1 * nrow(logTable), digits=0)
 logTable <- logTable[burnIn:nrow(logTable), ]
 
 # Open a PDF
-file <- paste(path, "BASTA_13-12-16_4Demes_FixedPopSize/", "MBovis_BASTA_4pops_ResultsSummary_16-12-16.pdf", sep="")
+file <- paste(path, folderName, "ResultsSummary_01-02-17.pdf", sep="")
 pdf(file)
 
 ###################
@@ -50,7 +46,7 @@ lineWeights_Rates <- c(
 )
 
 # Set arrow direction
-code <- 2 # Backward in time (1 for forward)
+code <- 1 # Backward in time (1 for forward)
 factor <- 1000
 
 direction <- "BACKWARDS"
@@ -165,4 +161,76 @@ plot(x=logTable$mutationRate * genomeSize, y=logTable$tree.height, pch=20,
 legend("topright", legend=c("High", "Medium", "Low"), pch=20, col=c("red", "purple", "blue"),
        bty="n")
 
+##########################
+# Effective Sample Sizes #
+##########################
+
+parameterNames <- c()
+essValues <- c()
+index <- 0
+
+for(column in 2:ncol(logTable)){
+  
+  if(mean(logTable[, column]) == 0){
+    next;
+  }
+  
+  index <- index + 1
+  parameterNames[index] <- colnames(logTable)[column]
+  essValues[index] <- calculateEffectiveSampleSize(logTable[, column])
+}
+
+par(mar=c(0,11,2,0.5)) # bottom, left, top, right
+barplot(essValues, las=1, names=parameterNames, horiz=TRUE, xaxt="n", cex.names=0.9,
+        main="Parameter Effective Sample Sizes")
+abline(v=100, lty=2, col="red")
+abline(v=1000, lty=2, col="blue")
+text(x=c(250, 1200), y=c(0, 0), labels=c("100", "1000"), cex=0.5, col=c("red", "blue"))
+
 dev.off()
+
+#############
+# FUNCTIONS #
+#############
+
+calculateEffectiveSampleSize <- function(posteriorSample){
+  
+  # Calculate the mean of the sample
+  sampleMean <- mean(posteriorSample)
+  nSamples <- length(posteriorSample)
+
+  # Create an array to store the correlation values between a[index] vs. a[index + lag]
+  autoCorrelationValues <- c()
+
+  for(lag in 1:(nSamples - 1)){
+    
+    # Calculate the auto-correlation value for the current lag period
+    # Taken from: http://www.itl.nist.gov/div898/handbook/eda/section3/autocopl.htm
+    a <- posteriorSample[1:(nSamples - lag)] - sampleMean
+    b <- posteriorSample[(1:(nSamples - lag) + lag)] - sampleMean
+    
+    Ch <- (1/nSamples) * sum(a * b)
+    C0 <- sum((posteriorSample - sampleMean)^2) / nSamples
+    autoCorrelationValues[lag] <- Ch / C0
+    
+    # Check if auto-correlation has dropped below zero
+    if(lag != 1 && 
+       (autoCorrelationValues[lag - 1] > 0 && autoCorrelationValues[lag] <= 0 || 
+        autoCorrelationValues[lag - 1] < 0 && autoCorrelationValues[lag] >= 0)){
+      break;
+    }
+    
+    # Monitor progress
+    #if(lag %% 1000 == 0){
+    #  cat(paste("Calculate correlation based upon gap of ", lag, ". Max gap = ", (nSamples - 1), "\n", sep=""))
+    #}
+  }
+  
+  # Calculate the Effective Sample Size
+  # Taken from: http://people.duke.edu/~ccc14/sta-663-2016/16C_PyMC3.html
+  ess <- nSamples / (1 + 2 * (sum(autoCorrelationValues)))
+  
+  return(ess);
+}
+
+

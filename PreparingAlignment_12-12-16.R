@@ -273,9 +273,6 @@ rates <- matrix(data=c(NA, "innerCow->outerCow", "innerCow->innerBadger", "-",
                        "-", "outerBadger->outerCow", "outerBadger->innerBadger", NA),
                 ncol=4, nrow=4, byrow=TRUE)
 
-
-
-
 ######################
 # Print out sequence #
 ######################
