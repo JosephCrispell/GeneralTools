@@ -195,7 +195,7 @@ plot(1, type="n", yaxt="n", xaxt="n",
      xlim=c(mansionX - expand, mansionX + expand),
      ylim=c(mansionY - expand, mansionY + expand),
      xlab=paste((expand * 2) / 1000, "km"), ylab=paste((expand * 2) / 1000, "km"),
-     main="Isolate Locations")
+     main="Isolate Locations", asp=1)
 
 legend("topleft", legend=c("Cow", "Badger", "Woodchester Mansion"),
        pch=c(17, 16, 15), cex=0.65, bty='n')
