@@ -1,7 +1,7 @@
 # Read in the log file
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/BASTA/"
 
-type <- "Varying"
+type <- "Equal"
 
 folderName <- paste("3Demes_", type, "PopSizes_07-02-17/", sep="")
 
@@ -27,21 +27,21 @@ par(mfrow=c(1,1))
 
 # Define line weights
 lineWeights_Counts <- c(
-  mean(logTable[, "treePrior.Count0to1"]),    # 0 -> 1    innerBadger -> cow
-  mean(logTable[, "treePrior.Count0to2"]),    # 0 -> 2    innerBadger -> outerBadger
-  mean(logTable[, "treePrior.Count1to0"]),    # 1 -> 0    cow -> innerBadger
-  mean(logTable[, "treePrior.Count1to2"]),    # 1 -> 2    cow -> outerBadger
-  mean(logTable[, "treePrior.Count2to0"]),    # 2 -> 0    outerBadger -> innerBadger
-  mean(logTable[, "treePrior.Count2to1"])     # 2 -> 1    outerBadger -> cow
+  mean(logTable[, "treePrior.Count0to1"]),    # 0 -> 1    cow -> innerBadger
+  mean(logTable[, "treePrior.Count0to2"]),    # 0 -> 2    cow -> outerBadger
+  mean(logTable[, "treePrior.Count1to0"]),    # 1 -> 0    innerBadger -> cow
+  mean(logTable[, "treePrior.Count1to2"]),    # 1 -> 2    innerBadger -> outerBadger
+  mean(logTable[, "treePrior.Count2to0"]),    # 2 -> 0    outerBadger -> cow
+  mean(logTable[, "treePrior.Count2to1"])     # 2 -> 1    outerBadger -> innerBadger
 )
 
 lineWeights_Rates <- c(
-  mean(logTable[, "migModel.rateMatrix_0_1"]),    # 0 -> 1    innerBadger -> cow
-  mean(logTable[, "migModel.rateMatrix_0_2"]),    # 0 -> 2    innerBadger -> outerBadger
-  mean(logTable[, "migModel.rateMatrix_1_0"]),    # 1 -> 0    cow -> innerBadger
-  mean(logTable[, "migModel.rateMatrix_1_2"]),    # 1 -> 2    cow -> outerBadger
-  mean(logTable[, "migModel.rateMatrix_2_0"]),    # 2 -> 0    outerBadger -> innerBadger
-  mean(logTable[, "migModel.rateMatrix_2_1"])     # 2 -> 1    outerBadger -> cow
+  mean(logTable[, "migModel.rateMatrix_0_1"]),    # 0 -> 1    cow -> innerBadger
+  mean(logTable[, "migModel.rateMatrix_0_2"]),    # 0 -> 2    cow -> outerBadger
+  mean(logTable[, "migModel.rateMatrix_1_0"]),    # 1 -> 0    innerBadger -> cow
+  mean(logTable[, "migModel.rateMatrix_1_2"]),    # 1 -> 2    innerBadger -> outerBadger
+  mean(logTable[, "migModel.rateMatrix_2_0"]),    # 2 -> 0    outerBadger -> cow
+  mean(logTable[, "migModel.rateMatrix_2_1"])     # 2 -> 1    outerBadger -> innerBadger
 )
 
 # Set arrow direction
@@ -60,14 +60,14 @@ plot(x=NULL,
      ylim=c(1,10),
      xaxt="n", yaxt="n", xlab="", ylab="", main=title)
 
-arrows(x0=2, y0=4, x1=4, y1=7, code=code, lwd=lineWeights_Counts[1])         # innerBadger -> cow
-arrows(x0=3.5, y0=2.5, x1=7.5, y1=2.5, code=code, lwd=lineWeights_Counts[2]) # innerBadger -> outerBadger
+arrows(x0=2, y0=4, x1=4, y1=7, code=code, lwd=lineWeights_Counts[3])         # innerBadger -> cow
+arrows(x0=3.5, y0=2.5, x1=7.5, y1=2.5, code=code, lwd=lineWeights_Counts[4]) # innerBadger -> outerBadger
 
-arrows(x0=5, y0=7, x1=3, y1=4, code=code, lwd=lineWeights_Counts[3])         # cow -> innerBadger
-arrows(x0=5.5, y0=7, x1=7.5, y1=4, code=code, lwd=lineWeights_Counts[4])     # cow -> outerBadger
+arrows(x0=5, y0=7, x1=3, y1=4, code=code, lwd=lineWeights_Counts[1])         # cow -> innerBadger
+arrows(x0=5.5, y0=7, x1=7.5, y1=4, code=code, lwd=lineWeights_Counts[2])     # cow -> outerBadger
 
-arrows(x0=7.5, y0=3.5, x1=3.5, y1=3.5, code=code, lwd=lineWeights_Counts[5]) # outerBadger -> innerBadger
-arrows(x0=8.5, y0=4, x1=6.5, y1=7, code=code, lwd=lineWeights_Counts[6])     # outerBadger -> cow
+arrows(x0=7.5, y0=3.5, x1=3.5, y1=3.5, code=code, lwd=lineWeights_Counts[6]) # outerBadger -> innerBadger
+arrows(x0=8.5, y0=4, x1=6.5, y1=7, code=code, lwd=lineWeights_Counts[5])     # outerBadger -> cow
 
 text(x=c(1.5, 4.5, 7.5), y=c(3.5, 7.5, 3.5), 
      labels=c("innerBadger", "    cow", "outerBadger"), pos=4, col="red")
@@ -79,14 +79,14 @@ plot(x=NULL,
      ylim=c(1, 10),
      xaxt="n", yaxt="n", xlab="", ylab="", main=title)
 
-arrows(x0=2, y0=4, x1=4, y1=7, code=code, lwd=lineWeights_Rates[1] * factor)         # innerBadger -> cow
-arrows(x0=3.5, y0=2.5, x1=7.5, y1=2.5, code=code, lwd=lineWeights_Rates[2] * factor) # innerBadger -> outerBadger
+arrows(x0=2, y0=4, x1=4, y1=7, code=code, lwd=lineWeights_Rates[3] * factor)         # innerBadger -> cow
+arrows(x0=3.5, y0=2.5, x1=7.5, y1=2.5, code=code, lwd=lineWeights_Rates[4] * factor) # innerBadger -> outerBadger
 
-arrows(x0=5, y0=7, x1=3, y1=4, code=code, lwd=lineWeights_Rates[3] * factor)         # cow -> innerBadger
-arrows(x0=5.5, y0=7, x1=7.5, y1=4, code=code, lwd=lineWeights_Rates[4] * factor)     # cow -> outerBadger
+arrows(x0=5, y0=7, x1=3, y1=4, code=code, lwd=lineWeights_Rates[1] * factor)         # cow -> innerBadger
+arrows(x0=5.5, y0=7, x1=7.5, y1=4, code=code, lwd=lineWeights_Rates[2] * factor)     # cow -> outerBadger
 
-arrows(x0=7.5, y0=3.5, x1=3.5, y1=3.5, code=code, lwd=lineWeights_Rates[5] * factor) # outerBadger -> innerBadger
-arrows(x0=8.5, y0=4, x1=6.5, y1=7, code=code, lwd=lineWeights_Rates[6] * factor)     # outerBadger -> cow
+arrows(x0=7.5, y0=3.5, x1=3.5, y1=3.5, code=code, lwd=lineWeights_Rates[6] * factor) # outerBadger -> innerBadger
+arrows(x0=8.5, y0=4, x1=6.5, y1=7, code=code, lwd=lineWeights_Rates[5] * factor)     # outerBadger -> cow
 
 text(x=c(1.5, 4.5, 7.5), y=c(3.5, 7.5, 3.5), 
      labels=c("innerBadger", "    cow", "outerBadger"), pos=4, col="red")
@@ -120,7 +120,7 @@ plot(pop0, col=colour0, las=1, main="Deme Effective Population Sizes", xlab="Eff
 plot(pop1, col=colour1, add=TRUE)
 plot(pop2, col=colour2, add=TRUE)
 
-legend("topright", legend=c("innerBadger", "cow", "outerBadger"), bty="n",
+legend("topright", legend=c("cow", "innerBadger", "outerBadger"), bty="n",
        text.col=c(rgb(1,0,0, 1), rgb(0,0,1, 1), rgb(0,0,0, 1)))
 
 #################
@@ -186,7 +186,7 @@ par(mar=c(3,0,3,0))
 
 rootStateCounts <- table(logTable$treePrior.rootColor)
 
-barplot(rootStateCounts, yaxt="n", names=c("innerBadger", "cow", "outerBadger"),
+barplot(rootStateCounts, yaxt="n", names=c("cow", "innerBadger", "outerBadger"),
         main="Assignment of Demes to Root State", cex.names=0.9)
 
 dev.off()

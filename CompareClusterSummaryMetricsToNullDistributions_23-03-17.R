@@ -2,7 +2,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/InterSpeciesClusters/"
 
 # Open the Cluster Summary table
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_23-03-2017.txt", sep="")
+file <- paste(path, "ClusterSummaryWithRandomNullDistributions_30-03-2017.txt", sep="")
 summaryTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Define the order of the plots
@@ -11,33 +11,31 @@ nameOrder <- c(
   "NNegativeBadgers", "NNegativeCattle",
   "EarliestDetectionDateSampledBadgers", "EarliestDetectionDateSampledCattle",
   "EarliestDetectionDateUnSampledBadgers", "EarliestDetectionDateUnSampledCattle",
-  "MeanSampledDegreeSampledGroups", "MeanSampledDegreeSampledHerds",           
-  "MeanUnSampledDetectedDegreeSampledGroups", "MeanUnSampledDetectedDegreeSampledHerds", 
-  "MeanNegativeDegreeSampledGroups", "MeanNegativeDegreeSampledHerds",
-
-  "MeanInconclusiveDegreeSampledHerds", 
+  "MeanShortestPathLengthBetweenSampledGroups", "ProportionShortestPathsBetweenSampledGroupsThatExist",
+  "MeanShortestPathLengthBetweenSampledHerds", "ProportionShortestPathsBetweenSampledHerdsThatExist",
+  "NumberSampledGroups","NumberSampledHerds",
+  
   "NUnSampledInconclusive",
   "MeanSpatialDist"
 )
 
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_23-03-2017.pdf", sep="")
+file <- paste(path, "ClusterSummaryWithRandomNullDistributions_30-03-2017.pdf", sep="")
 
-pdf(file, width=14, height=63)
+pdf(file, width=14, height=56)
 
-par(mfrow=c(9, 2))
+par(mfrow=c(8, 2))
 par(mar=c(5.1, 5.1, 1, 2.1)) # Bottom, Left, Top, Right
 
 for(row in 1:nrow(summaryTable)){
-  
+
   for(column in nameOrder){
-    
+
     plotNullDistritionWithActual(summaryTable=summaryTable, nBreaks=15, 
                                  date=grepl(x=column, pattern="Date"),
                                  column=column, row=row, cexLab=2, cexAxis=1.5,
                                  cexLegend=2, cluster=row-1)
     
   }
-  plot.new()
 }
 
 dev.off()
@@ -70,7 +68,7 @@ plotNullDistritionWithActual <- function(summaryTable, column, row, nBreaks, dat
   
   # Add a line to show the actual value
   if(cluster != 5){
-    lines(c(values[1],values[1]), c(0, max(h$counts)), col="blue", lwd=3)
+    lines(c(values[1],values[1]), c(0, max(h$counts)), col="blue", lwd=3, xpd=TRUE)
   }
   
   
