@@ -16,7 +16,7 @@ logTable <- logTable[burnIn:nrow(logTable), ]
 
 # Open a PDF
 prefix <- paste("8Demes_", type, "PopSizes_07-02-17", sep="")
-file <- paste(path, folderName, prefix, "_ResultsSummary_09-02-17.pdf", sep="")
+file <- paste(path, folderName, prefix, "_ResultsSummary_03-03-17.pdf", sep="")
 pdf(file)
 
 ###################
