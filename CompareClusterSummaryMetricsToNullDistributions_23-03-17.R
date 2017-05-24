@@ -19,30 +19,153 @@ nameOrder <- c(
   "MeanSpatialDist"
 )
 
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_30-03-2017.pdf", sep="")
+# file <- paste(path, "ClusterSummaryWithRandomNullDistributions_30-03-2017.pdf", sep="")
+# 
+# pdf(file, width=14, height=56)
+# 
+# par(mfrow=c(8, 2))
+# par(mar=c(5.1, 5.1, 1, 2.1)) # Bottom, Left, Top, Right
+# 
+# for(row in 1:nrow(summaryTable)){
+# 
+#   for(column in nameOrder){
+# 
+#     plotNullDistritionWithActual(summaryTable=summaryTable, nBreaks=15, 
+#                                  date=grepl(x=column, pattern="Date"),
+#                                  column=column, row=row, cexLab=2, cexAxis=1.5,
+#                                  cexLegend=2, cluster=row-1)
+#     
+#   }
+# }
+# 
+# dev.off()
 
-pdf(file, width=14, height=56)
+#######################################################
+# Build an output table with Null Distribution bounds #
+#######################################################
 
-par(mfrow=c(8, 2))
-par(mar=c(5.1, 5.1, 1, 2.1)) # Bottom, Left, Top, Right
+# Create the output table
+fullNames <- list(
+  "MeanDistToRefBadgers" = "Mean number of SNPs from clade root for badger sequences",
+  "MeanDistToRefCattle" = "Mean number of SNPs from clade root for cattle sequences",
+  "MeanSeqQualBadgers" = "Mean genome coverage of badger sequences",
+  "MeanSeqQualCattle" = "Mean genome coverage of cattle sequences",
+  "NBadgersSampled" = "Number of badgers sampled",
+  "NCattleSampled" = "Number of cattle sampled",
+  "NUnSampledDetectedBadgers" = "Number of in-contact badgers that tested positive",
+  "NUnSampledDetectedCattle" = "Number of in-contact cattle that tested positive",
+  "NUnSampledInconclusive" = "Number of in-contact cattle whose test repsonse was inconclusive",
+  "NNegativeBadgers" = "Number of in-contact badgers that NEVER tested positive",
+  "NNegativeCattle" = "Number of in-contact cattle that NEVER tested positive",
+  "EarliestDetectionDateSampledBadgers" = "Earliest date that a sampled badger tested positive",
+  "EarliestDetectionDateSampledCattle" = "Earliest date that a sampled cow tested positive",
+  "EarliestDetectionDateUnSampledBadgers" = "Earliest date that an in-contact badger tested positive",
+  "EarliestDetectionDateUnSampledCattle" = "Earliest date that an in-contact cow tested positive",
+  "MeanSpatialDist" = "Mean spatial distance (KM) from the sampled herds to Woodchester Park",
+  "MeanShortestPathLengthBetweenSampledGroups" = "Mean length of shortest paths between sampled social groups",
+  "MeanShortestPathLengthBetweenSampledHerds" = "Mean length of shortest paths between sampled herds",
+  "ProportionShortestPathsBetweenSampledGroupsThatExist" = "Proportion of shortest paths that exist between sampled social groups",
+  "ProportionShortestPathsBetweenSampledHerdsThatExist" = "Proportion of shortest paths that exist between herds",
+  "NumberSampledGroups" = "Number of social groups sampled",
+  "NumberSampledHerds" = "Number of herds sampled"
+)
 
-for(row in 1:nrow(summaryTable)){
+colNames <- c(
+  "Cluster-0",
+  "Cluster-1",
+  "Cluster-2",
+  "Cluster-3",
+  "Cluster-4"
+)
 
-  for(column in nameOrder){
+outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
 
-    plotNullDistritionWithActual(summaryTable=summaryTable, nBreaks=15, 
-                                 date=grepl(x=column, pattern="Date"),
-                                 column=column, row=row, cexLab=2, cexAxis=1.5,
-                                 cexLegend=2, cluster=row-1)
-    
-  }
-}
+# Replace the row names
+rownames(outputTable) <- replaceFromList(rownames(outputTable), fullNames)
 
-dev.off()
+# Save the output table as csv
+file <- paste(path, "ClusterSummaryWithBoundsOfNulls_30-03-2017.txt", sep="")
+write.table(file, x=outputTable, quote=FALSE, row.names=TRUE, sep="\t")
+
 
 #############
 # FUNCTIONS #
 #############
+
+replaceFromList <- function(array, list){
+  
+  output <- c()
+  for(i in 1:length(array)){
+    output[i] <- list[[array[i]]]
+  }
+  
+  return(output)
+}
+
+buildOutputTable <- function(summaryTable, fullNames, colNames){
+
+  outputTable <- data.frame(matrix(nrow=length(names(fullNames)), ncol=length(colNames)))
+  colnames(outputTable) <- colNames
+  rownames(outputTable) <- names(fullNames)
+  
+  # Fill in the output table
+  for(cluster in 0:(nrow(summaryTable)-1)){
+    for(metric in names(fullNames)){
+      
+      # Check if current cell is dealing with a date
+      if(grepl(x=metric, pattern="Date") == TRUE){
+        
+        # Split the current cell into its parts
+        values <- as.Date(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]],
+                          format="%d-%m-%Y")
+        
+        # Find the bounds of the null distribution
+        bounds <- quantile(values[-1], probs=c(0.025, 0.975), type=1, na.rm=TRUE) # type 1 - algorithm to handle discrete distribution
+        
+        # Put cell info into output table
+        outputTable[metric, cluster + 1] <- paste(values[1], " (", bounds[[1]], ", ", bounds[[2]], ")", sep="")
+        
+        # Check if cell has no null distribution
+      }else if(grepl(x=metric, pattern="DistToRef") == TRUE || 
+               grepl(x=metric, pattern="SeqQual") == TRUE){
+        
+        # Put cell info into output table
+        outputTable[metric, cluster + 1] <- round(summaryTable[cluster + 1, metric], digits=2)
+        
+        # Don't examine null distribution for N sampled metrics - all the same
+      }else if(metric == "NBadgersSampled" || metric == "NCattleSampled"){
+        
+        # Split the current cell into its parts
+        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        
+        # Put cell info into output table
+        outputTable[metric, cluster + 1] <- values[1]
+        
+        # Summarise null distribution of numeric data
+      }else{
+        
+        # Split the current cell into its parts
+        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        
+        # If spatial dists - divide by 1000 - convert to km
+        if(metric == "MeanSpatialDist"){
+          values <- values / 1000
+        }
+        
+        # Find the bounds of the null distribution
+        if(length(values) > 1){
+          bounds <- round(quantile(values[-1], probs=c(0.025, 0.975)), digits=2)
+        }
+        
+        # Put cell info into output table
+        outputTable[metric, cluster + 1] <- paste(round(values[1], digits=2),
+                                                  " (", bounds[[1]], ", ", bounds[[2]], ")", sep="")
+      }
+    }
+  }
+  
+  return(outputTable)
+}
 
 plotNullDistritionWithActual <- function(summaryTable, column, row, nBreaks, date,
                                          cexLab, cexAxis, cexLegend, cluster){

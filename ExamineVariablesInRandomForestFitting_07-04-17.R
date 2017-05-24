@@ -18,21 +18,25 @@ library(gplots)
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/GeneticVsEpidemiologicalDistance/ExaminingRandomForestFit_06-04-17/"
 
 # Read in the table
-file <- paste(path, "GeneticVsEpidemiologicalDistances_12-04-17.txt", sep="")
+file <- paste(path, "GeneticVsEpidemiologicalDistances_15-05-17.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #####
 # General Settings
 
+selection <- "CB"
+
 trainProp <- 0.5
+
+colToUse <- "%IncMSE"
 
 fullNames <- list(
   "SameMainGroup" = "Isolates taken from same main group (yes/no)",
   "SameSampledGroup" = "Isolates taken from same sampled group (yes/no)",                           
   "SameInfectedGroup" = "Isolates taken from same infected group (yes/no)",
-  "PeriodSpentAliveTogether" = "Number of days overlap between recorded lifespans of the sampled badgers",                   
-  "PeriodSpentInfectedTogether" = "Number of days overlap betweeninfected lifespans of the sampled badgers",
-  "PeriodSpentInSameGroup" = "Number of days that sampled badgers spent in same group",                     
+  "PeriodSpentAliveTogether" = "Number of days overlap between recorded lifespans of the sampled animals",                   
+  "PeriodSpentInfectedTogether" = "Number of days overlap between infected lifespans of the sampled animals",
+  "PeriodSpentInSameGroup" = "Number of days that sampled animals spent in same group",                     
   "TimeBetweenInfectionDetection" = "Number of days between infection detection dates",
   "TimeBetweenSampling" = "Number of days between sampling dates",                        
   "TimeBetweenBreakdown" = "Number of days between breakdown dates",
@@ -49,63 +53,115 @@ fullNames <- list(
   "MeanNMovementsOnEdgesOfShortestPathSampled" = "Mean number of animals dispersing along edges of shortest path between sampled groups",
   "ShortestPathLengthInfected" = "Shortest path length between infected groups of sampled animals",                 
   "MeanNMovementsOnEdgesOfShortestPathInfected" = "Mean number of animals dispersing along edges of shortest path between infected groups",
-  "NSharedAnimalsBetweenMainGroups" = "Number of badgers captured in both main groups of sampled badgers",            
-  "NSharedAnimalsBetweenSampledGroups" = "Number of badgers captured in both sampled groups of sampled badgers",
-  "NSharedAnimalsBetweenInfectedGroups" = "Number of badgers captured in both infected groups of sampled badgers",
+  "NSharedAnimalsBetweenMainGroups" = "Number of animals recorded in both main groups of sampled animals",            
+  "NSharedAnimalsBetweenSampledGroups" = "Number of animals recorded in both sampled groups of sampled animals",
+  "NSharedAnimalsBetweenInfectedGroups" = "Number of animals recorded in both infected groups of sampled animals",
   "ShortestPathLengthEXCLMain" = "Shortest path length between main herds of sampled animals (Some Herds Excluded)",                     
   "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = "Mean number of animals dispersing along edges of shortest path between main herds (Some Herds Excluded)",   
-  "ShortestPathLengthEXCLSampled" = "Shortest path length between main herds of sampled animals (Some Herds Excluded)",               
+  "ShortestPathLengthEXCLSampled" = "Shortest path length between sampled herds of sampled animals (Some Herds Excluded)",               
   "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = "Mean number of animals dispersing along edges of shortest path between sampled herds (Some Herds Excluded)",
-  "ShortestPathLengthEXCLInfected" = "Shortest path length between main herds of sampled animals (Some Herds Excluded)",
+  "ShortestPathLengthEXCLInfected" = "Shortest path length between infected herds of sampled animals (Some Herds Excluded)",
   "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals dispersing along edges of shortest path between main herds (Some Herds Excluded)",
   "CentroidDistBetweenMain" = "Distance from centroid of closest land parcel to badgers main sett",
   "CentroidDistBetweenSamp" = "Distance from centroid of closest land parcel to badgers sampled sett"
 )
 
-#####
-
-### Badger - Badger #
+temporalCol <- "darkgoldenrod4"
+spatialCol <- "red"
+networkCol <- "blue"
+nameColours <- list(
+  "SameMainGroup" = spatialCol,
+  "SameSampledGroup" = spatialCol,                           
+  "SameInfectedGroup" = spatialCol,
+  "PeriodSpentAliveTogether" = temporalCol,                   
+  "PeriodSpentInfectedTogether" = temporalCol,
+  "PeriodSpentInSameGroup" = temporalCol,                     
+  "TimeBetweenInfectionDetection" = temporalCol,
+  "TimeBetweenSampling" = temporalCol,                        
+  "TimeBetweenBreakdown" = temporalCol,
+  "DistanceBetweenMainGroups" = spatialCol,
+  "DistanceBetweenSampledGroups" = spatialCol,               
+  "DistanceBetweenInfectedGroups" = spatialCol,
+  "NMovementsBetweenMainGroups" = networkCol,                
+  "NMovementsBetweenSampledGroups" = networkCol,
+  "NMovementsBetweenInfectedGroups" = networkCol,            
+  "SameAnimal" = "black",
+  "ShortestPathLengthMain" = networkCol,                     
+  "MeanNMovementsOnEdgesOfShortestPathMain" = networkCol,
+  "ShortestPathLengthSampled" = networkCol,                  
+  "MeanNMovementsOnEdgesOfShortestPathSampled" = networkCol,
+  "ShortestPathLengthInfected" = networkCol,                 
+  "MeanNMovementsOnEdgesOfShortestPathInfected" = networkCol,
+  "NSharedAnimalsBetweenMainGroups" = networkCol,            
+  "NSharedAnimalsBetweenSampledGroups" = networkCol,
+  "NSharedAnimalsBetweenInfectedGroups" = networkCol,
+  "ShortestPathLengthEXCLMain" = networkCol,                     
+  "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = networkCol,   
+  "ShortestPathLengthEXCLSampled" = networkCol,               
+  "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = networkCol,
+  "ShortestPathLengthEXCLInfected" = networkCol,
+  "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = networkCol,
+  "CentroidDistBetweenMain" = spatialCol,
+  "CentroidDistBetweenSamp" = spatialCol
+)
 
 # Open a PDF
-file <- paste(path, "ExamineEpiVariableCorrelation_02-05-17.pdf", sep="")
-pdf(file, height=10, width=10)
-
-par(mfrow=c(1,1))
+# file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_23-05-17.pdf", sep="")
+# pdf(file, height=10, width=10)
+# 
+# par(mfrow=c(1,1))
 
 # Select Data
 #####
 
+# Subset out the selected comparisons
+if(selection != "CB" && selection != "BC"){
+  geneticVsEpi <- geneticVsEpi[geneticVsEpi$iSpeciesJSpecies == selection, ]
+}else{
+  geneticVsEpi <- geneticVsEpi[geneticVsEpi$iSpeciesJSpecies != "BB" &
+                               geneticVsEpi$iSpeciesJSpecies != "CC", ]
+}
 
-# Subset out the badger - badger comparisons
-geneticVsEpi_BB <- geneticVsEpi[geneticVsEpi$iSpeciesJSpecies == "BB", ]
 
 # Only select small genetic distances
-hist(geneticVsEpi_BB$GeneticDistance, breaks=100,
+hist(geneticVsEpi$GeneticDistance, breaks=100,
      las=1,
      xlab="Genetic Distance (SNPs)",
      main="Inter-Isolate Genetic Distance Distribution")
 lines(x=c(15, 15), y=c(0, 8500), col="red", lty=2)
 
-geneticVsEpi_BB <- geneticVsEpi_BB[geneticVsEpi_BB$GeneticDistance < 15, ]
+geneticVsEpi <- geneticVsEpi[geneticVsEpi$GeneticDistance < 15, ]
 
 # Remove irrelevant columns
-geneticVsEpi_BB <- removeColumnsIfNotRelevant(geneticVsEpi_BB)
+geneticVsEpi <- removeColumnsIfNotRelevant(geneticVsEpi)
 
 # Convert the columns dealing with boolean metrics to factors
-geneticVsEpi_BB <- makeBooleanColumnsFactors(table=geneticVsEpi_BB)
+geneticVsEpi <- makeBooleanColumnsFactors(table=geneticVsEpi)
 
 # Note columns to ignore as predictors
 colNamesToIgnore <- c("iSpeciesJSpecies", "IsolateI", "IsolateJ")
-colsToIgnore <- which(names(geneticVsEpi_BB) %in% colNamesToIgnore)
+colsToIgnore <- which(names(geneticVsEpi) %in% colNamesToIgnore)
 
 # Examine the levels of missing data
+# BADGERS
 # -1 restricted to shortest paths and periods spent together
 # For shortest paths, this means no path found
 # For periods spent together - means at least one animal doesn't have start and end dates
 # Decided to LEAVE IN
+# CATTLE
+# Poor data for "main" group - removed associated variables
+# Centroid dist metrics all zero - removed associated variables
 plotEpidemiologicalMetricDistributionsWithMissingData(
-  geneticVsEpi_BB[, -colsToIgnore])
+  geneticVsEpi[, -colsToIgnore])
 
+if(selection == "CC"){
+  # Remove "main" group variables if interested in cattle-cattle comparisons
+  geneticVsEpi <- geneticVsEpi[, grepl(pattern="Main", x=colnames(geneticVsEpi)) == FALSE]
+  
+  # Remove metrics using land parcel centroids
+  geneticVsEpi <- geneticVsEpi[, grepl(pattern="Centroid", x=colnames(geneticVsEpi)) == FALSE]
+  colsToIgnore <- which(names(geneticVsEpi) %in% colNamesToIgnore)
+}
 
 #####
 
@@ -114,32 +170,37 @@ plotEpidemiologicalMetricDistributionsWithMissingData(
 
 
 # Build a test and training data set for predictions
-trainRows_BB <- sample(x=1:nrow(geneticVsEpi_BB),
-                    size=floor(trainProp * nrow(geneticVsEpi_BB)), replace=FALSE)
+trainRows <- sample(x=1:nrow(geneticVsEpi),
+                    size=floor(trainProp * nrow(geneticVsEpi)), replace=FALSE)
 
 # Find optimal mtry parameter
-optimalMtry <- findOptimalMtry(response=geneticVsEpi_BB[trainRows_BB, "GeneticDistance"],
-                               predictors=geneticVsEpi_BB[trainRows_BB, -c(1, colsToIgnore)],
+optimalMtry <- findOptimalMtry(response=geneticVsEpi[trainRows, "GeneticDistance"],
+                               predictors=geneticVsEpi[trainRows, -c(1, colsToIgnore)],
                                mTryInitial=3, nTrees=500, plot=TRUE)
 abline(v=optimalMtry, col="red", lty=2)
 
 # Train the Random Forest model
-infoRF_BB <- randomForest(geneticVsEpi_BB[trainRows, "GeneticDistance"] ~ ., 
-                          data=geneticVsEpi_BB[trainRows, -c(1, colsToIgnore)],
+infoRF <- randomForest(geneticVsEpi[trainRows, "GeneticDistance"] ~ ., 
+                          data=geneticVsEpi[trainRows, -c(1, colsToIgnore)],
                           mtry=optimalMtry, importance=TRUE, ntree=1000,
                           keep.forest=TRUE, norm.votes=FALSE, proximity=FALSE,
                           do.trace=FALSE)
 
 # Get the Pseudo RSquared value
-rSq <- round(infoRF_BB$rsq[length(infoRF_BB$rsq)], digits=2)
+rSq <- round(infoRF$rsq[length(infoRF$rsq)], digits=2)
 
 # Examine trained model prediction
-predictedGeneticDistances <- predict(infoRF_BB, geneticVsEpi_BB[-trainRows, -c(1, colsToIgnore)])
-plotPredictedVersusActual(actual=geneticVsEpi_BB[-trainRows, "GeneticDistance"],
+predictedGeneticDistances <- predict(infoRF, geneticVsEpi[-trainRows, -c(1, colsToIgnore)])
+corr <- cor(geneticVsEpi[-trainRows, "GeneticDistance"], predictedGeneticDistances)
+plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
                           predicted=predictedGeneticDistances, rSq=rSq)
 
 # Note the metric importance
-epiMetricImportance <- noteVariableImportance(infoRF_BB)
+variableImportance <- list()
+epiMetricImportance <- noteVariableImportance(importance=infoRF$importance,
+                                              variableList=variableImportance,
+                                              nMetricsPerClusterToRemove=0,
+                                              colToUse=colToUse)
 
 #####
 
@@ -149,11 +210,12 @@ epiMetricImportance <- noteVariableImportance(infoRF_BB)
 
 # Examine correlation between epidemiological metrics
 correlationTable <- calculateCorrelationBetweenEpiMetrics(
-  geneticVsEpi_BB[, -c(1, colsToIgnore)], fullNames)
+  geneticVsEpi[, -c(1, colsToIgnore)], fullNames)
 
 # Find clusters of highly correlated metrics
 threshold <- 0.55
 clusters <- noteClustersOfMetrics(correlationTable, threshold, "black")
+clusterSizes <- getClusterSizes(clusters)
 
 #####
 
@@ -163,41 +225,41 @@ clusters <- noteClustersOfMetrics(correlationTable, threshold, "black")
 
 # Investigate the effect of removing coorelated variables on Random Forest fit
 stop <- FALSE
-nMetricsPerClusterToRemove <- 0
+nMetricsPerClusterToRemove <- 1
 par(mfrow=c(1,2))
 
-outputTable <- data.frame("NumberMetricsRemovedPerCluster" = c(),
-                          "MetricsRemoved" = c(),
-                          "NumberMetricsRemoved" = c(),
-                          "PseudoRSquared" = c(),
-                          "Correlation" = c(), 
-                          "ClusterSizes" = c(), 
+outputTable <- data.frame("NumberMetricsRemovedPerCluster" = c(0),
+                          "MetricsRemoved" = c(""),
+                          "NumberMetricsRemoved" = c(0),
+                          "PseudoRSquared" = c(rSq),
+                          "Correlation" = c(corr), 
+                          "ClusterSizes" = c(clusterSizes), 
                           stringsAsFactors=FALSE)
 
 # Create a list to store the variable importance after variable removal
-variableImportance <- list()
 maxImportance <- 0
 
 while(stop == FALSE){
 
   # Remove x metrics from clusters and geneticVsEpi table
-  inforForRFModel <- removeVariablesByImportanceFromClustersAndTable(
+  infoForRFModel <- removeVariablesByImportanceFromClustersAndTable(
     clusters=clusters,
-    geneticVsEpi=geneticVsEpi_BB[, -colsToIgnore],
-    variableImportance=epiMetricImportance,
-    nToRemove=nMetricsPerClusterToRemove)
+    geneticVsEpi=geneticVsEpi[, -colsToIgnore],
+    variableImportance=epiMetricImportance, ### Should you use importance from previous model?
+    nToRemove=nMetricsPerClusterToRemove,
+    useOriginalRfModelImportance=FALSE)
 
   # Find the optimal mtry value
   optimalMtry <- findOptimalMtry(
-    response=inforForRFModel[["geneticVsEpiTable"]][trainRows, "GeneticDistance"],
-    predictors=inforForRFModel[["geneticVsEpiTable"]][trainRows, -1],
+    response=infoForRFModel[["geneticVsEpiTable"]][trainRows, "GeneticDistance"],
+    predictors=infoForRFModel[["geneticVsEpiTable"]][trainRows, -1],
     mTryInitial=3, nTrees=500, plot=TRUE)
   abline(v=optimalMtry, col="red", lty=2)
 
   # Fit the Random Forest model
   rfModel <- randomForest(
-    inforForRFModel[["geneticVsEpiTable"]][trainRows, "GeneticDistance"] ~ .,
-    data=inforForRFModel[["geneticVsEpiTable"]][trainRows, -1],
+    infoForRFModel[["geneticVsEpiTable"]][trainRows, "GeneticDistance"] ~ .,
+    data=infoForRFModel[["geneticVsEpiTable"]][trainRows, -1],
     mtry=optimalMtry, importance=TRUE, ntree=1000,
     keep.forest=TRUE, norm.votes=FALSE, proximity=FALSE,
     do.trace=FALSE)
@@ -205,10 +267,11 @@ while(stop == FALSE){
   plot(rfModel, las=1)
 
   # Note the variable importance
-  variableImportance <- noteVariableImportance(importance=rfModel$importance,
-                                               variableList=variableImportance,
-                                               nMetricsRemovedPerCluster=nMetricsPerClusterToRemove,
-                                               colToUse="%IncMSE")
+  epiMetricImportance <- noteVariableImportance(importance=rfModel$importance,
+                                               variableList=epiMetricImportance,
+                                               nMetricsPerClusterToRemove=nMetricsPerClusterToRemove,
+                                               colToUse=colToUse)
+  
   if(max(rfModel$importance[, "%IncMSE"]) > maxImportance){
     maxImportance <- max(rfModel$importance[, "%IncMSE"])
   }
@@ -216,20 +279,20 @@ while(stop == FALSE){
   
   # Test the Random Forest model
   predictions <- predict(rfModel,
-                         inforForRFModel[["geneticVsEpiTable"]][-trainRows, -1])
-  corr <- cor(inforForRFModel[["geneticVsEpiTable"]][-trainRows, "GeneticDistance"]
+                         infoForRFModel[["geneticVsEpiTable"]][-trainRows, -1])
+  corr <- cor(infoForRFModel[["geneticVsEpiTable"]][-trainRows, "GeneticDistance"]
               , predictions)
 
   # Examine the size of the clusters following metric removal
-  clusterSizes <- getClusterSizes(inforForRFModel[["clusters"]])
+  clusterSizes <- getClusterSizes(infoForRFModel[["clusters"]])
   if(max(clusterSizes) == 1){
     stop = TRUE
   }
 
   # Store the results
   outputTable[nMetricsPerClusterToRemove + 1, "NumberMetricsRemovedPerCluster"] <- nMetricsPerClusterToRemove
-  outputTable[nMetricsPerClusterToRemove + 1, "MetricsRemoved"] <- paste(inforForRFModel[["removed"]], collapse=",")
-  outputTable[nMetricsPerClusterToRemove + 1, "NumberMetricsRemoved"] <- length(inforForRFModel[["removed"]])
+  outputTable[nMetricsPerClusterToRemove + 1, "MetricsRemoved"] <- paste(infoForRFModel[["removed"]], collapse=",")
+  outputTable[nMetricsPerClusterToRemove + 1, "NumberMetricsRemoved"] <- length(infoForRFModel[["removed"]])
   outputTable[nMetricsPerClusterToRemove + 1, "PseudoRSquared"] <- rSq
   outputTable[nMetricsPerClusterToRemove + 1, "Correlation"] <- corr
   outputTable[nMetricsPerClusterToRemove + 1, "ClusterSizes"] <- paste(clusterSizes, collapse=",")
@@ -238,9 +301,9 @@ while(stop == FALSE){
   cat("###########################################################################\n")
   cat("###########################################################################\n")
   cat(paste("Finished fitting Random Forest model", "\n",
-            "Removed ", length(inforForRFModel[["removed"]])," metrics (",
+            "Removed ", length(infoForRFModel[["removed"]])," metrics (",
             nMetricsPerClusterToRemove, " per cluster):\n",
-            paste(inforForRFModel[["removed"]], collapse=","), "\nCorrelation = ",
+            paste(infoForRFModel[["removed"]], collapse=","), "\nCorrelation = ",
             round(corr, digits=2), "\nRsq = ", round(rSq, digits=2), "\n", sep=""))
   cat("###########################################################################\n")
   cat("###########################################################################\n")
@@ -260,9 +323,67 @@ plot(x=outputTable$NumberMetricsRemoved,
      ylab="Proportion Variation Explained")
 
 par(mfrow=c(1,1))
-plotVariableImportanceAgainstNMetricsRemovedPerCluster(variableImportance, 
+plotVariableImportanceAgainstNMetricsRemovedPerCluster(epiMetricImportance, 
                                                        nMetricsPerClusterToRemove - 1,
                                                        c(0, maxImportance))
+#####
+
+# Plot Variable Importance
+##########################
+
+# Get the variable importance from the RF model
+variableImportance <- as.data.frame(infoRF$importance)
+
+# Order the table by importance
+variableImportance <- variableImportance[order(variableImportance[, colToUse], decreasing=FALSE), ]
+
+# Transpose the table
+transpose <- as.matrix(t(variableImportance))
+
+# Get full Variable Names
+variableNames <- getFullVariableNames(rownames(variableImportance), fullNames)
+
+# Get Variable Colours
+variableColours <- getVariableColours(variableImportance, nameColours=nameColours)
+
+# Create bar plot illustrating the relative variable importance from RF and BR
+par(mfrow=c(1,1))
+
+marginSizes <- list(
+  "BB" = 26,
+  "CC" = 33,
+  "CB" = 22
+)
+
+legendPos <- list(
+  "BB" = c(2, 5),
+  "CC" = c(1, 2.5),
+  "CB" = c(8, 1.5)
+)
+
+par(mar=c(0,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
+
+plot <- barplot(transpose[-2,], horiz=TRUE, beside=TRUE,
+                xaxt='n',
+                col=variableColours,
+                main="Variable Importance",
+                col.axis="white")
+
+at <- plot[,1]
+
+xLabPosition <- 0
+text(labels=variableNames, 
+     col=variableColours,
+     x=rep(xLabPosition,length(variableImportance)),
+     y=at,
+     srt = 0, pos = 2, xpd = TRUE, cex=0.75)
+
+
+# Add Legend
+legend(x=legendPos[[selection]][1], y=legendPos[[selection]][2], legend=c("Temporal", "Spatial", "Network"), 
+       text.col = c(temporalCol, spatialCol, networkCol),
+       bty='n', cex=1)
+
 #####
 
 dev.off()
@@ -271,6 +392,18 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+getVariableColours <- function(variableImportance, nameColours){
+  
+  rowNames <- rownames(variableImportance)
+  
+  colours <- c()
+  for(index in 1:nrow(variableImportance)){
+    colours[index] <- nameColours[[rowNames[index]]]
+  }
+  
+  return(colours)
+}
 
 plotVariableImportanceAgainstNMetricsRemovedPerCluster <- function(variableImportance, 
                                                                    maxNMetricsRemoved,
@@ -325,20 +458,20 @@ checkForMatch <- function(x, patterns){
   return(match)
 }
 
-noteVariableImportance <- function(importance, variableList, nMetricsRemovedPerCluster, colToUse){
+noteVariableImportance <- function(importance, variableList, nMetricsPerClusterToRemove, colToUse){
   
   metrics <- rownames(importance)
   
   for(row in 1:nrow(importance)){
     
-    # Check that metric exists in variable lise
+    # Check that metric exists in variable list
     if(is.null(variableList[[metrics[row]]]) == FALSE){
       
       variableList[[metrics[row]]] <- rbind(variableList[[metrics[row]]],
-                                            c(nMetricsRemovedPerCluster,
+                                            c(nMetricsPerClusterToRemove,
                                               importance[row, colToUse]))
     }else{
-      variableList[[metrics[row]]] <- matrix(data=c(nMetricsRemovedPerCluster,
+      variableList[[metrics[row]]] <- matrix(data=c(nMetricsPerClusterToRemove,
                                                     importance[row, colToUse]),
                                              nrow=1, ncol=2)
     }
@@ -370,7 +503,8 @@ getClusterSizes <- function(clusters){
 }
 
 removeVariablesByImportanceFromClustersAndTable <- function(clusters, geneticVsEpi,
-                                                    variableImportance, nToRemove){
+                                                    variableImportance, nToRemove,
+                                                    useOriginalRfModelImportance){
 
   # Create an array to record which metrics have been removed
   allMetricsRemoved <- c()
@@ -387,7 +521,14 @@ removeVariablesByImportanceFromClustersAndTable <- function(clusters, geneticVsE
     # Get the variable importance
     varImportance <- c()
     for(i in 1:length(variables)){
-      varImportance[i] <- variableImportance[[variables[i]]][1]
+      
+      # Note if wanting to use original importance scores or those from previous model
+      if(useOriginalRfModelImportance == TRUE){
+        varImportance[i] <- variableImportance[[variables[i]]][1, 2]
+      }else{
+        varImportance[i] <- variableImportance[[variables[i]]][
+          nrow(variableImportance[[variables[i]]]), 2]
+      }
     }
     
     # Get the variable order by importance
@@ -421,7 +562,7 @@ removeVariablesByImportanceFromClustersAndTable <- function(clusters, geneticVsE
   return(output)
 }
 
-noteVariableImportance <- function(infoRF){
+noteVariableImportanceOLD <- function(infoRF){
   
   variableImportance <- list()
   
@@ -582,7 +723,7 @@ plotHeatmap <- function(correlationTable, fullNames){
             # Column Labels
             labCol=getFullVariableNames(colnames(correlationTable),
                                         fullNames),
-            cexCol=0.5, # Change the size of the column labels
+            cexCol=0.4, # Change the size of the column labels
             srtCol=90, # Set the angle of the column labels (degrees from horizontal)
             offsetCol=-0.85, # Set size of space between column labels and heatmap
             
@@ -592,7 +733,7 @@ plotHeatmap <- function(correlationTable, fullNames){
             # Row labels
             labRow=getFullVariableNames(rownames(correlationTable),
                                         fullNames),
-            cexRow=0.5, # Change the size of the Row labels
+            cexRow=0.4, # Change the size of the Row labels
             offsetRow=0,
             
             # Make sure the order of the rows and columns is changed
@@ -697,9 +838,10 @@ removeColumnsIfNotRelevant <- function(table){
   
   for(col in 3:(ncol(table)-2)){
     
-    if(mean(table[, col]) == -1){
+    if(sd(table[, col]) == 0){
       index <- index + 1
       colsToRemove[index] <- col
+      cat(paste("Removed: ", colnames(table)[col], "\n", sep=""))
     }
   }
   return(table[, -colsToRemove])
