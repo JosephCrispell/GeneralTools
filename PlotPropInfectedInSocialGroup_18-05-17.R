@@ -138,7 +138,7 @@ getSequenceIDsFromFastaFile <- function(fileName){
   
   # Initialise a vector to store the IDs
   ids <- c()
-  index <- 1
+  index <- 0
   
   # Read the fasta file line by line
   for(line in fileLines[-1]){
