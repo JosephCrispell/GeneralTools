@@ -6,14 +6,23 @@ library(maptools) # Read shape file
 library(rgeos) # Polygon centroids
 
 # Create a path variable
-path <- "/Users/josephcrisp1/Desktop/BadgerTerritoryShapeFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+
+############################################################
+# Note the centroid of the badger social group territories #
+############################################################
+
+# Taken from PlotIsolateLocationsForBASTADemeAssignment.R
+badgerGroupCentroid <- c(381761.7, 200964.3)
+expand <- 1600
 
 #####################################################################
 # Load Infection Category Counts for each Social Group in each Year #
 #####################################################################
 
 # Read in the infection category counts for each social group
-fileName <- paste(path, "InfectionCategoryCounts_2000-2011_18-05-2017.csv", sep="")
+fileName <- paste(path, "BadgerCaptureData/", 
+                  "InfectionCategoryCounts_2000-2011_18-05-2017.csv", sep="")
 counts <- getCountTablesFromFileLinesYears(fileName)
 
 # Calculate the proportion infected in each social group in each year
@@ -27,11 +36,12 @@ socialGroupColumns <- noteColumnsOfSocialGroups(colnames(counts[["ProportionInfe
 ###########################################################
 
 # Get list of isolate IDs from fasta file
-fileName <- paste(path, "sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta", sep="")
+fileName <- paste(path, "allVCFs-IncludingPoor/vcfFiles/", 
+                  "sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta", sep="")
 isolateIDs <- getSequenceIDsFromFastaFile(fileName)
 
 # Read in the isolate metadata
-fileName <- paste(path, "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
 metadata <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Keep only rows for the isolates
@@ -63,7 +73,8 @@ shapeFileNames <- c("territories_2000.shp",
 groupsCentroidsPerYear <- list()
 
 # Open a PDF file
-file <- paste(path, "PropInfected_SocialGroups_2000-11_19-05-17.pdf", sep="")
+file <- paste(path, "BadgerTerritoryMarkingData/", 
+              "PropInfected_SocialGroups_2000-11_26-05-17.pdf", sep="")
 pdf(file, height=11.69, width=8.27)
 
 par(mfrow=c(6,2))
@@ -75,7 +86,8 @@ for(i in 1:length(years)){
   shapeFileName <- shapeFileNames[i]
   
   # Read in the shape file
-  file <- paste(path, "Baitmarking ", year, "/", shapeFileName, sep="")
+  file <- paste(path, "BadgerTerritoryMarkingData/", 
+                "Baitmarking ", year, "/", shapeFileName, sep="")
   territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
   
   # Extract the polygon coordinates
@@ -91,7 +103,7 @@ for(i in 1:length(years)){
   territoryCentroids <- calculateTerritoryCentroids(territoryCoords, territoryIDs)
   
   # Plot the group territories - colour by proportion infected
-  plotTerritories(socialGroupTerritories, territoryCoords[["min"]], territoryCoords[["max"]], year,
+  plotTerritories(socialGroupTerritories, badgerGroupCentroid, expand, year,
                   counts, socialGroupColumns, territoryCentroids)
 }
 
@@ -281,18 +293,16 @@ calculatePropInfectedInEachSocialGroupInYear <- function(counts){
   return(counts)
 }
 
-plotTerritories <- function(socialGroupTerritories, min, max, year,
+plotTerritories <- function(socialGroupTerritories, badgerCentre, expand, year,
                             counts, socialGroupColumns, territoryCentroids){
   
   par(mar=c(0,0,0,0))
   plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
-       xlim=c(min[1], max[1]), 
-       ylim=c(min[2], max[2]), asp=1,
-       xlab="")
+       xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand), 
+       ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand), 
+       asp=1, xlab="")
   legend("topright", legend=year, bty="n", cex=2)
-  # legend("bottom", bty="n",
-  #        legend=paste(round((max[1] - min[1])/1000, digits=1),"KM"))
-  
+
   propInfected <- counts[["ProportionInfected"]]
   total <- counts[["Total"]]
   sampled <- counts[["Sampled"]]

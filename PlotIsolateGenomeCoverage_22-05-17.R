@@ -45,10 +45,24 @@ coverageTable <- rbind(coverageTable[grepl(x=coverageTable$IsolateID, pattern="W
 file <- paste(path, "allVCFs-IncludingPoor/", "isolateGenomeCoverageSummary_07-09-16.pdf", sep="")
 pdf(file)
 
-plot(coverageTable$PercentageCoverage, ylab="Percentage", xlab="", xaxt="n", bty="n",
-     main="Isolate Genome Coverage", las=1, pch=20, 
-     col=ifelse(grepl(x=coverageTable$IsolateID, pattern="WB"), rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)))
-legend("bottomleft", legend=c("BADGERS", "CATTLE"), text.col=c(rgb(1,0,0, 1), rgb(0,0,1, 1)), bty="n")
+coverageTable$Species <- "COW"
+coverageTable$Species[grepl(x=coverageTable$IsolateID, pattern="WB") == TRUE] <- "BADGER"
+coverageTable$Species <- as.factor(coverageTable$Species)
+
+par(mar=c(5,4.1,4.1,2.1)) # Bottom, left, top and right
+boxplot(coverageTable$PercentageCoverage ~ coverageTable$Species, 
+        ylim=c(0,1), ylab="Proportion", border=c("red", "blue"),
+        names=c("Badgers", "Cattle"), outline=FALSE,
+        las=1, pch=20, main="Isolate Genome Coverage")
+
+stripchart(coverageTable$PercentageCoverage ~ coverageTable$Species,
+           vertical = TRUE, jitter=0.2,
+           method = "jitter", add = TRUE, pch = 21,
+           col = c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)),
+           bg=rgb(0.5,0.5,0.5, 0.5))
+
+
+
 dev.off()
 
 #############

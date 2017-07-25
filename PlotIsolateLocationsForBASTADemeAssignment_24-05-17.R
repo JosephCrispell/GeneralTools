@@ -80,9 +80,26 @@ for(i in 1:length(years)){
 # Add social group names to territory centroids table
 groupsCentroidsPerYear <- addSocialGroupNames(groupsCentroidsPerYear, groupsRows)
 
-##########################################
-# Get badger isolates sampling locations #
-##########################################
+###################################################
+# Read in the cattle farm land parcel information #
+###################################################
+
+# Read in the shape file
+file <- paste(path, "LandParcelData/RPA_CLAD_ASI_CURRENT_SP_ST-SO_NE-SE/",
+              "RPA_CLAD_ASI_CURRENT_SP_ST-SO_NE-SE_REDUCED.shp", sep="")
+landParcels <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
+
+# Get the coordinates for each polygon
+landParcelCoords <- getPolygonCoords(landParcels)
+min <- landParcelCoords[["min"]]
+max <- landParcelCoords[["max"]]
+
+# Note the polygon IDs that are associated with each CPH
+cphs <- noteLandParcelsAssociatedWithCPHs(landParcels@data)
+
+######################################
+# Note isolates in clade of interest #
+######################################
 
 # Read in the newick tree
 file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
@@ -93,13 +110,17 @@ tree <- read.tree(file=file)
 node <- 289
 cladeTips <- tips(tree, node=node)
 
-# Read in the isolate metadata
+##########################################
+# Get badger isolates sampling locations #
+##########################################
+
+# Read in the isolate badgerInfo
 fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv",
                   sep="")
-metadata <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
+badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Keep only rows for the isolates
-metadata <- metadata[metadata$WB_id %in% cladeTips, ]
+badgerInfo <- badgerInfo[badgerInfo$WB_id %in% cladeTips, ]
 
 ##########################################
 # Get cattle isolates sampling locations #
@@ -108,37 +129,51 @@ metadata <- metadata[metadata$WB_id %in% cladeTips, ]
 # Cattle Isolates
 file <- paste(path, "IsolateData/", 
               "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
-cattleInfo <- read.table(file, header=TRUE, sep=",")
+cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Select info only for cattle isolates in clade
 cattleInfo <- cattleInfo[cattleInfo$StrainId %in% cladeTips, ]
 
-##############################################
-# Plot the badger territories from all years #
-##############################################
+# Get a list of sampled CPHs
+sampledCPHs <- names(cphs)[names(cphs) %in% cattleInfo$CPH]
+
+###########################
+# Start creating the plot #
+###########################
 
 # Open a PDF
-file <- paste(path, "BASTA/", "DemeAssignmentDiagram_24-05-17.pdf", sep="")
+file <- paste(path, "BASTA/", "DemeAssignmentDiagram_22-06-17.pdf", sep="")
 pdf(file)
 
 # Find centre point of badger locations
 badgerCentre <- findBadgerGroupsCentre(groupsCentroidsPerYear)
 expand <- 7000
 
-# Plot the badger territories from each year onto a single plot
-alpha <- 0.5
-plotTerritories(territoriesForEachYear, badgerCentre, expand, alpha)
+##############################################
+# Plot the badger territories from all years #
+##############################################
 
-# Add legend
-legend(x=386000, y=200000, legend=c("BADGER", "COW"), text.col=c("red", "blue"), bty="n")
+# Plot the badger territories from each year onto a single plot
+plotTerritories(territoriesForEachYear, badgerCentre, expand, rgb(1,0,0, 0.1))
+
+##############################################
+# Plot the land parcels of the sampled herds #
+##############################################
+
+# Plot polygons from sampled herds
+for(cph in sampledCPHs){
+  
+  for(key in cphs[[cph]]){
+    polygon(landParcelCoords[[key]], border=rgb(0,0,1, 0.2))
+  }
+}
 
 #################################
 # Plot the sampled cattle herds #
 #################################
-
 for(row in 1:nrow(cattleInfo)){
-  points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=20,
-         col=rgb(0,0,1, 0.5), cex=2)
+  points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+         col=rgb(0,0,1, 0.5), cex=1.5)
 }
 
 #########################################
@@ -146,7 +181,7 @@ for(row in 1:nrow(cattleInfo)){
 #########################################
 
 # Plot the badger isolate sampling locations
-addBadgerIsolatesLocations(metadata=metadata, groupsRows=groupsRows, 
+addBadgerIsolatesLocations(badgerInfo=badgerInfo, groupsRows=groupsRows, 
                            groupsCentroidsPerYear=groupsCentroidsPerYear,
                            col=rgb(1,0,0, 0.5), cex=2)
 
@@ -163,8 +198,210 @@ draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
             border="black")
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
             border="black")
-text(x=381938.4, y=198700, labels=paste(paste(thresholdDistance / 1000, "km")))
-text(x=381938.4, y=194450, labels=paste(paste(outerDistance / 1000, "km")))
+text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+
+##############
+# Add Legend #
+##############
+
+# Add legend
+legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("red", "blue"),
+       bty="n", pch=c(20, 17), pt.cex=c(2, 1.5), col=c("red", "blue"))
+
+
+#####
+#####
+#####
+
+
+###########################################
+# Add colours to distinguish cattle herds #
+###########################################
+
+
+##############################################
+# Plot the badger territories from all years #
+##############################################
+
+# Plot the badger territories from each year onto a single plot
+plotTerritories(territoriesForEachYear, badgerCentre, expand, rgb(0,0,0, 0.2))
+
+##############################################
+# Plot the land parcels of the sampled herds #
+##############################################
+
+# Create colour for each sampled herd
+sampledCPHColours <- assignColoursToEachSampledCPH(sampledCPHs)
+
+# Plot polygons from sampled herds
+alpha <- 0.8
+for(cph in sampledCPHs){
+  
+  for(key in cphs[[cph]]){
+    polygon(landParcelCoords[[key]], border=setAlpha(sampledCPHColours[[cph]], alpha))
+  }
+}
+
+#################################
+# Plot the sampled cattle herds #
+#################################
+alpha <- 0.9
+for(row in 1:nrow(cattleInfo)){
+  points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+         col=setAlpha(sampledCPHColours[[cattleInfo[row, "CPH"]]], alpha), cex=1.5)
+}
+
+#########################################
+# Add Badger sampling locations to plot #
+#########################################
+
+# Plot the badger isolate sampling locations
+addBadgerIsolatesLocations(badgerInfo=badgerInfo, groupsRows=groupsRows, 
+                           groupsCentroidsPerYear=groupsCentroidsPerYear,
+                           col=rgb(0,0,0, 0.5), cex=2)
+
+###############################################
+# Add circles to define inner and outer demes #
+###############################################
+
+# Define inner circle radius
+thresholdDistance <- 3000
+outerDistance <- 7300
+
+# Add deme defining circles
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
+            border="black")
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
+            border="black")
+text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+
+##############
+# Add Legend #
+##############
+
+# Add legend
+legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("black", "black"),
+       bty="n", pch=c(20, 17), pt.cex=c(2, 1.5))
+
+
+#####
+#####
+#####
+
+#####################################
+# Add colours to distinguish clades #
+#####################################
+
+# Create the clade colours - apply alpha
+cladeColours <- c("cyan", "pink", "green", "orange", "purple")
+
+# Note the isolates in each clade
+nodesDefiningClades <- c(291, 440, 460, 412, 324)
+isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
+
+# Note which CPHs are associated with which clusters
+groupOrHerdClusters <- getSampledGroupsOrHerdsAssociatedWithClusters(isolatesInClades,
+                                                                     badgerInfo,
+                                                                     cattleInfo)
+
+##############################################
+# Plot the badger territories from all years #
+##############################################
+
+# Plot the badger territories from each year onto a single plot
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.2)
+plotTerritoriesWithClusterColours(territoriesForEachYear, badgerCentre, expand,
+                                  rgb(0,0,0, 0.1), cladeColoursRGB, groupOrHerdClusters,
+                                  lwd=1.5)
+
+# Not the clade of each isolate
+isolateClades <- invertIsolatesInClades(isolatesInClades)
+
+##############################################
+# Plot the land parcels of the sampled herds #
+##############################################
+
+# Plot polygons from sampled herds
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.5)
+for(cph in sampledCPHs){
+  
+  for(key in cphs[[cph]]){
+
+    if(is.null(groupOrHerdClusters[[cph]]) == FALSE){
+      
+      for(cluster in groupOrHerdClusters[[cph]]){
+        colour <- cladeColoursRGB[as.numeric(cluster)]
+        polygon(landParcelCoords[[key]], border=colour, lty=2, lwd=2)
+      }
+    }else{
+      polygon(landParcelCoords[[key]], border=rgb(0,0,0, 0.5), lty=2, lwd=2)
+    }
+  }
+}
+
+#################################
+# Plot the sampled cattle herds #
+#################################
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=1)
+for(row in 1:nrow(cattleInfo)){
+  
+  if(is.null(isolateClades[[cattleInfo[row, "StrainId"]]]) == FALSE){
+    
+    points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+           col=cladeColoursRGB[as.numeric(isolateClades[[cattleInfo[row, "StrainId"]]])],
+           cex=1.5)
+    
+  }else{
+    points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+           col=rgb(0,0,0, 1), cex=1.5)
+  }
+}
+
+#########################################
+# Add Badger sampling locations to plot #
+#########################################
+
+# Plot the badger isolate sampling locations
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
+addBadgerIsolatesLocationsWithClusterColours(badgerInfo=badgerInfo, 
+                                             groupsRows=groupsRows,
+                                             groupsCentroidsPerYear=groupsCentroidsPerYear, 
+                                             defaultColour=rgb(0,0,0, 0.5),
+                                             cex=2,
+                                             cladeColoursRGB=cladeColoursRGB,
+                                             isolateClades=isolateClades)
+
+###############################################
+# Add circles to define inner and outer demes #
+###############################################
+
+# Define inner circle radius
+thresholdDistance <- 3000
+outerDistance <- 7300
+
+# Add deme defining circles
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
+            border="black")
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
+            border="black")
+text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+
+##############
+# Add Legend #
+##############
+
+# Add legend
+legend(x=387450, y=197000, legend=c("Badger", "Cow"), text.col=c("black", "black"),
+       bty="n", pch=c(20, 17), pt.cex=c(2, 1.5),
+       col=c("black", "black"))
+
+legend(x=387050, y=196000, legend=c("Cluster-0","Cluster-1","Cluster-2","Cluster-3",
+                                    "Cluster-4"),
+       text.col=cladeColours, bty="n")
+
 
 dev.off()
 
@@ -172,6 +409,149 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+invertIsolatesInClades <- function(isolatesInClades){
+  
+  cladesOfIsolates <- list()
+  for(clade in names(isolatesInClades)){
+    
+    for(isolate in isolatesInClades[[clade]]){
+      cladesOfIsolates[[isolate]] <- clade
+    }
+  }
+  
+  return(cladesOfIsolates)
+}
+
+getSampledGroupsOrHerdsAssociatedWithClusters <- function(isolatesInClades, badgerInfo,
+                                                          cattleInfo){
+  groupOrHerdClusters <- list()
+  for(clade in names(isolatesInClades)){
+    
+    for(isolate in isolatesInClades[[clade]]){
+      
+      # Get the sampled herd/group for the current isolate
+      sampledGroupHerd <- getSampledHerdGroupOfIsolate(isolate, badgerInfo, cattleInfo)
+      
+      # Store the association
+      if(is.null(groupOrHerdClusters[[sampledGroupHerd]]) == TRUE){
+        groupOrHerdClusters[[sampledGroupHerd]] <- c(clade)
+      }else{
+        groupOrHerdClusters[[sampledGroupHerd]] <- c(groupOrHerdClusters[[sampledGroupHerd]],
+                                                     clade)
+      }
+    }
+  }
+  
+  # Make the cluster numbers unique for each herd/group
+  for(key in names(groupOrHerdClusters)){
+    groupOrHerdClusters[[key]] <- unique(groupOrHerdClusters[[key]])
+  }
+  
+  return(groupOrHerdClusters)
+}
+
+getSampledHerdGroupOfIsolate <- function(isolate, badgerInfo, cattleInfo){
+  
+  # Check if badger or cow isolate
+  if(grepl(x=isolate, pattern="WB") == TRUE){
+    
+    # Get row index
+    row <- which(badgerInfo$WB_id == isolate)
+    
+    # Get sampled group
+    sampledGroupHerd <- badgerInfo[row, "Social.Group.Trapped.At"]
+    
+    # Remove any spaces
+    sampledGroupHerd <- paste(strsplit(sampledGroupHerd, split=" ")[[1]], collapse="")
+    
+  }else{
+    
+    # Get row index
+    row <- which(cattleInfo$StrainId == isolate)
+    
+    # Get sampled group
+    sampledGroupHerd <- cattleInfo[row, "CPH"]
+  }
+  
+  return(sampledGroupHerd)
+}
+
+findIsolatesInClades <- function(tree, nodesDefiningClades){
+  isolatesInClades <- list()
+  for(i in 1:length(nodesDefiningClades)){
+    isolatesInClades[[as.character(i)]] <- tips(tree, nodesDefiningClades[i])
+  }
+  
+  return(isolatesInClades)
+}
+
+getRGBsOfColours <- function(colours, alpha){
+  
+  output <- c()
+  for(i in 1:length(colours)){
+    output[i] <- convertToRGB(colours[i], alpha)
+  }
+  
+  return(output)
+}
+
+convertToRGB <- function(colour, alpha){
+  
+  rgbInfo <- col2rgb(colour)
+  
+  output <- rgb(rgbInfo["red", 1], rgbInfo["green", 1], rgbInfo["blue", 1], alpha=alpha*255,
+                maxColorValue=255)
+  
+  return(output)
+}
+
+setAlpha <- function(colour, alpha){
+  
+  rgbValues <- col2rgb(colour)
+  
+  # Note that col2rgb() returns rgb values from 0 to 255
+  rgbColour <- rgb(rgbValues["red", 1], rgbValues["green", 1], rgbValues["blue", 1],
+                   alpha=alpha * 255, maxColorValue=255)
+  
+  return(rgbColour)
+}
+
+assignColoursToEachSampledCPH <- function(sampledCPHs){
+  
+  # Create a colour palette
+  colourPalette <- colorRampPalette(c("red", "orange", "pink", "brown", "green", 
+                                      "grey", "cyan", "purple", "violet", "blue"))
+  colours = sample(colourPalette(length(sampledCPHs)))
+  #colours <- palette(rainbow(nClusters))
+  
+  # Assign a colour to each CPH
+  sampledCPHColours <- list()
+  for(i in 1:length(sampledCPHs)){
+    sampledCPHColours[[sampledCPHs[i]]] <- colours[i]
+  }
+  
+  return(sampledCPHColours)
+}
+
+noteLandParcelsAssociatedWithCPHs <- function(polygonInfo){
+  polygonInfo <- landParcels@data
+  polygonInfo$PU_CPH <- as.character(polygonInfo$PU_CPH)
+  cphs <- list()
+  for(row in 1:nrow(polygonInfo)){
+    
+    if(is.null(cphs[[polygonInfo[row, "PU_CPH"]]]) == FALSE){
+      
+      cphs[[polygonInfo[row, "PU_CPH"]]] <- c(cphs[[polygonInfo[row, "PU_CPH"]]],
+                                              as.character(row - 1))
+      
+    }else{
+      cphs[[polygonInfo[row, "PU_CPH"]]] <- c(as.character(row - 1))
+    }
+  }
+  
+  return(cphs)
+}
 
 findBadgerGroupsCentre <- function(groupsCentroidsPerYear){
   
@@ -199,13 +579,13 @@ findBadgerGroupsCentre <- function(groupsCentroidsPerYear){
   return(means)
 }
 
-addBadgerIsolatesLocations <- function(metadata, groupsRows, groupsCentroidsPerYear,
+addBadgerIsolatesLocations <- function(badgerInfo, groupsRows, groupsCentroidsPerYear,
                                        col, cex){
   # Plot the isolate sampling locations (social group centroids)
-  for(row in 1:nrow(metadata)){
+  for(row in 1:nrow(badgerInfo)){
     
-    year <- strsplit(metadata[row, "date"], split="/")[[1]][3]
-    group <- paste(strsplit(metadata[row, "Social.Group.Trapped.At"], split=" ")[[1]],
+    year <- strsplit(badgerInfo[row, "date"], split="/")[[1]][3]
+    group <- paste(strsplit(badgerInfo[row, "Social.Group.Trapped.At"], split=" ")[[1]],
                    collapse="")
     
     territoryCentroid <- strsplit(groupsCentroidsPerYear[groupsRows[[group]], 
@@ -219,6 +599,41 @@ addBadgerIsolatesLocations <- function(metadata, groupsRows, groupsCentroidsPerY
     }
   }
 }
+
+addBadgerIsolatesLocationsWithClusterColours <- function(badgerInfo, groupsRows,
+                                                         groupsCentroidsPerYear, 
+                                                         defaultColour, cex,
+                                                         cladeColoursRGB,
+                                                         isolateClades){
+  # Plot the isolate sampling locations (social group centroids)
+  for(row in 1:nrow(badgerInfo)){
+    
+    year <- strsplit(badgerInfo[row, "date"], split="/")[[1]][3]
+    group <- paste(strsplit(badgerInfo[row, "Social.Group.Trapped.At"], split=" ")[[1]],
+                   collapse="")
+    
+    territoryCentroid <- strsplit(groupsCentroidsPerYear[groupsRows[[group]], 
+                                                         as.character(year)],
+                                  split=":")
+    
+    if(length(territoryCentroid) > 0){
+      territoryCentroid <- as.numeric(territoryCentroid[[1]])
+      
+      if(is.null(isolateClades[[badgerInfo[row, "WB_id"]]]) == FALSE){
+        
+        points(x=territoryCentroid[1], y=territoryCentroid[2], pch=20,
+               col=cladeColoursRGB[
+                 as.numeric(isolateClades[[badgerInfo[row, "WB_id"]]])],
+               cex=cex)
+        
+      }else{
+        points(x=territoryCentroid[1], y=territoryCentroid[2], pch=20,
+               col=defaultColour, cex=cex)
+      }
+    }
+  }
+}
+
 
 getSequenceIDsFromFastaFile <- function(fileName){
   
@@ -277,7 +692,7 @@ updateMin <- function(territoryCoords, min){
 }
 
 plotTerritories <- function(territoriesForEachYear, centre, expand,
-                            alpha){
+                            colour){
   
   par(mar=c(0,0,0,0))
   plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
@@ -290,17 +705,43 @@ plotTerritories <- function(territoriesForEachYear, centre, expand,
     territoryCoords <- territoriesForEachYear[[year]]
     for(id in names(territoryCoords)){
       
-      polygon(territoryCoords[[id]], border=rgb(0,0,0, alpha))
+      polygon(territoryCoords[[id]], border=colour)
     }
   }
 }
 
+plotTerritoriesWithClusterColours <- function(territoriesForEachYear, centre, expand,
+                            defaultColour, cladeColours, groupOrHerdClusters, lwd){
+  
+  par(mar=c(0,0,0,0))
+  plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
+       xlim=c(centre[1] - expand, centre[1] + expand), 
+       ylim=c(centre[2] - expand, centre[2] + expand), asp=1,
+       xlab="")
+  
+  for(year in names(territoriesForEachYear)){
+    
+    territoryCoords <- territoriesForEachYear[[year]]
+    for(id in names(territoryCoords)){
+      
+      colour <- defaultColour
+      if(is.null(groupOrHerdClusters[[id]]) == FALSE){
+        
+        for(cluster in groupOrHerdClusters[[id]]){
+          
+          colour <- cladeColours[as.numeric(cluster)]
+          polygon(territoryCoords[[id]], border=colour, lwd=lwd)
+        }
+      }else{
+        polygon(territoryCoords[[id]], border=colour, lwd=lwd)
+      }
+    }
+  }
+}
 
 addSocialGroupNames <- function(groupsCentroidsPerYear, groupsRows){
   
   for(group in names(groupsRows)){
-    print(group)
-    print(groupsRows[[group]])
     groupsCentroidsPerYear[groupsRows[[group]], "SocialGroup"] <- group
   }
   

@@ -1,7 +1,11 @@
+################################
+# Read in the BASTA output log #
+################################
+
 # Read in the log file
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/BASTA/"
 
-type <- "Equal"
+type <- "Equal" # Equal or Varying
 
 folderName <- paste("8Demes_", type, "PopSizes_03-03-17/", sep="")
 
@@ -32,7 +36,20 @@ pdf(file)
 # BadgerOuterEast   6     UNSAMPLED
 # BadgerOuterWest   7     UNSAMPLED
 
+# Set arrow direction
+code <- 1 # 2 for Backward in time (1 for forward)
+factor <- 250
+colour <- rgb(0,0,0, 1)
+
+direction <- "BACKWARDS"
+if(code == 1){
+  direction <- "FORWARDS"
+}
+
 par(mfrow=c(1,1))
+
+# Define the line style
+par(lend=1) # 0 = round, 1 = butt, 2 = square
 
 # Define line weights
 lineWeights_Counts <- c(
@@ -88,16 +105,6 @@ lineWeights_Rates <- c(
   mean(logTable[, "migModel.rateMatrix_7_5"]), # 23 BadgerOuterWest  -> CowOuterWest
   mean(logTable[, "migModel.rateMatrix_7_6"])  # 24 BadgerOuterWest  -> BadgerOuterEast
 )
-
-# Set arrow direction
-code <- 2 # Backward in time (1 for forward)
-factor <- 250
-colour <- rgb(0,0,0, 1)
-
-direction <- "BACKWARDS"
-if(code == 1){
-  direction <- "FORWARDS"
-}
 
 ## Migration Counts
 

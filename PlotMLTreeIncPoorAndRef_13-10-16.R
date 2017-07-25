@@ -3,14 +3,15 @@ library(ape)
 library(geiger) # For the tips function
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
 
 ###################################
 # Get the Maximum Likelihood Tree #
 ###################################
 
 # Read in the newick tree
-file <- paste(path, "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
+              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
 tree <- read.tree(file=file)
 
 # Convert Branch lengths to SNPs
@@ -21,7 +22,8 @@ tree$edge.length <- tree$edge.length * fastaLength
 # Get the Isolate Coverage Table #
 ##################################
 
-file <- paste(path, "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
+file <- paste(path,"allVCFs-IncludingPoor/vcfFiles/",
+              "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
 table$IsolateID <- getIsolateIDFromFileNames(table$IsolateID)
@@ -30,8 +32,11 @@ table$IsolateID <- getIsolateIDFromFileNames(table$IsolateID)
 # Plot the Phylogenetic Tree #
 ##############################
 
-file <- paste(path, "mlTree_Prox-10_plusRef_rmReseq_SNPCov-0.1_Labelled-Clades-Species-Quality_28-10-16.pdf")
+file <- paste(path, "mlTree_CladesAndLocations_22-06-17.pdf")
 pdf(file, height=10, width=10)
+
+# Set the margins
+par(mar=c(0,0,0,0)) # Bottom, Left, Top, Right
 
 plotType <- "fan" # "phylogram", "cladogram", "fan", "unrooted", "radial"
 
@@ -60,10 +65,10 @@ nodelabels(node=1:length(tree$tip.label),
            col=defineTipColourBySpecies(tree$tip.label, "blue", "red"))
 
 # Add Legends
-text(x=132, y=-68, labels="Coverage:", col="black", cex=0.7)
+text(x=132, y=-84, labels="Coverage:", col="black", cex=0.7)
 addLegendForQuality("bottomright", 0.8)
-text(x=-109, y=-108, labels="Species:", col="black", cex=0.7)
-legend("bottomleft", legend=c("COW", "BADGER"),
+text(x=-113, y=-120, labels="Species:", col="black", cex=0.7)
+legend("bottomleft", legend=c("CATTLE", "BADGERS"),
        pch=c(17, 16), cex=0.65, col=c("blue", "red"), 
        text.col=c("blue", "red"), bty='n')
 
@@ -78,12 +83,279 @@ text(x=95, y=-75, labels="2", col=cladeColours[3], cex=2)
 text(x=-45, y=-105, labels="3", col=cladeColours[4], cex=2)
 text(x=-102, y=50, labels="4", col=cladeColours[5], cex=2)
 
+################################
+# Get the sampling information #
+################################
+
+# Read in the badger sampling information
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
+                  sep="")
+metadata <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
+
+# Get the locations of each of the isolates
+badgerIsolateLocations <- noteBadgerIsolateSamplingLocations(metadata)
+
+# Cattle Isolates
+file <- paste(path, "IsolateData/",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
+
+# Get the locations of each of the isolates
+cattleIsolateLocations <- noteCattleIsolateSamplingLocations(cattleInfo)
+
+####################################################
+# Plot the spatial locations of isolates in clades #
+####################################################
+
+# Create the clade colours - apply alpha
+cladeColours <- c("cyan", "pink", "green", "orange", "purple")
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
+cex=2
+
+# Note the isolates in each clade
+isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
+
+# Note the centre of the badger territories
+badgerCentre <- c(381761.7, 200964.3)
+expand <- 6500
+
+# Create an empty plot
+par(mar=c(0,0,0,0))
+plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
+     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand), 
+     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand), asp=1,
+     xlab="")
+
+# Plot a minimum convex polygon around the 
+# cattle and badger sampling locations for each cluster
+for(i in 1:length(cladeColours)){
+  
+  # Get the isolates associated with the current clade
+  isolates <- isolatesInClades[[as.character(i)]]
+  
+  # Get the coordinates of each isolate
+  isolateCoordinates <- getXandYCoordinatesOfIsolates(isolates, cattleIsolateLocations,
+                                                      badgerIsolateLocations)
+  
+  # Remove NA rows - where couldn't find coordinates for isolates
+  isolateCoordinates <- isolateCoordinates[is.na(isolateCoordinates$X) == FALSE, ]
+  
+  # Plot the points
+  points(isolateCoordinates, 
+         pch=ifelse(isolateCoordinates$Species == "BADGER", 19, 17),
+         col=cladeColoursRGB[i], cex=cex)
+  
+  # Add a convex hull around the points
+  addPolygon(isolateCoordinates$X, isolateCoordinates$Y, cladeColours[i])
+}
+
+# Add legend
+legend("bottomleft", legend=c("CATTLE", "BADGERS"),
+       pch=c(17, 16), col="black", pt.cex=cex,
+       text.col="black", bty='n')
+
+# Add the cluster numbers
+legend("bottomright", legend=addTextToArray("Cluster ", 0:4, ""),
+       text.col=cladeColours, bty="n", cex=2)
+
+# Add Scale
+legend("bottom", legend=(paste(round(expand/1000, digits=2), "KM")), bty="n")
+
+######
+######
+######
+
+# Create the clade colours - apply alpha
+cladeColours <- c("cyan", "pink", "green", "orange", "purple")
+cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
+cex=2
+
+# Note the isolates in each clade
+isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
+
+# Note the centre of the badger territories
+badgerCentre <- c(381761.7, 200964.3)
+expand <- 6500
+
+# Create an empty plot
+par(mar=c(0,0,0,0))
+plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
+     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand), 
+     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand), asp=1,
+     xlab="")
+
+# Plot a minimum convex polygon around the 
+# cattle and badger sampling locations for each cluster
+for(i in 1:length(cladeColours)){
+  
+  # Get the isolates associated with the current clade
+  isolates <- isolatesInClades[[as.character(i)]]
+  
+  # Get the coordinates of each isolate
+  isolateCoordinates <- getXandYCoordinatesOfIsolates(isolates, cattleIsolateLocations,
+                                                      badgerIsolateLocations)
+  
+  # Remove NA rows - where couldn't find coordinates for isolates
+  isolateCoordinates <- isolateCoordinates[is.na(isolateCoordinates$X) == FALSE, ]
+  
+  # Plot the points
+  points(isolateCoordinates, 
+         pch=ifelse(isolateCoordinates$Species == "BADGER", 19, 17),
+         col=cladeColoursRGB[i], cex=cex)
+  
+  # Add a convex hull around the points
+  addPolygon(isolateCoordinates$X, isolateCoordinates$Y, cladeColours[i])
+}
+
+# Add inner circle from BASTA deme assignment diagram
+thresholdDistance <- 3000
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
+            border="black")
+
+# Add legend
+legend("bottomleft", legend=c("CATTLE", "BADGERS"),
+       pch=c(17, 16), col="black", pt.cex=cex,
+       text.col="black", bty='n')
+
+# Add the cluster numbers
+legend("bottomright", legend=addTextToArray("Cluster ", 0:4, ""),
+       text.col=cladeColours, bty="n", cex=2)
+
+# Add Scale
+legend("bottom", legend=(paste(round(expand/1000, digits=2), "KM")), bty="n")
 
 dev.off()
 
 #############
 # FUNCTIONS #
 #############
+
+addTextToArray <- function(text, array, sep){
+  
+  output <- c()
+  for(i in 1:length(array)){
+    output <- paste(text, array, sep=sep)
+  }
+  return(output)
+}
+
+getRGBsOfColours <- function(colours, alpha){
+  
+  output <- c()
+  for(i in 1:length(colours)){
+    output[i] <- convertToRGB(colours[i], alpha)
+  }
+  
+  return(output)
+}
+
+convertToRGB <- function(colour, alpha){
+  
+  rgbInfo <- col2rgb(colour)
+  
+  output <- rgb(rgbInfo["red", 1], rgbInfo["green", 1], rgbInfo["blue", 1], alpha=alpha*255,
+                maxColorValue=255)
+  
+  return(output)
+}
+
+getXandYCoordinatesOfIsolates <- function(isolates, cattleIsolateLocations, badgerIsolateLocations){
+  
+  # Initialise a dataframe to store the X and Y coordinates of each isolate
+  coords <- data.frame(X=rep(NA, length(isolates)), Y=rep(NA, length(isolates)), 
+                       Species=rep(NA, length(isolates)), stringsAsFactors=FALSE)
+  
+  # Examine each isolate
+  for(row in 1:length(isolates)){
+    
+    # Is the current isolate from a badger?
+    if(grepl(x=isolates[row], pattern="WB") == TRUE){
+      
+      if(is.null(badgerIsolateLocations[[isolates[row]]]) == FALSE){
+        coords[row, c(1,2)] <- badgerIsolateLocations[[isolates[row]]]
+        coords[row, "Species"] <- "BADGER"
+      }
+      
+    }else{
+      if(is.null(cattleIsolateLocations[[isolates[row]]]) == FALSE){
+        coords[row, c(1,2)] <- cattleIsolateLocations[[isolates[row]]]
+        coords[row, "Species"] <- "COW"
+      }
+    }
+  }
+  
+  return(coords)
+}
+
+addPolygon <- function(xValues, yValues, borderColour){
+  hullPoints <- chull(xValues, yValues)
+  hullPoints <- c(hullPoints, hullPoints[1])
+  polygon(xValues[hullPoints], yValues[hullPoints], col = NA, border = borderColour)
+}
+
+noteCattleIsolateSamplingLocations <- function(cattleInfo){
+  
+  isolates <- list()
+  
+  for(row in 1:nrow(cattleInfo)){
+    
+    coords <- c()
+    
+    # Does centroid information exist for the current isolate?
+    if(is.na(cattleInfo[row, "Mapx"]) == FALSE){
+      
+      coords[1] <- cattleInfo[row, "Mapx"]
+      coords[2] <- cattleInfo[row, "Mapy"]
+      
+    }
+    
+    # Store sampling coordinates if found
+    if(length(coords) > 0 && is.na(cattleInfo[row, "StrainId"]) == FALSE){
+      isolates[[cattleInfo[row, "StrainId"]]] <- coords
+    }
+  }
+  
+  return(isolates)
+}
+
+noteBadgerIsolateSamplingLocations <- function(metadata){
+  
+  isolates <- list()
+
+  for(row in 1:nrow(metadata)){
+    
+    coords <- c()
+    
+    # Does centroid information exist for the current isolate?
+    if(is.na(metadata[row, "GroupCentroidX"]) == FALSE){
+    
+      coords[1] <- metadata[row, "GroupCentroidX"]
+      coords[2] <- metadata[row, "GroupCentroidY"]
+        
+    # Does X and Y exist for sampled group?
+    }else if(is.na(metadata[row, "SampledGrpX"]) == FALSE){
+      
+      coords[1] <- metadata[row, "SampledGrpX"]
+      coords[2] <- metadata[row, "SampledGrpY"]
+    }
+    
+    # Store sampling coordinates if found
+    if(length(coords) > 0){
+      isolates[[metadata[row, "WB_id"]]] <- coords
+    }
+  }
+  
+  return(isolates)
+}
+
+findIsolatesInClades <- function(tree, nodesDefiningClades){
+  isolatesInClades <- list()
+  for(i in 1:length(nodesDefiningClades)){
+    isolatesInClades[[as.character(i)]] <- tips(tree, nodesDefiningClades[i])
+  }
+  
+  return(isolatesInClades)
+}
 
 defineTipColourBySpecies <- function(tipLabels, cow, badger){
   colours <- c()

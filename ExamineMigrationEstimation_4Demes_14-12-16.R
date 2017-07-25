@@ -14,6 +14,15 @@ logTable <- read.table(file, header=TRUE, sep="\t")
 burnIn <- round(0.1 * nrow(logTable), digits=0)
 logTable <- logTable[burnIn:nrow(logTable), ]
 
+# Set arrow direction
+code <- 1 # 2 Backward in time, 1 for forward
+factor <- 1000
+
+direction <- "BACKWARDS"
+if(code == 1){
+  direction <- "FORWARDS"
+}
+
 # Open a PDF
 prefix <- paste("4Demes_", type, "PopSizes_07-02-17", sep="")
 file <- paste(path, folderName, prefix, "_ResultsSummary_09-02-17.pdf", sep="")
@@ -24,6 +33,9 @@ pdf(file)
 ###################
 
 par(mfrow=c(1,1))
+
+# Define the line style
+par(lend=1) # 0 = round, 1 = butt, 2 = square
 
 # Define line weights
 lineWeights_Counts <- c(
@@ -47,15 +59,6 @@ lineWeights_Rates <- c(
   mean(logTable[, "migModel.rateMatrix_3_0"]),    # 3 -> 0    outerBadger -> innerBadger
   mean(logTable[, "migModel.rateMatrix_3_2"])     # 3 -> 2    outerBadger -> outerCow
 )
-
-# Set arrow direction
-code <- 1 # Backward in time (1 for forward)
-factor <- 1000
-
-direction <- "BACKWARDS"
-if(code == 1){
-  direction <- "FORWARDS"
-}
 
 title <- paste("Migration Counts ", direction, " in time", sep="")
 plot(x=NULL,
