@@ -10,6 +10,10 @@
 # Command Line Structure:
 # bash SyncGitRepository.sh
 
+# Note need to assign your email and username to github
+# git config --global user.email "you@example.com"
+# git config --global user.name "Your Name"
+
 #####################
 # Update Repository #
 #####################
