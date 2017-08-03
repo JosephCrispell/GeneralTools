@@ -5,42 +5,55 @@ suppressMessages(library(randomForest))
 #####################################################
 
 # Get the path to the necessary files
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 # Read Genetic V.s Epi Distances table
-file <- paste(path, "FindMislabelled/GeneticVsEpidemiologicalDistances/",
-              "geneticVsEpiTable_15-08-2016.txt", sep="")
+file <- paste(path, "Mislabelling/Badger-RF-BR/",
+              "geneticVsEpiTable_01-08-2017.txt", sep="")
 table <- read.table(file, header=TRUE)
 
 #################################
 # Examine the Genetic Distances #
 #################################
 
-par(mfrow=c(2,1))
+# Set threshold 
+threshold <- 15
+
+par(mfrow=c(3,1))
 
 hist(table$GeneticDistance, 
      las=1,
      xlab="Genetic Distance (SNPs)",
      main="Inter-Isolate Genetic Distance Distribution")
-lines(x=c(15, 15), y=c(0, 8500), col="red", lty=2)
 
-hist(table[table$GeneticDistance < 15, ]$GeneticDistance, 
+hist(table[table$GeneticDistance < 50, ]$Genetic, 
      las=1,
      xlab="Genetic Distance (SNPs)",
-     main="Inter-Isolate Genetic Distance Distribution")
+     main="Inter-Isolate Genetic Distance Distribution < 50 SNPs")
+lines(x=c(threshold, threshold), y=c(0, 8500), col="red", lty=2)
+
+hist(table[table$GeneticDistance < threshold, ]$Genetic, 
+     las=1,
+     xlab="Genetic Distance (SNPs)",
+     main=paste("Inter-Isolate Genetic Distance Distribution < ",
+                threshold, "15 SNPs", sep=""))
+
+par(mfrow=c(1,1))
 
 #######################################
 # Select only Small Genetic Distances #
 #######################################
 
-table <- table[table$GeneticDistance < 15, ]
+table <- table[table$GeneticDistance < threshold, ]
 
 #########################
 # Load the Isolate Data #
 #########################
 
 # Badger Isolate Information
-badgerInfoFile <- paste(path, "IsolateData/BadgerInfo_08-04-15_LatLongs.csv", sep="")
+badgerInfoFile <- paste(path, "IsolateData/",
+                        "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
+                        sep="")
 badgerInfo <- read.table(badgerInfoFile, header=TRUE, sep=",")
 rownames(badgerInfo) <- badgerInfo[,1]
 
@@ -54,14 +67,17 @@ trainRows <- sample(x=1:nrow(table),
                     size=floor(trainProp * nrow(table)), replace=FALSE)
 
 # Define the columns of the table we're interested in
-cols <- 2:25
-nTrees <- 100
+cols <- 2:26
+nTrees <- 1000
 
 # Run the Random Forest tuning algorithm to find the optimal mtry value
 tuneOutput <- runRandomForestTuning(table[trainRows, ], 3, nTrees, cols)
+plot(tuneOutput, las=1, type="o")
 
-# Calculate the mtry from the tuning output
+ # Calculate the mtry from the tuning output
 mTry <- as.integer(rownames(tuneOutput)[tuneOutput[,2] == min(tuneOutput[,2])])
+points(x=mTry, y=tuneOutput[which(tuneOutput[, 1] == mTry), 2], col="red",
+       pch=20)
 
 # Run Random Forest Algorithm
 nTrees <- 1000
@@ -69,6 +85,7 @@ infoRF <- randomForest(table[trainRows, "GeneticDistance"]~., data=table[trainRo
                        proximity=FALSE, mtry=mTry, importance=TRUE,
                        ntree=nTrees, do.trace=FALSE, keep.forest=TRUE,
                        norm.votes=FALSE)
+plot(infoRF, las=1)
 
 # Add the predicted values onto the table
 predictions <- predict(infoRF, table[-trainRows, cols])
@@ -81,14 +98,17 @@ rSq <- round(infoRF$rsq[length(infoRF$rsq)], digits=2)
 ###################################################
 
 # Define the columns of the table we're interested in
-cols <- 2:25
-nTrees <- 100
+cols <- 2:26
+nTrees <- 1000
 
 # Run the Random Forest tuning algorithm to find the optimal mtry value
 tuneOutput <- runRandomForestTuning(table, 3, nTrees, cols)
+plot(tuneOutput, las=1, type="o")
 
 # Calculate the mtry from the tuning output
 mTry <- as.integer(rownames(tuneOutput)[tuneOutput[,2] == min(tuneOutput[,2])])
+points(x=mTry, y=tuneOutput[which(tuneOutput[, 1] == mTry), 2], col="red",
+       pch=20)
 
 # Run Random Forest Algorithm
 nTrees <- 1000
@@ -96,6 +116,7 @@ infoRF <- randomForest(table$GeneticDistance~., data=table[, cols],
                          proximity=FALSE, mtry=mTry, importance=TRUE,
                          ntree=nTrees, do.trace=FALSE, keep.forest=FALSE,
                          norm.votes=FALSE)
+plot(infoRF, las=1)
 
 # Add the predicted values onto the table
 table$predictions <- infoRF$predicted
@@ -109,14 +130,14 @@ meanValues <- examinePredictedVersusActual(table, badgerInfo)
 #################
 
 # Open an output PDF file
-file <- paste(path, "FindMislabelled/GeneticVsEpidemiologicalDistances/",
-              "FittedRandomForest_26-05-17.pdf", sep="")
+file <- paste(path, "Mislabelling/Badger-RF-BR/",
+              "FittedRandomForest_01-08-17.pdf", sep="")
 pdf(file)
 
 par(mfrow=c(1,1))
 
-# Plot the forets building output
-plot(infoRF)
+# Plot the forest building output
+plot(infoRF, las=1)
 
 # Predicted Versus Actual
 smoothScatter(predictions, table[-trainRows, "GeneticDistance"],
@@ -124,7 +145,7 @@ smoothScatter(predictions, table[-trainRows, "GeneticDistance"],
               cex.main=1,
               xlab="Predicted",
               ylab="Actual",
-              nrpoints=0)
+              nrpoints=0, las=1)
 abline(lm(table$GeneticDistance ~ table$predictions), col="red")
 correlation <- round(cor(table[-trainRows, "GeneticDistance"], predictions), digits=2)
 legend("topleft", legend=c(paste("corr =", correlation), paste("Rsq =", rSq)), bty="n", cex = 1)
@@ -151,11 +172,13 @@ outputTable$WBID <- rownames(outputTable)
 
 # Re-order table columns
 outputTable <- outputTable[, c(ncol(outputTable), ncol(outputTable)-1, 1:(ncol(outputTable) - 2))]
-file <- paste(path, "FindMislabelled/GeneticVsEpidemiologicalDistances/", 
-              "MeanValuesTable_RandomForest_26-05-2016.csv", sep="")
+file <- paste(path, "Mislabelling/Badger-RF-BR/", 
+              "MeanValuesTable_RandomForest_01-08-2017.csv", sep="")
 write.table(outputTable, file, quote=FALSE, row.names=FALSE, sep=",")
 
-##################### FUNCTIONS SECTION # ####################
+#############
+# FUNCTIONS #
+#############
 
 runRandomForestTuning <- function(inputTable, initialMtry, nTrees, cols){
   

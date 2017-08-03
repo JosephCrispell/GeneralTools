@@ -2,7 +2,9 @@
 path <- "C:/Users/Joseph Crisp/Desktop/"
 
 # Read in sequence
-sequence <- readSequence(paste(path, "RD1_sequence_AF2122-97.txt", sep=""))
+#sequence <- readSequence(paste(path, "RD1_sequence_AF2122-97.txt", sep=""))
+
+sequence <- "GTCGTCAGACCCAAAA"
 
 # Convert sequence to characters
 nucleotides <- strsplit(sequence, "")[[1]]
@@ -11,12 +13,9 @@ nucleotides <- strsplit(sequence, "")[[1]]
 reverse <- rev(nucleotides)
 
 # Get the nucleotide sequence compliment
-compliment <- getCompliment(nucleotides)
 reverseCompliment <- getCompliment(reverse)
 
 # Print resulting sequence
-print(paste(compliment, collapse=""))
-print(paste(reverse, collapse=""))
 print(paste(nucleotides, collapse=""))
 print(paste(reverseCompliment, collapse=""))
 

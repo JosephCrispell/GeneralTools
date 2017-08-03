@@ -13,7 +13,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 # genomeCoverage <- read.table(genomeCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Read in the isolate coverage file
-isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_24-07-2017.txt", sep="")
+isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_01-08-2017.txt", sep="")
 isolateCoverage <- read.table(isolateCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column

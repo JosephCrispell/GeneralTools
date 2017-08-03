@@ -3,11 +3,11 @@
 #########################################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 # Open the file
-file <- paste(path, "InvestigatingCattleMislabelling/Spoligotyping/",
-              "SpoligotypeMatches_31-01-2017.txt", sep="")
+file <- paste(path, "Mislabelling/Spoligotyping/",
+              "SpoligotypeMatches_27-07-2017.txt", sep="")
 matchTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 nColToSkip <- 4
 
@@ -19,11 +19,6 @@ averageReadDepthForIsolates <- matchTable$AverageDepth
 proportionNsForIsolates <- matchTable$ProportionNs
 isolateMatchingInfo <- getTheMatchingInformationForEachIsolate(matchTable, 
                                                                isolates, nColToSkip)
-
-# Note the mislabelled badger isolates
-mislabelled <- list("WB100"=1, "WB105"=1, "WB106"=1, "WB107"=1, "WB65"=1,
-                    "WB71"=1, "WB72"=1, "WB74"=1, "WB75"=1, "WB91"=1,
-                    "WB96"=1, "WB98"=1, "WB99"=1)
 
 # Note other names available for some spoligotypes
 ahvlaCodes <- list("SB0140"=9, "SB0272"=10, "SB0263"=17, "SB0275"=15)
@@ -41,8 +36,8 @@ cattleIsolateSequenceIds <- noteSequenceIDsOfCattleIsolates(linkTable)
 # Get the Isolates' Genome Coverage #
 #####################################
 
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
+file <- paste(path, "vcfFiles/",
+              "isolateCoverageSummary_DP-20_27-07-2017.txt", sep="")
 coverage <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 isolateCoverage <- getIsolateCoverage(coverage)
 
@@ -92,7 +87,7 @@ misMatches[which(grepl(x=misMatches$Isolate,
 misMatches <- misMatches[order(misMatches$Reason, decreasing=TRUE), ]
 
 # Write out the table
-file <- paste(path, "InvestigatingCattleMislabelling/Spoligotyping/",
+file <- paste(path, "Mislabelling/Spoligotyping/",
               "SpoligotypeMatches_Summary_31-01-2017.txt", sep="")
 write.table(x=misMatches, file, quote=FALSE, sep="\t", row.names=FALSE)
 

@@ -9,7 +9,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 #####################################
 
 # Read in the genome coverage file
-coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_24-07-2017.txt", sep="")
+coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_26-07-2017.txt", sep="")
 coverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column
@@ -18,6 +18,10 @@ coverage$Isolate <- parseIsolateColumn(coverage$Isolate)
 #############################
 # Plot the isolate coverage #
 #############################
+
+# Open a pdf
+file <- paste(substr(coverageFile, 1, nchar(coverageFile) - 4), ".pdf", sep="")
+pdf(file)
 
 plot(coverage$VariantPositionCoverage, pch=20, xaxt="n", xlab="", bty="n", las=1,
      col=ifelse(grepl(x=coverage$Isolate, pattern="WB"), rgb(1,0,0, 0.5),
@@ -44,12 +48,16 @@ stripchart(coverage$VariantPositionCoverage ~ coverage$Species,
            col = c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)),
            bg=rgb(0.5,0.5,0.5, 0.5))
 
+
+
 ###################################
 # Note the poor coverage isolates #
 ###################################
 
 # Set coverage threshold
 threshold <- 0.75
+abline(h=threshold, lty=2, lwd=2)
+dev.off()
 
 # Select the isolates with coverage above threshold
 selected <- coverage[coverage$VariantPositionCoverage >= threshold, ]
@@ -112,6 +120,18 @@ if(length(resequencedIsolatesToRemove) > 0){
   cat("No resequenced cattle isolates to remove!\n")
 }
 
+################################################################################
+# Create output file noting isolates to ignore - poor coverage and resequenced #
+################################################################################
+
+# Get the date from the variant position coverage file name
+parts <- strsplit(strsplit(coverageFile, split=".tx")[[1]][1], split="_")[[1]]
+date <- parts[length(parts)]
+
+# Create the output file
+file <- paste(path, "vcfFiles/isolatesToRemove_VPCoverage-Resequenced_", date, ".txt",
+              sep="")
+write.table(isolatesToRemove, file, quote=FALSE, row.names=FALSE, sep="\t")
 
 #############
 # FUNCTIONS #

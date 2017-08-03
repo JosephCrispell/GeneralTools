@@ -83,9 +83,9 @@ my $region_reverseCompliment = join("", @reverseCompliment);
 ####################################
 
 print ">$name\n$region\n";
-print ">$name-compliment\n$region_compliment\n";
-print ">$name-reverse\n$region_reverse\n";
-print ">$name-reverseCompliment\n$region_reverseCompliment\n";
+#print ">$name-compliment\n$region_compliment\n";
+#print ">$name-reverse\n$region_reverse\n";
+#print ">$name-reverseCompliment\n$region_reverseCompliment\n";
 
 
 #############
