@@ -9,7 +9,7 @@ library(geiger) # Phylogenetic tree tools
 library(plotrix) # Draw circle
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 #######################################################################
 # Calculate the Territory Centroids of Each Social Group in Each Year #
@@ -49,7 +49,7 @@ for(i in 1:length(years)){
   shapeFileName <- shapeFileNames[i]
   
   # Read in the shape file
-  file <- paste(path, "BadgerTerritoryMarkingData/",
+  file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/",
                 "Baitmarking ", year, "/", shapeFileName, sep="")
   territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
   
@@ -102,12 +102,12 @@ cphs <- noteLandParcelsAssociatedWithCPHs(landParcels@data)
 ######################################
 
 # Read in the newick tree
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/",
+              "mlTree_01-08-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Get a list of the isolates in the clade
-node <- 289
+node <- 209
 cladeTips <- tips(tree, node=node)
 
 ##########################################
@@ -115,7 +115,7 @@ cladeTips <- tips(tree, node=node)
 ##########################################
 
 # Read in the isolate badgerInfo
-fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv",
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
                   sep="")
 badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
@@ -128,7 +128,7 @@ badgerInfo <- badgerInfo[badgerInfo$WB_id %in% cladeTips, ]
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Select info only for cattle isolates in clade
@@ -141,8 +141,12 @@ sampledCPHs <- names(cphs)[names(cphs) %in% cattleInfo$CPH]
 # Start creating the plot #
 ###########################
 
+# Define inner circle radius
+thresholdDistance <- 3500
+outerDistance <- 7300
+
 # Open a PDF
-file <- paste(path, "BASTA/", "DemeAssignmentDiagram_22-06-17.pdf", sep="")
+file <- paste(path, "BASTA/", "DemeAssignmentDiagram_10-08-17.pdf", sep="")
 pdf(file)
 
 # Find centre point of badger locations
@@ -189,17 +193,15 @@ addBadgerIsolatesLocations(badgerInfo=badgerInfo, groupsRows=groupsRows,
 # Add circles to define inner and outer demes #
 ###############################################
 
-# Define inner circle radius
-thresholdDistance <- 3000
-outerDistance <- 7300
-
 # Add deme defining circles
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
             border="black")
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
             border="black")
-text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
-text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - thresholdDistance) + 500,
+     labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
+     labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
 
 ##############
 # Add Legend #
@@ -265,17 +267,15 @@ addBadgerIsolatesLocations(badgerInfo=badgerInfo, groupsRows=groupsRows,
 # Add circles to define inner and outer demes #
 ###############################################
 
-# Define inner circle radius
-thresholdDistance <- 3000
-outerDistance <- 7300
-
 # Add deme defining circles
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
             border="black")
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
             border="black")
-text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
-text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - thresholdDistance) + 500,
+     labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
+     labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
 
 ##############
 # Add Legend #
@@ -294,11 +294,9 @@ legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("black", "black
 # Add colours to distinguish clades #
 #####################################
 
-# Create the clade colours - apply alpha
-cladeColours <- c("cyan", "pink", "green", "orange", "purple")
-
-# Note the isolates in each clade
-nodesDefiningClades <- c(291, 440, 460, 412, 324)
+# Note the clades
+nodesDefiningClades <- c(364, 354, 322, 263, 216, 213) # Removed Clade 0 - outside BASTA clade
+cladeColours <- c("blue", "green", "cyan", "orange", "darkorchid4", "deeppink")
 isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
 
 # Note which CPHs are associated with which clusters
@@ -377,17 +375,15 @@ addBadgerIsolatesLocationsWithClusterColours(badgerInfo=badgerInfo,
 # Add circles to define inner and outer demes #
 ###############################################
 
-# Define inner circle radius
-thresholdDistance <- 3000
-outerDistance <- 7300
-
 # Add deme defining circles
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
             border="black")
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
             border="black")
-text(x=381938.4, y=198700, labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
-text(x=381938.4, y=194450, labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - thresholdDistance) + 500,
+     labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
+     labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
 
 ##############
 # Add Legend #
@@ -398,9 +394,9 @@ legend(x=387450, y=197000, legend=c("Badger", "Cow"), text.col=c("black", "black
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5),
        col=c("black", "black"))
 
-legend(x=387050, y=196000, legend=c("Cluster-0","Cluster-1","Cluster-2","Cluster-3",
-                                    "Cluster-4"),
-       text.col=cladeColours, bty="n")
+legend(x=387150, y=196000, legend=c("Cluster-1","Cluster-2","Cluster-3",
+                                    "Cluster-4", "Cluster-5", "Cluster-6"),
+       text.col=cladeColours, bty="n", cex=0.75)
 
 
 dev.off()
@@ -461,7 +457,7 @@ getSampledHerdGroupOfIsolate <- function(isolate, badgerInfo, cattleInfo){
     
     # Get sampled group
     sampledGroupHerd <- badgerInfo[row, "Social.Group.Trapped.At"]
-    
+
     # Remove any spaces
     sampledGroupHerd <- paste(strsplit(sampledGroupHerd, split=" ")[[1]], collapse="")
     
@@ -633,7 +629,6 @@ addBadgerIsolatesLocationsWithClusterColours <- function(badgerInfo, groupsRows,
     }
   }
 }
-
 
 getSequenceIDsFromFastaFile <- function(fileName){
   

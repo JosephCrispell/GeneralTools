@@ -1,4 +1,4 @@
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ##############################################
 # Read in Breakdown and Location Information #
@@ -6,18 +6,16 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 ######################
 # Location Information
-file <- paste(path, "CattleMovementData/20160314_joe_cts_locations.csv", sep="")
+file <- paste(path, "CattleMovementData-Post2001/20160314_joe_cts_locations.csv", sep="")
 locationInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",", fill=TRUE)
 
 # Remove CPHs that aren't within 15km of Woodchester Mansion
-mansionX <- 380909
-mansionY <- 201377
+badgerCentre <- c(381761.7, 200964.3)
 threshold <- 15000
 
 locationInfo <- keepLocationsWithinThresholdDistance(locationInfo=locationInfo, 
                                                      thresholdInMetres=threshold,
-                                                     mansionX=mansionX,
-                                                     mansionY=mansionY)
+                                                     badgerCentre=badgerCentre)
 
 # Get the CPH into the right format
 locationInfo$CPH <- formatCPHForLocationInfo(locationInfo$cph)
@@ -51,7 +49,7 @@ for(row in 1:nrow(breakdownInfo)){
 ####################################
 
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv",
               sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
@@ -110,7 +108,7 @@ breakdownsTable <- breakdownsTable[breakdownsTable$cbConfFin == "Y", ]
 # Spatial plot - shape by herd type and size by the number of samples
 expand <- 15000
 
-file <- paste(path, "BreakdownSampling_16-05-17.pdf")
+file <- paste(path, "BreakdownSampling_10-08-17.pdf")
 pdf(file, height=14, width=21)
 
 par(mfrow=c(2,3))
@@ -123,13 +121,13 @@ holdingColour <- rgb(1,0,0, 0.25)
 
 # Create empty plot
 plot(1, type="n", yaxt="n", xaxt="n",
-     xlim=c(mansionX - expand, mansionX + expand),
-     ylim=c(mansionY - expand, mansionY + expand),
+     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand),
+     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand),
      xlab=paste((expand[1] * 2) / 1000, "km"), ylab=paste((expand[1] * 2) / 1000, "km"),
      main="Locations of Cattle Reactors", cex.lab=2, cex.main=3)
 
 # Add point for Woodchester Mansion
-points(x=mansionX, y=mansionY, pch=15, col="blue", cex=3)
+points(x=badgerCentre[1], y=badgerCentre[2], pch=15, col="blue", cex=3)
 
 # Add points for each cattle herd
 points(x=locationInfo$x, y=locationInfo$y, 
@@ -153,13 +151,13 @@ holdingColour <- rgb(1,0,0, 0.3)
 
 # Create empty plot
 plot(1, type="n", yaxt="n", xaxt="n",
-     xlim=c(mansionX - expand, mansionX + expand),
-     ylim=c(mansionY - expand, mansionY + expand),
+     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand),
+     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand),
      xlab=paste((expand[1] * 2) / 1000, "km"), ylab=paste((expand[1] * 2) / 1000, "km"),
      main="Locations of Cultured Reactors", cex.lab=2, cex.main=3)
 
 # Add point for Woodchester Mansion
-points(x=mansionX, y=mansionY, pch=15, col="blue", cex=3)
+points(x=badgerCentre[1], y=badgerCentre[2], pch=15, col="blue", cex=3)
 
 # Add points for each cattle herd
 points(x=locationInfo$x, y=locationInfo$y, 
@@ -184,13 +182,13 @@ holdingColour <- rgb(1,0,0, 0.5)
 
 # Create empty plot
 plot(1, type="n", yaxt="n", xaxt="n",
-     xlim=c(mansionX - expand, mansionX + expand),
-     ylim=c(mansionY - expand, mansionY + expand),
+     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand),
+     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand),
      xlab=paste((expand[1] * 2) / 1000, "km"), ylab=paste((expand[1] * 2) / 1000, "km"),
      main="Locations of Sequenced Isolates", cex.lab=2, cex.main=3)
 
 # Add point for Woodchester Mansion
-points(x=mansionX, y=mansionY, pch=15, col="blue", cex=3)
+points(x=badgerCentre[1], y=badgerCentre[2], pch=15, col="blue", cex=3)
 
 # Add points for each cattle herd
 points(x=locationInfo$x, y=locationInfo$y, 
@@ -484,7 +482,7 @@ formatCPHForLocationInfo <- function(cphs){
 }
 
 keepLocationsWithinThresholdDistance <- function(locationInfo, thresholdInMetres, 
-                                                 mansionX, mansionY){
+                                                 badgerCentre){
   
   locationInfo$DistanceToWoodchester <- rep(0, nrow(locationInfo))
   
@@ -501,7 +499,7 @@ keepLocationsWithinThresholdDistance <- function(locationInfo, thresholdInMetres
     }
     
     # Calculate distance to Woodchester Mansion
-    distance <- euclideanDistance(x1=mansionX, y1=mansionY, 
+    distance <- euclideanDistance(x1=badgerCentre[1], y1=badgerCentre[2], 
                                   x2=locationInfo[row, "x"], y2=locationInfo[row, "y"])
     locationInfo[row, "DistanceToWoodchester"] <- distance
     

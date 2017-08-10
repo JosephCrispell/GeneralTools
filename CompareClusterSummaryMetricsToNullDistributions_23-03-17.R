@@ -1,8 +1,8 @@
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/InterSpeciesClusters/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
 
 # Open the Cluster Summary table
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_16-06-2017.txt", sep="")
+file <- paste(path, "ClusterSummaryWithRandomNullDistributions_10-08-2017.txt", sep="")
 summaryTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Define the order of the plots
@@ -75,7 +75,9 @@ colNames <- c(
   "Cluster-1",
   "Cluster-2",
   "Cluster-3",
-  "Cluster-4"
+  "Cluster-4",
+  "Cluster-5",
+  "cluster-6"
 )
 
 outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
@@ -84,7 +86,7 @@ outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
 rownames(outputTable) <- replaceFromList(rownames(outputTable), fullNames)
 
 # Save the output table as csv
-file <- paste(path, "ClusterSummaryWithBoundsOfNulls_16-06-2017.txt", sep="")
+file <- paste(path, "ClusterSummaryWithBoundsOfNulls_10-08-2017.txt", sep="")
 write.table(file, x=outputTable, quote=FALSE, row.names=TRUE, sep="\t")
 
 

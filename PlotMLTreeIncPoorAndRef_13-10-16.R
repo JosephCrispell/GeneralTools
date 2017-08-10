@@ -1,54 +1,63 @@
 # Load the ape package
 library(ape)
 library(geiger) # For the tips function
+library(plotrix)
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ###################################
 # Get the Maximum Likelihood Tree #
 ###################################
 
 # Read in the newick tree
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/",
+              "mlTree_01-08-2017.tree", sep="")
 tree <- read.tree(file=file)
 
+# Drop badger beside reference - WB129 - THIS WILL MESS UP NODES DEFINING CLADES
+# tree <- drop.tip(tree, "WB129")
+
 # Convert Branch lengths to SNPs
-fastaLength <- 9464
+fastaLength <- 1366
 tree$edge.length <- tree$edge.length * fastaLength
 
 ##################################
 # Get the Isolate Coverage Table #
 ##################################
 
-file <- paste(path,"allVCFs-IncludingPoor/vcfFiles/",
-              "isolateGenomeCoverageSummary_28-10-16.txt", sep="")
+file <- paste(path,"vcfFiles/",
+              "IsolateVariantPositionCoverage_01-08-2017.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
-table$IsolateID <- getIsolateIDFromFileNames(table$IsolateID)
+table$Isolate <- getIsolateIDFromFileNames(table$Isolate)
 
 ##############################
 # Plot the Phylogenetic Tree #
 ##############################
 
-file <- paste(path, "mlTree_CladesAndLocations_22-06-17.pdf")
+file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_01-08-17.pdf")
 pdf(file, height=10, width=10)
 
 # Set the margins
+par(mfrow=c(1,1))
 par(mar=c(0,0,0,0)) # Bottom, Left, Top, Right
 
 plotType <- "fan" # "phylogram", "cladogram", "fan", "unrooted", "radial"
 
 # Plot initial tree to find nodes defining clades
-#plot.phylo(tree, plotType)
-#nodelabels()
+# pdf(paste(path, "vcfFiles/", "test.pdf", sep=""), height=40, width=40)
+# 
+# plot.phylo(tree, "fan")
+# nodelabels()
+# 
+# dev.off()
 
 # Define branch colours by clade
-#nodesDefiningClades <- c(515, 318, 521, 405, 433) # use nodelabels() to show node numbers
-nodesDefiningClades <- c(291, 440, 460, 412, 324) # use nodelabels() to show node numbers
-cladeColours <- c("cyan", "pink", "green", "orange", "purple")
-branchColours <- defineBranchColoursOfClades(tree, nodesDefiningClades, cladeColours)
+nodesDefiningClades <- c(201, 364, 354, 322, 263, 216, 213) # use nodelabels() to show node numbers
+cladeColours <- c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink")
+branchColours <- defineBranchColoursOfClades(tree, nodesDefiningClades,
+                                             cladeColours, "lightgrey")
 
 # Get each isolate's quality
 isolateQuality <- getIsolateQuality(table)
@@ -61,27 +70,31 @@ plot.phylo(tree, show.tip.label=FALSE, plotType,
 # Add node labels
 nodelabels(node=1:length(tree$tip.label), 
            cex=defineTipSizeBySequencingQuality(tree$tip.label, isolateQuality),
-           pch=defineTipShapesForSpecies(tree$tip.label, 17, 16),
-           col=defineTipColourBySpecies(tree$tip.label, "blue", "red"))
+           pch=defineTipShapesForSpecies(tree$tip.label, 24, 21),
+           bg=defineTipColourBySpecies(tree, "blue", "red", "lightgrey", nodesDefiningClades),
+           col="dimgrey")
 
 # Add Legends
-text(x=132, y=-84, labels="Coverage:", col="black", cex=0.7)
-addLegendForQuality("bottomright", 0.8)
-text(x=-113, y=-120, labels="Species:", col="black", cex=0.7)
-legend("bottomleft", legend=c("CATTLE", "BADGERS"),
-       pch=c(17, 16), cex=0.65, col=c("blue", "red"), 
+text(x=140, y=-130, labels="Variant Position Coverage:", col="black", cex=1)
+addLegendForQuality("bottomright", 1)
+text(x=-113, y=-140, labels="Species:", col="black", cex=1)
+legend("bottomleft", legend=c("Cow", "Badger"),
+       pch=c(17, 16), cex=1, col=c("blue", "red"), 
        text.col=c("blue", "red"), bty='n')
+text(x=20, y=0, labels="AF2122/97")
 
 # Add Scale bar
-points(x=c(-20, 30), y=c(-114, -114), type="l", lwd=3)
-text(x=5, y=-118, labels="50 SNPs", cex=0.8)
+points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3)
+text(x=5, y=-135, labels="50 SNPs", cex=1)
 
 # Add Clade labels
-text(x=52, y=102, labels="0", col=cladeColours[1], cex=2)
-text(x=55, y=-100, labels="1", col=cladeColours[2], cex=2)
-text(x=95, y=-75, labels="2", col=cladeColours[3], cex=2)
-text(x=-45, y=-105, labels="3", col=cladeColours[4], cex=2)
-text(x=-102, y=50, labels="4", col=cladeColours[5], cex=2)
+text(x=153, y=52, labels="0", col=cladeColours[1], cex=2)
+text(x=100, y=-60, labels="1", col=cladeColours[2], cex=2)
+text(x=75, y=-105, labels="2", col=cladeColours[3], cex=2)
+text(x=-30, y=-115, labels="3", col=cladeColours[4], cex=2)
+text(x=-120, y=0, labels="4", col=cladeColours[5], cex=2)
+text(x=90, y=80, labels="5", col=cladeColours[6], cex=2)
+text(x=100, y=65, labels="6", col=cladeColours[7], cex=2)
 
 ################################
 # Get the sampling information #
@@ -97,7 +110,7 @@ badgerIsolateLocations <- noteBadgerIsolateSamplingLocations(metadata)
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Get the locations of each of the isolates
@@ -108,7 +121,6 @@ cattleIsolateLocations <- noteCattleIsolateSamplingLocations(cattleInfo)
 ####################################################
 
 # Create the clade colours - apply alpha
-cladeColours <- c("cyan", "pink", "green", "orange", "purple")
 cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
 cex=2
 
@@ -117,65 +129,7 @@ isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
 
 # Note the centre of the badger territories
 badgerCentre <- c(381761.7, 200964.3)
-expand <- 6500
-
-# Create an empty plot
-par(mar=c(0,0,0,0))
-plot(x=NULL, y=NULL, yaxt="n", xaxt="n", bty="n", ylab="",
-     xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand), 
-     ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand), asp=1,
-     xlab="")
-
-# Plot a minimum convex polygon around the 
-# cattle and badger sampling locations for each cluster
-for(i in 1:length(cladeColours)){
-  
-  # Get the isolates associated with the current clade
-  isolates <- isolatesInClades[[as.character(i)]]
-  
-  # Get the coordinates of each isolate
-  isolateCoordinates <- getXandYCoordinatesOfIsolates(isolates, cattleIsolateLocations,
-                                                      badgerIsolateLocations)
-  
-  # Remove NA rows - where couldn't find coordinates for isolates
-  isolateCoordinates <- isolateCoordinates[is.na(isolateCoordinates$X) == FALSE, ]
-  
-  # Plot the points
-  points(isolateCoordinates, 
-         pch=ifelse(isolateCoordinates$Species == "BADGER", 19, 17),
-         col=cladeColoursRGB[i], cex=cex)
-  
-  # Add a convex hull around the points
-  addPolygon(isolateCoordinates$X, isolateCoordinates$Y, cladeColours[i])
-}
-
-# Add legend
-legend("bottomleft", legend=c("CATTLE", "BADGERS"),
-       pch=c(17, 16), col="black", pt.cex=cex,
-       text.col="black", bty='n')
-
-# Add the cluster numbers
-legend("bottomright", legend=addTextToArray("Cluster ", 0:4, ""),
-       text.col=cladeColours, bty="n", cex=2)
-
-# Add Scale
-legend("bottom", legend=(paste(round(expand/1000, digits=2), "KM")), bty="n")
-
-######
-######
-######
-
-# Create the clade colours - apply alpha
-cladeColours <- c("cyan", "pink", "green", "orange", "purple")
-cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
-cex=2
-
-# Note the isolates in each clade
-isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
-
-# Note the centre of the badger territories
-badgerCentre <- c(381761.7, 200964.3)
-expand <- 6500
+expand <- 12000
 
 # Create an empty plot
 par(mar=c(0,0,0,0))
@@ -208,9 +162,11 @@ for(i in 1:length(cladeColours)){
 }
 
 # Add inner circle from BASTA deme assignment diagram
-thresholdDistance <- 3000
+thresholdDistance <- 3500
 draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
-            border="black")
+            border="black", lty=2)
+text(x=badgerCentre[1], y=badgerCentre[2] - (thresholdDistance + 500),
+     labels=paste(round(thresholdDistance/1000, digits=2), "km radius"))
 
 # Add legend
 legend("bottomleft", legend=c("CATTLE", "BADGERS"),
@@ -218,17 +174,50 @@ legend("bottomleft", legend=c("CATTLE", "BADGERS"),
        text.col="black", bty='n')
 
 # Add the cluster numbers
-legend("bottomright", legend=addTextToArray("Cluster ", 0:4, ""),
+legend("bottomright", legend=addTextToArray("Cluster ", 0:6, ""),
        text.col=cladeColours, bty="n", cex=2)
 
 # Add Scale
-legend("bottom", legend=(paste(round(expand/1000, digits=2), "KM")), bty="n")
+#legend("bottom", legend=paste(round(expand/1000, digits=2), "KM"), bty="n")
 
 dev.off()
+
+##########################################################
+# Print file noting which isolates are in which clusters #
+##########################################################
+
+# Note the clades of isolates in clades
+isolateClades <- noteCladesOfIsolates(tree, nodesDefiningClades)
+
+# Print out table
+file <- paste(path, "vcfFiles/", "clusters_01-08-17.csv", sep="")
+write.table(isolateClades, file, quote=FALSE, sep=",", row.names=FALSE)
 
 #############
 # FUNCTIONS #
 #############
+
+noteCladesOfIsolates <- function(tree, nodesDefiningClades){
+  
+  # Initialise two arrays to store the isolate IDs and clades
+  isolates <- c()
+  clades <- c()
+
+  # Examine each clade
+  for(i in 1:length(nodesDefiningClades)){
+    tipsInClade <- tips(tree, nodesDefiningClades[i])
+    
+    for(tip in tipsInClade){
+      isolates[length(isolates) + 1] <- tip
+      clades[length(clades) + 1] <- i - 1
+    }
+  }
+  
+  # Combine the arrays into table
+  output <- data.frame(ID=isolates, Cluster=clades, stringsAsFactors=FALSE)
+  
+  return(output)
+}
 
 addTextToArray <- function(text, array, sep){
   
@@ -357,34 +346,51 @@ findIsolatesInClades <- function(tree, nodesDefiningClades){
   return(isolatesInClades)
 }
 
-defineTipColourBySpecies <- function(tipLabels, cow, badger){
-  colours <- c()
-  for(i in 1:length(tipLabels)){
+getTipsInClades <- function(tree, nodesDefiningClades){
+  tipsInClades <- list()
+  for(node in nodesDefiningClades){
+    tipsInClades[[as.character(node)]] <- tips(tree, node)
+  }
+  return(tipsInClades)
+}
+
+
+defineTipColourBySpecies <- function(tree, cow, badger, defaultColour, nodesDefiningClades){
+  
+  tipColours <- rep(defaultColour, length(tree$tip.label))
+  tipsInClades <- getTipsInClades(tree, nodesDefiningClades)
+  for(tipIndex in 1:length(tree$tip.label)){
     
-    if(grepl(pattern="TB", x=tipLabels[i]) == TRUE){
-      colours[i] <- cow
-    }else if(grepl(pattern="WB", x=tipLabels[i]) == TRUE){
-      colours[i] <- badger
-    }else{
-      colours[i] <- "black"
+    for(nodeIndex in 1:length(nodesDefiningClades)){
+      
+      if(tree$tip.label[tipIndex] %in% tipsInClades[[as.character(nodesDefiningClades[nodeIndex])]] == TRUE){
+        if(grepl(pattern="TB", x=tree$tip.label[tipIndex]) == TRUE){
+          tipColours[tipIndex] <- cow
+        }else if(grepl(pattern="WB", x=tree$tip.label[tipIndex]) == TRUE){
+          tipColours[tipIndex] <- badger
+        }else{
+          tipColours[tipIndex] <- defaultColour
+        }
+        break
+      }
     }
   }
-  
-  return(colours)
+
+  return(tipColours)
 }
 
 addLegendForQuality <- function(position, cex){
 
-  sizes <- seq(0.1, 1, 0.1)
+  sizes <- seq(0.6, 1, 0.05)
   
-  legend(position, legend=sizes, col="black", pch=16, bty='n',
+  legend(position, legend=sizes, col="black", pch=24, bty='n',
          pt.cex=sizes, cex=cex)
 }
 
 getIsolateQuality <- function(table){
   isolateQuality <- list()
   for(i in 1:nrow(table)){
-    isolateQuality[[table[i, "IsolateID"]]] <- table[i, "PercentageCoverage"]
+    isolateQuality[[table[i, "Isolate"]]] <- table[i, "VariantPositionCoverage"]
   }
   
   return(isolateQuality)
@@ -406,8 +412,8 @@ defineTipSizeBySequencingQuality <- function(tipLabels, isolateQuality){
 }
 
 defineBranchColoursOfClades <- function(tree, nodesDefiningClades,
-                                        CladeColours){
-  branchColours <- rep("black", dim(tree$edge)[1])
+                                        CladeColours, defaultColour){
+  branchColours <- rep(defaultColour, dim(tree$edge)[1])
   for(i in 1:length(cladeColours)){
     clade <- tips(tree, node=nodesDefiningClades[i])
     branchesInClades <- which.edge(tree, clade)

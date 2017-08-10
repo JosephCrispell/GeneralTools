@@ -10,14 +10,14 @@ library(adephylo)
 # Path #
 ########
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ################
 # Read in tree #
 ################
 
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_BASTAclade_DatedTips_TempEstRooted_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/",
+              "mlTree_BASTAClade_DatedTips_TempEstRooted_01-08-17.tree", sep="")
 tree <- readTree(file)
 
 ###################################
@@ -31,12 +31,13 @@ tipToRootDistances <- distRoot(tree, tree$tip.label, method="patristic")
 ############################
 
 # Read in the badger isolate metadata
-fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the cattle isolate metadata
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv",
+              sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 #########################
@@ -44,8 +45,8 @@ cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 #########################
 
 # Open a pdf
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "RootedBastaCladeTree_tipToRootDistances_11-07-17.pdf", sep="")
+file <- paste(path, "vcfFiles/",
+              "RootedBastaCladeTree_tipToRootDistances_01-08-17.pdf", sep="")
 pdf(file)
 
 

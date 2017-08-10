@@ -9,7 +9,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 #####################################
 
 # Read in the genome coverage file
-coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_26-07-2017.txt", sep="")
+coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_01-08-2017.txt", sep="")
 coverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column
@@ -31,7 +31,7 @@ plot(coverage$VariantPositionCoverage, pch=20, xaxt="n", xlab="", bty="n", las=1
 text(y=coverage$VariantPositionCoverage,
      x=1:nrow(coverage),
      labels = coverage$Isolate, cex=0.1,
-     col=ifelse(coverage$VariantPositionCoverage < 0.8, rgb(0,0,0, 1), rgb(0,0,0, 0)))
+     col=ifelse(coverage$VariantPositionCoverage < 0.75, rgb(0,0,0, 1), rgb(0,0,0, 0)))
 
 coverage$Species <- "COW"
 coverage$Species[grepl(x=coverage$Isolate, pattern="WB") == TRUE] <- "BADGER"

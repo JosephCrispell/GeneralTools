@@ -3,29 +3,37 @@ library(ape)
 library(geiger) # For the tips function
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ###################################
 # Get the Maximum Likelihood Tree #
 ###################################
 
 # Read in the newick tree
-file <- paste(path, "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/", "mlTree_01-08-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Convert Branch lengths to SNPs
-fastaLength <- 9464
+fastaLength <- 1366
 tree$edge.length <- tree$edge.length * fastaLength
 
 ########################################
 # Define Clades by Threshold Distances #
 ########################################
 
+# Define clades in tree
+pdf(paste(path, "vcfFiles/", "test.pdf", sep=""), height=40, width=40)
+
+plot.phylo(tree, "fan")
+nodelabels()
+
+dev.off()
+
 # Note the nodes defining clades
-nodesDefiningClades <- c(298, 276, 250, 487, 481, 460, 441, 291, 282, 261) # use nodelabels() to show node numbers
+nodesDefiningClades <- c(201, 364, 354, 322, 263, 224, 216, 213) # use nodelabels() to show node numbers
 
 # Colour branches of clades
-cladeColours <- c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink", "black", "brown", "darkolivegreen")
+cladeColours <- c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink", "black") # c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink", "black", "brown", "darkolivegreen")
 #cladeColours <- rep("red", length(nodesDefiningClades))
 branchColours <- defineBranchColoursOfClades(tree, nodesDefiningClades, cladeColours, "lightgrey")
 
@@ -39,14 +47,13 @@ tipShapes <- defineTipShapesForSpecies(tree$tip.label, 24, 21)
 # Get the Isolate XY coordinates #
 ##################################
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/IsolateData/"
-
 # Cattle Isolates
-file <- paste(path, "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+file <- paste(path, "IsolateData/", 
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",")
 
 # Badger Isolates
-file <- paste(path, "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+file <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 badgerInfo <- read.table(file, header=TRUE, sep=",")
 
 tipXYs <- matrix(nrow=length(tree$tip.label), ncol=2)
@@ -67,8 +74,8 @@ for(tipIndex in 1:length(tree$tip.label)){
 
     # Find index in table
     strainIndex <- which(badgerInfo$WB_id == tree$tip.label[tipIndex])
-    tipXYs[tipIndex, 1] <- badgerInfo[strainIndex, "SampledGrpX"]
-    tipXYs[tipIndex, 2] <- badgerInfo[strainIndex, "SampledGrpY"] 
+    tipXYs[tipIndex, 1] <- badgerInfo[strainIndex, "GroupCentroidX"]
+    tipXYs[tipIndex, 2] <- badgerInfo[strainIndex, "GroupCentroidY"] 
   }
 }
 
@@ -76,7 +83,7 @@ for(tipIndex in 1:length(tree$tip.label)){
 # Plot the Phylogenetic Tree and Isolate Locations #
 ####################################################
 
-file <- paste(path, "mlTreeAndIsolateLocations_01-12-16.pdf", sep="")
+file <- paste(path, "vcfFiles/", "mlTreeAndIsolateLocations_01-08-17.pdf", sep="")
 pdf(file, height=7, width=14)
 
 par(mfrow=c(1,2))
@@ -91,8 +98,8 @@ nodelabels(node=1:length(tree$tip.label),
            cex=0.75,
            bg=tipColours)
 
-points(x=c(100, 110), y=c(-90, -90), type="l", lwd=3)
-text(x=105, y=-95, labels="10 SNPs", cex=0.75)
+points(x=c(100, 115), y=c(-90, -90), type="l", lwd=3)
+text(x=107.5, y=-95, labels="15 SNPs", cex=0.75)
 mtext("A", side=3, at=-116)
 
 legend(x=-120, y=-85, legend=c("Cow", "Badger"),
@@ -117,7 +124,7 @@ plot(1, type="n", yaxt="n", xaxt="n",
      xlab=paste((expand * 2) / 1000, "km"), ylab=paste((expand * 2) / 1000, "km"),
      main="Isolate Locations")
 
-legend("topleft", legend=c("Cow", "Badger", "Woodchester Mansion"),
+legend("bottomright", legend=c("Cow", "Badger", "Woodchester Mansion"),
        pch=c(17, 16, 15), cex=0.65, bty='n')
 
 # Add point for Woodchester Mansion
@@ -127,7 +134,7 @@ points(x=mansionX, y=mansionY, pch=15, col="black")
 addPolygonsForClades(cladeColours, tipXYs, tipColours, 0.35)
 
 # Set transparency
-alpha = 0.8
+alpha = 0.5
 
 # Add the isolates
 for(tipIndex in 1:length(tree$tip.label)){

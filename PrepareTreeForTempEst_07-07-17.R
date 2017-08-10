@@ -3,19 +3,19 @@ library(ape)
 library(geiger) # For the tips function
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ################################
 # Read in sampling information #
 ################################
 
 # Read in the badger isolate metadata
-fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the cattle isolate metadata
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 #######################################
@@ -23,8 +23,7 @@ cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 #######################################
 
 # Read in the newick tree
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/", "mlTree_01-08-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Get a list of the isolates at the tips
@@ -42,8 +41,8 @@ tree$tip.label <- addSamplingTimes(isolates, badgerInfo, cattleInfo)
 ##################################
 
 # Create a file
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_DatedTips_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/",
+              "mlTree_DatedTips_01-08-17.tree", sep="")
 
 write.tree(tree, file = file, append = FALSE,
            digits = 20, tree.names = FALSE)
@@ -52,13 +51,25 @@ write.tree(tree, file = file, append = FALSE,
 # Select BASTA clade #
 ######################
 
+# Set node number
+nodeDefiningBastaClade <- 209
+
+pdf(paste(path, "vcfFiles/mlTree_BastaClade_01-08-17.pdf", sep=""))
+
+branchColours <- defineBranchColoursOfClade(tree, nodeDefiningBastaClade,
+                                            "black", "lightgrey")
+
+plot.phylo(tree, "fan", edge.color=branchColours, edge.width=3,
+           show.tip.label=FALSE)
+#nodelabels()
+
+dev.off()
+
 # Get basta clade
-node <- 289
-bastaClade <- extract.clade(tree, node)
+bastaClade <- extract.clade(tree, nodeDefiningBastaClade)
 
 # Print out tree
-file <- paste(path, "allVCFs-IncludingPoor/vcfFiles/",
-              "mlTree_BASTAclade_DatedTips_28-10-16.tree", sep="")
+file <- paste(path, "vcfFiles/", "mlTree_BASTAClade_DatedTips_01-08-17.tree", sep="")
 
 write.tree(bastaClade, file = file, append = FALSE,
            digits = 20, tree.names = FALSE)
@@ -66,6 +77,16 @@ write.tree(bastaClade, file = file, append = FALSE,
 #############
 # FUNCTIONS #
 #############
+
+defineBranchColoursOfClade <- function(tree, nodeDefiningClade,
+                                       colour, defaultColour){
+  branchColours <- rep(defaultColour, dim(tree$edge)[1])
+  clade <- tips(tree, node=nodeDefiningClade)
+  branchesInClades <- which.edge(tree, clade)
+  branchColours[branchesInClades] <- colour
+  
+  return(branchColours)
+}
 
 addSamplingTimes <- function(tipLabels, badgerInfo, cattleInfo){
   
