@@ -6,7 +6,7 @@ library(maptools) # Read shape file
 library(rgeos) # Polygon centroids
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 ############################################################
 # Note the centroid of the badger social group territories #
@@ -22,7 +22,7 @@ expand <- 1600
 
 # Read in the infection category counts for each social group
 fileName <- paste(path, "BadgerCaptureData/", 
-                  "InfectionCategoryCounts_2000-2011_18-05-2017.csv", sep="")
+                  "InfectionCategoryCounts_2000-2011_10-08-2017.csv", sep="")
 counts <- getCountTablesFromFileLinesYears(fileName)
 
 # Calculate the proportion infected in each social group in each year
@@ -36,12 +36,12 @@ socialGroupColumns <- noteColumnsOfSocialGroups(colnames(counts[["ProportionInfe
 ###########################################################
 
 # Get list of isolate IDs from fasta file
-fileName <- paste(path, "allVCFs-IncludingPoor/vcfFiles/", 
-                  "sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta", sep="")
+fileName <- paste(path, "vcfFiles/", 
+                  "sequences_Prox-10_01-08-2017.fasta", sep="")
 isolateIDs <- getSequenceIDsFromFastaFile(fileName)
 
 # Read in the isolate metadata
-fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+fileName <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 metadata <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Keep only rows for the isolates
@@ -73,8 +73,8 @@ shapeFileNames <- c("territories_2000.shp",
 groupsCentroidsPerYear <- list()
 
 # Open a PDF file
-file <- paste(path, "BadgerTerritoryMarkingData/", 
-              "PropInfected_SocialGroups_2000-11_26-05-17.pdf", sep="")
+file <- paste(path, "BadgerCaptureData/", 
+              "PropInfected_SocialGroups_2000-11_10-08-17.pdf", sep="")
 pdf(file, height=11.69, width=8.27)
 
 par(mfrow=c(6,2))
@@ -86,7 +86,7 @@ for(i in 1:length(years)){
   shapeFileName <- shapeFileNames[i]
   
   # Read in the shape file
-  file <- paste(path, "BadgerTerritoryMarkingData/", 
+  file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/", 
                 "Baitmarking ", year, "/", shapeFileName, sep="")
   territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
   
