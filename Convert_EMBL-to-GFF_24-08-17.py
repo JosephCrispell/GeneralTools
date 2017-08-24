@@ -12,6 +12,10 @@ from Bio import SeqIO
 # Author: Joseph Crispell
 # Created: 24-08-17
 
+# REQUIRES:
+# bcbio-gff		pip install bcbio-gff
+# biopython		pip install biopython
+
 # Command line structure:
 # python Convert_EMBL-to-GFF.py input.embl output.gff
 
@@ -27,7 +31,10 @@ if len(sys.argv) != 3:
 	print "Command line structure:"
 	print "\tpython Convert_EMBL-to-GFF.py input.embl output.gff"
 	print "\t\tinput.embl\tPath to input file in EMBL format"
-	print "\t\toutput.gff\tPath to output file (will be in GFF format)"
+	print "\t\toutput.gff\tPath to output file (will be in GFF format)\n"
+	print "Requires:"
+	print "\tbcbio-gff\tTo install use: pip install bcbio-gff"
+	print "\tbiopython\tTo install use: pip install biopython"
 	sys.exit()
 
 ##################################
