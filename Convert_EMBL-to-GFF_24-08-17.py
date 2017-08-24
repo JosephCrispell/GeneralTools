@@ -9,6 +9,8 @@ from BCBio import GFF
 from Bio import SeqIO
 
 # Python script to convert from EMBL to GFF format
+# Author: Joseph Crispell
+# Created: 24-08-17
 
 # Command line structure:
 # python Convert_EMBL-to-GFF.py input.embl output.gff
@@ -21,9 +23,7 @@ from Bio import SeqIO
 ###############
 
 if len(sys.argv) != 3:
-	print "Python script to convert EMBL formatted file into GFF formatted file"
-	print "Author: Joseph Crispell"
-	print "Created: 24-08-17\n"
+	print "Python script to convert EMBL formatted file into GFF formatted file\n"
 	print "Command line structure:"
 	print "\tpython Convert_EMBL-to-GFF.py input.embl output.gff"
 	print "\t\tinput.embl\tPath to input file in EMBL format"
