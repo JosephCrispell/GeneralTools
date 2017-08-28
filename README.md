@@ -1,2 +1,2 @@
 # GeneralTools
-A selection of perl, R, and shell scripts used in general analyses
+A selection of perl, R, python, and shell scripts used in general analyses
