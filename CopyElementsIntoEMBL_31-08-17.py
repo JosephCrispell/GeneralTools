@@ -206,7 +206,7 @@ def checkIfFeatureFallsBetweenCoords(currentCoords, previousCoords, features, fe
 		
 			# Check if the feature starts after the previous feature's end and haven't already noted this
 			if not key in featuresAdded.keys() and coords[0] >= previousCoords[1]:
-				featuresAdded[key] = [True, False, None]
+				featuresAdded[key] = [True, False, None] # Found feature that starts after, Found feature that ends before, Notes
 		
 			# Check if the current feature ends before the end of the current coords
 			if key in featuresAdded.keys() and coords[1] <= currentCoords[1]:
