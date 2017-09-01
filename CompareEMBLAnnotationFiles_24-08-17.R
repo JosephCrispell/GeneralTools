@@ -12,11 +12,11 @@ library(Biostrings)
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Reference/"
 
 # Original
-# file <- paste(path, "TransferAnnotations/embl/", "AF2122-97_Garnier2003.embl", sep="")
-# original <- readEMBLFile(file)
-file <- paste(path, "UpdatedReference_Malone2017/",
-              "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
+file <- paste(path, "TransferAnnotations/embl/", "AF2122-97_Garnier2003.embl", sep="")
 original <- readEMBLFile(file)
+# file <- paste(path, "UpdatedReference_Malone2017/",
+#               "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
+# original <- readEMBLFile(file)
 
 # Transferred
 file <- paste(path, "TransferAnnotations/",
@@ -80,7 +80,7 @@ plotFeatureTypes <- function(features, featureInfo, main){
   }
   
   # Make a bar plot
-  barplot(table(types), las=2, cex.names=0.6, main=main)
+  barplot(table(types), las=2, cex.names=0.6, main=main, ylab="Frequency")
 }
 
 examineFeaturesWithPoorAlignments <- function(poorFeatureAlignments, alignmentInfo){
