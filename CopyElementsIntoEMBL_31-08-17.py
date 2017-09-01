@@ -291,6 +291,15 @@ def checkIfFeaturesNotInserted(features, featuresAdded):
 				print "\n-----------------------------------------------------------------------------"
 				print features[key]
 
+#################################
+# Check command line arguements	#
+#################################			
+
+if len(sys.argv) != 4: # First argument is the python script. Python is 0 indexed
+	print "Requires three file names in input arguments. Number of input arguments = ", len(sys.argv) - 1
+	print "Command line structure:"
+	print "\tpython CopyElementsIntoEMBL.py from.embl to.embl output.embl"
+	sys.exit()
 
 #################################################
 # Get feature information from input EMBL file #
