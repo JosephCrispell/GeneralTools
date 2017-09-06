@@ -3,7 +3,10 @@ use warnings;
 use strict;
 
 # Author: Joseph Crisp
-# Conducting and Parsing Google Scholar searches
+# Conducting a Google Scholar search and retrieving the titles of each of the results
+
+# Command line structure:
+# perl ConductGoogleScholarSearchesAndRetieveTitles.pl output.txt
 
 # Searching google scholar:
 # https://scholar.google.co.uk/scholar?as_q=&as_epq=&as_oq=&as_eq=&as_occt=any&as_sauthors=&as_publication=&as_ylo=&as_yhi=&btnG=&hl=en&as_sdt=0%2C5
@@ -26,6 +29,20 @@ use strict;
 
 # Notes:
 # <h3 class="gs_rt"> is the class for each result. Title is found between >...</a>
+
+###########################
+# Check if help requested #
+###########################
+
+my $firstArg = shift @ARGV;
+if($firstArg eq "-help" || $firstArg eq "" || $firstArg eq "-h"){
+	print color("green"), "Perl Script to conduct a Google Scholar search and retrieve the titles of each of the results:\n", color("reset");
+	print "\tperl ConductGoogleScholarSearchesAndRetieveTitles.pl output.txt\n";
+	print "\t\toutput.txt\t\tPath to output file where the result titles are stored\n";
+	print "\nPlease note that search parameters are currently specified in script. Sorry!\n";
+
+	exit 0;	
+}
 
 #############
 # FUNCTIONS #
@@ -84,8 +101,6 @@ sub getArticleContainers{
 				}	
 			}
 		}
-	}else{
-		print "No article containers found in page!\n";
 	}
 
 	return @containers;
@@ -165,6 +180,24 @@ sub range{
 	return @array;
 }
 
+sub printTitlesIntoOutputFile{
+
+	# Get the output file name from the input arguments
+	my $output = $_[0];
+	open OUTPUT, ">$output" or die "Couldn't open $output:$!";
+	
+	# Get the titles from the input arguments
+	my @titles = @{$_[1]};
+
+	# Print the titles into the file
+	foreach my $title (@titles){
+		print OUTPUT "$title\n";
+	}
+
+	# Close the output file
+	close(OUTPUT);
+}
+
 #########################
 # Set search parameters #
 #########################
@@ -183,17 +216,20 @@ my $maxYear = 2017;
 my $start = 0;
 
 ##############################
-# Get google scholar results #
+# Get google scholar results # DON'T RUN SCRIPT TOO MANY TIMES - MIGHT GET SHUT OUT OF GOOGLE SERVER
 ##############################
 
 # Loop through each page - until no results found
-my @starts = range(0, 10, 10);
+my @starts = range(0, 200, 10);
 
 # Create arrays to store the overall list of titles and a list for each google scholar page
 my @currentPageTitles = ();
 my @titles = ();
 
 foreach my $start(@starts){
+	
+	# Wait random number of seconds - between 10 and 30 seconds - trying to not get stopped by google
+	sleep (int(rand(21)) + 10);
 	
 	# Build the URL for the google scholar webpage
 	my $url = "\"https://scholar.google.co.uk/scholar?as_viz=1&as_q=$all&as_epq=$exactPhrase&as_oq=$atLeastOne&as_eq=$without&as_occt=$where";
@@ -217,6 +253,10 @@ foreach my $start(@starts){
 	@titles = (@titles, @currentPageTitles);
 }
 
-for(my $i = 0; $i < scalar(@titles); $i++){
-	print "$titles[$i]\n\n";
-}
+########################################
+# Print the titles into an output file #
+########################################
+
+# Open the output file
+my $output = $firstArg;
+printTitlesIntoOutputFile($output, \@titles);
