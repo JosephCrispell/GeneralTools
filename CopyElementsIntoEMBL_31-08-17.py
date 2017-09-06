@@ -239,6 +239,12 @@ def readAndPrintEMBLInsertingFeatures(EMBL, output, features, orderedKeys):
 			# Remove the end of line character
 			line = line.rstrip()
 		
+			# Check the format of the locus tag in the line - Damien's advice
+			if re.search(r"/locus_tag=\"MB(.*)\"", line):
+				line = line.replace("\"MB", "\"Mb")
+			if re.search(r"/locus_tag=\"(.*)C\"", line):
+				line = line.replace("C\"", "c\"")
+		
 			# Check if found sequence block
 			if foundSequence == False and line.startswith("SQ") == True:
 				foundSequence = True

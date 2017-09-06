@@ -70,7 +70,8 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 ################################
 
 # Note deme structure to use
-demeStructure <- 1
+demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme", "6Deme", "8Deme")
+demeStructure <- demeStructures[2]
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -90,153 +91,271 @@ selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, select
 ##################
 
 # Options
-equalOrVaryingPopSizes <- "equal"
+equalOrVaryingPopSizes <- "equal" # "equal" or "varying"
+relaxedOrStrict <- "relaxed" # "strict" or "relaxed"
+chainLength <- 100000000
 
-# Create an array of file lines and add in each necessary block
-fileLines <- startBuildingOutputFileLines()
+# Note the constant site counts file name
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_01-08-2017.txt", sep="")
 
-# Add Sequenced block
-fileLines <- addSequenceBlock(fileLines, selectedIsolateInfo)
-
-# Add constant site counts block
-file <- paste(path, "vcfFiles/", "constantSiteCounts_01-08-2017.txt", sep="")
-fileLines <- addConstantSiteCountsBlock(fileLines, file)
-
-# Add sampling dates block
-fileLines <- addTipDateBlock(fileLines, selectedIsolateInfo)
-
-# Add deme assignment block
-fileLines <- addDemeAssignmentBlock(fileLines, selectedIsolateInfo)
-
-# Add substitution model block
-fileLines <- addSubstitutionModelBlock(fileLines)
-
-# Add migration model block
-fileLines <- addMigrationModelBlock(fileLines, demeStructure, initialValue=0.1)
-
-# Add Prior distributions block
-fileLines <- addPriorsBlock(fileLines)
-
-# Add Tree likelihood block
-fileLines <- addTreeLikelihoodBlock(fileLines)
-
-# Add Migration rate likelihood block
-fileLines <- addMigrationRateLikelihoodBlock(fileLines)
-
-# Add Beast settings block
-
-######################
-# Print out XML file #
-######################
-
-writeXMLFile(fileLines, path, demeStructure, equalOrVaryingPopSizes, date)
+# Build the XML file
+buildXMLFile(demeStructure, equalOrVaryingPopSizes, paste(path, "BASTA/", sep=""), date,
+             constantSiteCountsFile, selectedIsolateInfo, chainLength, relaxedOrStrict)
 
 #############
 # FUNCTIONS #
 #############
 
-addBeastSettingsBlock <- function(fileLines){
+buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes, path, date, 
+                         constantSiteCountsFile, isolateInfo, chainLength, relaxedOrStrict){
   
-  fileLines[length(fileLines) + 1] <- ""
-  fileLines[length(fileLines) + 1] <- "\t<!-- BEAST run settings -->
-  fileLines[length(fileLines) + 1] <- "\t<run spec="MCMC" id="mcmc" chainLength="100000000" storeEvery="100000">
-  fileLines[length(fileLines) + 1] <- ""    
-  fileLines[length(fileLines) + 1] <- "\t\t    <!-- initialize tree at random according to StCoal  -->
-  fileLines[length(fileLines) + 1] <- "\t\t    <init spec='StructuredCoalescentMultiTypeTreeVolz' id='tree'>
-  fileLines[length(fileLines) + 1] <- "\t\t\t      <migrationModelVolz spec='MigrationModelVolz'>
-  fileLines[length(fileLines) + 1] <- "\t\t\t\t        <rateMatrix spec='RealParameter' value="0.1 0.1 0.1 0.1 0.1 0.1" dimension="6"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t\t          <popSizes spec='RealParameter' value="1.0" dimension="3"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t            </migrationModelVolz>
-  fileLines[length(fileLines) + 1] <- "\t\t\t            <trait idref='typeTraitSet'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t              <trait idref='timeTraitSet'/>
-  fileLines[length(fileLines) + 1] <- "\t\t                </init>
-  fileLines[length(fileLines) + 1] <- ""                
-  fileLines[length(fileLines) + 1] <- "\t\t                <state>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                <stateNode idref="tree"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                  <stateNode idref="rateMatrix"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                    <!--stateNode idref="rateMatrixFlags"/-->
-  fileLines[length(fileLines) + 1] <- "\t\t\t                      <stateNode idref="popSizes"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                        <stateNode idref="mutationRate"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                          <stateNode idref="hky.kappa"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                           <stateNode idref="hky.freq"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                              </state>
-  fileLines[length(fileLines) + 1] <- ""                              
-  fileLines[length(fileLines) + 1] <- "\t\t                              <distribution spec='CompoundDistribution' id='posterior'>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                <distribution idref="treeLikelihood1"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                  <distribution idref='treePrior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                    <distribution idref="parameterPriors"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                      </distribution>
-  fileLines[length(fileLines) + 1] <- ""                                      
-  fileLines[length(fileLines) + 1] <- "\t\t                                      <!-- Parameter scaling operators: HERE YOU CAN CHANGE THE WEIGHTINGS OF PARAMETERS BASED UPON HOW WELL THEY@RE BEING ESTIMATED -->
-  fileLines[length(fileLines) + 1] <- "\t\t                                      <operator spec='ScaleOperator' id='RateScaler'
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter="@rateMatrix" degreesOfFreedom="6"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      scaleFactor="0.8" weight="10">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="ScaleOperator" id="PopSizeScaler"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter="@popSizes" scaleAll="True" degreesOfFreedom="1"
-  fileLines[length(fileLines) + 1] <- "\t\t \t                                     scaleFactor="0.8" weight="2">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="ScaleOperator" id="muRateScaler"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter="@mutationRate"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      scaleFactor="0.8" weight="2">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec='ScaleOperator' id='kappaScaler'
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter="@hky.kappa"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      scaleFactor="0.8" weight="0.1">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="DeltaExchangeOperator" id="freqExchanger"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter="@hky.freq"
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      delta="0.01" weight="0.3">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <!-- BSVS -->
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <!--operator spec='BitFlipOperator' id='bitFlipOperator'
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                      parameter='@rateMatrixFlags' weight="1">
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </operator-->
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <!-- Multi-type tree operators -->
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec='TypedSubtreeExchangeVolz' id='STX' weight="10" multiTypeTree="@tree" migrationModel="@migModel"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="TypedWilsonBaldingVolz" id="TWB" weight="10" multiTypeTree="@tree" migrationModel="@migModel" alpha="0.2"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="MultiTypeUniformVolz" id="MTU" weight="10" multiTypeTree="@tree" includeRoot="true" rootScaleFactor="0.9"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <operator spec="MultiTypeTreeScaleVolz" id="MTTS2" weight="10" multiTypeTree="@tree" scaleFactor="0.98" useOldTreeScaler="true"/>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <!-- Posterior Log to File -->
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <logger logEvery="10000" fileName="3Demes_EqualPopSizes_07-02-17.log">
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <model idref='posterior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="posterior"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="treeLikelihood1"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log spec='TreeRootTypeLoggerVolz' structuredCoalescentTreeDensityVolz='@treePrior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log spec='MigrationModelLoggerVolz' migrationModel='@migModel'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                       <log spec='MigrationCountsLoggerVolz' density='@treePrior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="mutationRate"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="hky.kappa"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="hky.freq"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log spec='beast.evolution.tree.TreeHeightLogger' tree='@tree'/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </logger>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <!-- Posterior Tree Log to File -->
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <logger logEvery="10000" fileName="3Demes_EqualPopSizes_07-02-17.trees" mode="tree">
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                       <log idref="treePrior"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </logger>
-  fileLines[length(fileLines) + 1] <- ""                                        
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <!-- Posterior Log to Screen -->
-  fileLines[length(fileLines) + 1] <- "\t\t                                        <logger logEvery="10000">
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <model idref='posterior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="posterior"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="treeLikelihood1"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log spec='TreeRootTypeLoggerVolz' structuredCoalescentTreeDensityVolz='@treePrior'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <!--log spec='MigrationModelLoggerVolz' migrationModel='@migModel'/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log spec='MigrationCountsLoggerVolz' density='@treePrior'/-->
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                       <log idref="mutationRate"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                        <log idref="hky.kappa"/>
-  fileLines[length(fileLines) + 1] <- "\t\t\t                                       <ESS spec='ESS' name='log' arg="@rateMatrix"/>
-  fileLines[length(fileLines) + 1] <- "\t\t                                        </logger>     
+  # Note the output XML name
+  outputFileName <- paste(getDemeInfo(demeStructure, "Name"), "_",
+                          equalOrVaryingPopSizes, "_", relaxedOrStrict,
+                          "_", date, sep="")
+  
+  # Create a directory for the output file
+  dir.create(paste(path, "/", outputFileName, sep=""))
+  
+  # Create an array of file lines and add in each necessary block
+  fileLines <- startBuildingOutputFileLines()
+  
+  # Add Sequenced block
+  fileLines <- addSequenceBlock(fileLines, selectedIsolateInfo)
+  
+  # Add distribution block - if relaxed
+  if(relaxedOrStrict == "relaxed"){
+    fileLines <- addDistributionBlock(fileLines)
+  }
+  
+  # Add constant site counts block
+  fileLines <- addConstantSiteCountsBlock(fileLines, constantSiteCountsFile)
+  
+  # Add sampling dates block
+  fileLines <- addTipDateBlock(fileLines, selectedIsolateInfo)
+  
+  # Add deme assignment block
+  fileLines <- addDemeAssignmentBlock(fileLines, selectedIsolateInfo)
+  
+  # Add substitution model block
+  fileLines <- addSubstitutionModelBlock(fileLines, isolateInfo, relaxedOrStrict)
+  
+  # Add branch rates model - if relaxed
+  if(relaxedOrStrict == "relaxed"){
+    fileLines <- addBranchRateModelBlock(fileLines)
+  }
+  
+  # Add migration model block
+  fileLines <- addMigrationModelBlock(fileLines, demeStructure, initialValue=0.1)
+  
+  # Add Prior distributions block
+  fileLines <- addPriorsBlock(fileLines, demeStructure, relaxedOrStrict)
+  
+  # Add Tree likelihood block
+  fileLines <- addTreeLikelihoodBlock(fileLines, relaxedOrStrict)
+  
+  # Add Migration rate likelihood block
+  fileLines <- addMigrationRateLikelihoodBlock(fileLines)
+  
+  # Add Beast settings block
+  fileLines <- addBeastSettingsBlock(fileLines, demeStructure,
+                                     equalOrVaryingPopSizes == "varying", outputFileName,
+                                     initialValue = 0.1, chainLength, relaxedOrStrict)
+  
+  # Add the end to the XML file
+  fileLines <- addEnd(fileLines)
+  
+  # Write the file out
+  writeXMLFile(fileLines, paste(path, outputFileName, "/", outputFileName, ".xml", sep=""))
+}
+
+addEnd <- function(fileLines){
   fileLines[length(fileLines) + 1] <- ""                                       
-  fileLines[length(fileLines) + 1] <- "\t                                        </run>
+  fileLines[length(fileLines) + 1] <- "</beast>"
+  
+  return(fileLines)
+}
+
+addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, outputFileName,
+                                  initialValue, chainLength, relaxedOrStrict){
+  
+  # Get the migration rate values
+  migrationRateValues <- getMigrationModelValues(demeStructure, initialValue)
+  migrationRateValuesAsString <- paste(migrationRateValues, collapse=" ")
+  nValuesEstimated <- length(which(migrationRateValues != 0))
+
+  # Note the number of demes
+  nDemes <- getDemeInfo(demeStructure, "NumberDemes")
+  
+  # Note whether the population sizes are equal of varying
+  scaleAll <- "True"
+  degreesOfFreedom <- 1
+  if(varyingPopSizes == TRUE){
+    scaleAll <- "False"
+    degreesOfFreedom <- nDemes
+  }
+  
+  # Note sampling frequency
+  sampleEvery <- chainLength / 10000
+  
+  # Stop R shortening numbers using exponential notation
+  options(scipen=100)
+  
+  # Write the text for the block
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t<!-- BEAST run settings -->"
+  fileLines[length(fileLines) + 1] <- paste("\t<run spec=\"MCMC\" id=\"mcmc\" chainLength=\"",
+                                            chainLength, "\" storeEvery=\"",
+                                            sampleEvery, "\">", sep="")
+  fileLines[length(fileLines) + 1] <- ""    
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- initialize tree at random according to StCoal  -->"
+  fileLines[length(fileLines) + 1] <- "\t\t<init spec='StructuredCoalescentMultiTypeTreeVolz' id='tree'>"
+  fileLines[length(fileLines) + 1] <- paste("\t\t\t<migrationModelVolz spec='MigrationModelVolz' nTypes=\"",
+                                            nDemes, "\">", sep="")
+  fileLines[length(fileLines) + 1] <- paste("\t\t\t\t<rateMatrix spec='RealParameter' value=\"",
+                                            migrationRateValuesAsString, "\" dimension=\"",
+                                            length(migrationRateValues), "\"/>", sep="")
+  fileLines[length(fileLines) + 1] <- paste("\t\t\t\t<popSizes spec='RealParameter' value=\"1.0\" dimension=\"", 
+                                            nDemes, "\"/>", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\t</migrationModelVolz>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<trait idref='typeTraitSet'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<trait idref='timeTraitSet'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</init>"
+  fileLines[length(fileLines) + 1] <- ""                
+  fileLines[length(fileLines) + 1] <- "\t\t<state>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"tree\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"rateMatrix\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"rateMatrixFlags\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"popSizes\"/>"
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"mutationRate\"/>"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"ucedMean\"/>"
+    fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"expRateCategories\"/>"
+  }
+  
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"hky.kappa\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<stateNode idref=\"hky.freq\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</state>"
+  fileLines[length(fileLines) + 1] <- ""                              
+  fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='CompoundDistribution' id='posterior'>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<distribution idref=\"treeLikelihood1\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<distribution idref='treePrior'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<distribution idref=\"parameterPriors\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
+  fileLines[length(fileLines) + 1] <- ""                                      
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- Parameter scaling operators: HERE YOU CAN CHANGE THE WEIGHTINGS OF PARAMETERS BASED UPON HOW WELL THEY@RE BEING ESTIMATED -->"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='ScaleOperator' id='RateScaler'"
+  fileLines[length(fileLines) + 1] <- paste("\t\t\tparameter=\"@rateMatrix\" degreesOfFreedom=\"", 
+                                            nValuesEstimated, "\"", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"10\">"
+  fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  fileLines[length(fileLines) + 1] <- ""                                        
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"ScaleOperator\" id=\"PopSizeScaler\""
+  fileLines[length(fileLines) + 1] <- paste("\t\t\tparameter=\"@popSizes\" scaleAll=\"",
+                                            scaleAll, "\" degreesOfFreedom=\"",
+                                            degreesOfFreedom, "\"", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"2\">"
+  fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  fileLines[length(fileLines) + 1] <- ""                                        
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"ScaleOperator\" id=\"muRateScaler\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@mutationRate\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"2\">"
+    fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"ScaleOperator\" id=\"ucedMeanScaler\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@ucedMean\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.5\" weight=\"2\">"
+    fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+    fileLines[length(fileLines) + 1] <- ""  
+    fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"IntRandomWalkOperator\" id=\"ExpCategoriesRandomWalk\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
+    fileLines[length(fileLines) + 1] <- "\t\t\twindowSize=\"1\" weight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+    fileLines[length(fileLines) + 1] <- ""  
+    fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"SwapOperator\" id=\"ExpCategoriesSwapOperator\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tintparameter=\"@expRateCategories\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+    fileLines[length(fileLines) + 1] <- ""  
+    fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"UniformOperator\" id=\"ExpCategoriesUniform\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  }
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='ScaleOperator' id='kappaScaler'"
+  fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@hky.kappa\""
+  fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"0.1\">"
+  fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  fileLines[length(fileLines) + 1] <- ""                                        
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"DeltaExchangeOperator\" id=\"freqExchanger\""
+  fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@hky.freq\""
+  fileLines[length(fileLines) + 1] <- "\t\t\tdelta=\"0.01\" weight=\"0.3\">"
+  fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- BSVS -->"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='BitFlipOperator' id='bitFlipOperator'"
+  fileLines[length(fileLines) + 1] <- "\t\t\tparameter='@rateMatrixFlags' weight=\"1\">"
+  fileLines[length(fileLines) + 1] <- "\t\t</operator>"
+  fileLines[length(fileLines) + 1] <- ""
+  
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- Multi-type tree operators -->"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='TypedSubtreeExchangeVolz' id='STX' weight=\"10\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"TypedWilsonBaldingVolz\" id=\"TWB\" weight=\"10\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\" alpha=\"0.2\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeUniformVolz\" id=\"MTU\" weight=\"10\" multiTypeTree=\"@tree\" includeRoot=\"true\" rootScaleFactor=\"0.9\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeTreeScaleVolz\" id=\"MTTS2\" weight=\"10\" multiTypeTree=\"@tree\" scaleFactor=\"0.98\" useOldTreeScaler=\"true\"/>"
+  fileLines[length(fileLines) + 1] <- ""                                       
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- Posterior Log to File -->"
+  fileLines[length(fileLines) + 1] <- paste("\t\t<logger logEvery=\"",
+                                            sampleEvery, "\" fileName=\"", 
+                                            outputFileName, ".log", "\">", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\t<model idref='posterior'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"posterior\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"treeLikelihood1\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log spec='TreeRootTypeLoggerVolz' structuredCoalescentTreeDensityVolz='@treePrior'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log spec='MigrationModelLoggerVolz' migrationModel='@migModel'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log spec='MigrationCountsLoggerVolz' density='@treePrior'/>"
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"mutationRate\"/>"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"ucedMean\"/>"
+    fileLines[length(fileLines) + 1] <- "\t\t\t<log id='rateStat' spec='beast.evolution.branchratemodel.RateStatistic' tree='@tree' branchratemodel='@ExponentialRelaxedClock'/>"
+  }
+  
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"hky.kappa\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log spec='beast.evolution.tree.TreeHeightLogger' tree='@tree'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</logger>"
+  fileLines[length(fileLines) + 1] <- ""                                        
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- Posterior Tree Log to File -->"
+  fileLines[length(fileLines) + 1] <- paste("\t\t<logger logEvery=\"",
+                                            sampleEvery, "\" fileName=\"",
+                                            outputFileName, ".trees", "\" mode=\"tree\">", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"treePrior\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</logger>"
+  fileLines[length(fileLines) + 1] <- ""                                        
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- Posterior Log to Screen -->"
+  fileLines[length(fileLines) + 1] <- paste("\t\t<logger logEvery=\"",
+                                            sampleEvery, "\">", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t\t<model idref='posterior'/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"posterior\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"treeLikelihood1\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log spec='TreeRootTypeLoggerVolz' structuredCoalescentTreeDensityVolz='@treePrior'/>"
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"mutationRate\"/>"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"ucedMean\"/>"
+  }
+  fileLines[length(fileLines) + 1] <- "\t\t\t<log idref=\"hky.kappa\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<ESS spec='ESS' name='log' arg=\"@rateMatrix\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t</logger>"     
+  fileLines[length(fileLines) + 1] <- ""                                       
+  fileLines[length(fileLines) + 1] <- "\t</run>"
+  
+  options(scipen=0)
+  
+  return(fileLines)
 }
 
 addMigrationRateLikelihoodBlock <- function(fileLines){
@@ -250,27 +369,36 @@ addMigrationRateLikelihoodBlock <- function(fileLines){
   return(fileLines)
 }
 
-addTreeLikelihoodBlock <- function(fileLines){
+addTreeLikelihoodBlock <- function(fileLines, relaxedOrStrict){
   
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t<!-- Probability of sequence data given tree  -->"
   fileLines[length(fileLines) + 1] <- "\t<input spec='TreeLikelihood' id=\"treeLikelihood1\">"
   fileLines[length(fileLines) + 1] <- "\t\t<data idref=\"alignment\"/>"
   fileLines[length(fileLines) + 1] <- "\t\t<tree idref=\"tree\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<siteModel idref='siteModel'/>"  
+  fileLines[length(fileLines) + 1] <- "\t\t<siteModel idref='siteModel'/>"
+  if(relaxedOrStrict == "relaxed"){
+    fileLines[length(fileLines) + 1] <- "\t\t<branchRateModel idref='ExponentialRelaxedClock'/>"
+  }
   fileLines[length(fileLines) + 1] <- "\t</input>"
   
   return(fileLines)
 }
 
-addPriorsBlock <- function(fileLines){
+addPriorsBlock <- function(fileLines, demeStructure, relaxedOrStrict){
   
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t<!-- Parameter priors -->"
   fileLines[length(fileLines) + 1] <- "\t<input spec='CompoundDistribution' id='parameterPriors'>"
-  fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior' x=\"@mutationRate\">"
-  fileLines[length(fileLines) + 1] <- "\t\t\t<distr spec='LogNormalDistributionModel' M=\"-15.0\" S=\"6.0\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior' x=\"@mutationRate\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\t<distr spec='LogNormalDistributionModel' M=\"-15.0\" S=\"6.0\"/>"
+    fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior' id=\"UCMeanRatePrior\" x=\"@ucedMean\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\t<distr spec='Exponential' mean=\"0.0000001\"/>"
+    fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
+  }
   fileLines[length(fileLines) + 1] <- ""        
   fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior' x=\"@hky.kappa\">"
   fileLines[length(fileLines) + 1] <- "\t\t\t<distr spec='LogNormalDistributionModel' M=\"0.0\" S=\"4.0\"/>"
@@ -283,7 +411,15 @@ addPriorsBlock <- function(fileLines){
   fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior' x=\"@popSizes\">"
   fileLines[length(fileLines) + 1] <- "\t\t\t<distr spec=\"LogNormalDistributionModel\"  M=\"0.0\" S=\"1.0\"/>"
   fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
-  fileLines[length(fileLines) + 1] <- ""                      
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- BSSVS -->"
+  fileLines[length(fileLines) + 1] <- "\t\t<distribution spec='beast.math.distributions.Prior'>"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<x spec='Sum' arg=\"@rateMatrixFlags\"/>"
+  fileLines[length(fileLines) + 1] <- paste("\t\t\t<distr spec='Poisson' lambda=\"",
+                                            getDemeInfo(demeStructure, "NumberDemes"),
+                                            "\"/>", sep="")
+  fileLines[length(fileLines) + 1] <- "\t\t</distribution>"
+  fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t</input>"
   
   return(fileLines)
@@ -293,21 +429,33 @@ addMigrationModelBlock <- function(fileLines, demeStructure, initialValue){
   
   # Get the migration rate values
   migrationRateValues <- getMigrationModelValues(demeStructure, initialValue)
-  migrationRateValues <- paste(migrationRateValues, collapse=" ")
+  migrationRateValuesString <- paste(migrationRateValues, collapse=" ")
+  rateFlags <- paste(tolower(migrationRateValues != 0), collapse=" ")
   
+  nDemes <- getDemeInfo(demeStructure, "NumberDemes")
+ 
   # Add in the file lines
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t<!-- Migration model -->"
-  fileLines[length(fileLines) + 1] <- "\t<migrationModelVolz spec='MigrationModelVolz' id='migModel'>"
+  fileLines[length(fileLines) + 1] <- paste("\t<migrationModelVolz spec='MigrationModelVolz' nTypes=\"",
+                                            nDemes, 
+                                            "\" id='migModel'>", sep="")
   fileLines[length(fileLines) + 1] <- paste("\t\t<rateMatrix spec='RealParameter' value=\"",
-                                            migrationRateValues, 
+                                            migrationRateValuesString, 
                                             "\" dimension=\"", 
                                             length(migrationRateValues),
                                             "\" id=\"rateMatrix\"/>", sep="")
+  
+  fileLines[length(fileLines) + 1] <- "\t\t<!-- BSSVS -->"
+  fileLines[length(fileLines) + 1] <- paste("\t\t<rateMatrixFlags spec='BooleanParameter' value=\"",
+                                            rateFlags,
+                                            "\" dimension=\"",
+                                            length(migrationRateValues),
+                                            "\" id=\"rateMatrixFlags\"/>", sep="")
   fileLines[length(fileLines) + 1] <- ""      
   fileLines[length(fileLines) + 1] <- "\t\t<!-- Fixed Population Size -->"
   fileLines[length(fileLines) + 1] <- paste("\t\t<popSizes spec='RealParameter' value=\"1.0\" dimension=\"",
-                                            getDemeInfo(demeStructure, "NumberDemes"),
+                                            nDemes,
                                             "\" id=\"popSizes\"/>", sep="")
   fileLines[length(fileLines) + 1] <- "\t</migrationModelVolz>"
   
@@ -328,44 +476,63 @@ getDemeInfo <- function(deme, infoWanted){
   
   # Define the information for each Deme
   demeInfo <- list(
-    list("Name"="3Deme-outerIsBoth", "NumberDemes"=3, 
-         "MigrationRateMatrix"=matrix(c(NA, 1, 1,
-                                        1, NA, 1,
-                                        1, 1, NA), byrow=TRUE, nrow=3)),
-    list("Name"="3Deme-outerIsCattle", "NumberDemes"=3, 
-         "MigrationRateMatrix"=matrix(c(NA, 1, 1,
-                                        1, NA, 1,
-                                        1, 1, NA), byrow=TRUE, nrow=3)),
-    list("Name"="4Deme", "NumberDemes"=4, 
-         "MigrationRateMatrix"=matrix(c(NA, 1, 0, 1,
-                                        1, NA, 1, 0,
-                                        0, 1, NA, 1,
-                                        1, 0, 1, NA),
-                                      byrow=TRUE, nrow=4)),
-    list("Name"="6Deme", "NumberDemes"=6, 
-         "MigrationRateMatrix"=matrix(c(NA, 1, 0, 0, 1, 1,
-                                        1, NA, 1, 1, 0, 0,
-                                        0, 1, NA, 1, 1, 0,
-                                        0, 1, 1, NA, 0, 1,
-                                        1, 0, 1, 0, NA, 1,
-                                        1, 0, 0, 1, 1, NA),
-                                      byrow=TRUE, nrow=6)),
-    list("Name"="8Deme", "NumberDemes"=8, 
-         "MigrationRateMatrix"=matrix(c(NA, 1, 1, 0, 0, 0, 1, 0,
-                                        1, NA, 0, 1, 0, 0, 0, 1,
-                                        1, 0, NA, 1, 1, 0, 0, 0,
-                                        0, 1, 1, NA, 0, 1, 0, 0,
-                                        0, 0, 1, 0, NA, 1, 1, 0,
-                                        0, 0, 0, 1, 1, NA, 0, 1,
-                                        1, 0, 0, 0, 1, 0, NA, 1,
-                                        0, 1, 0, 0, 0, 1, 1, NA),
-                                      byrow=TRUE, nrow=8))
+    "2Deme" = list("Name"="2Deme", "NumberDemes"=2, 
+                   "MigrationRateMatrix"=matrix(c(NA, 1,
+                                                  1, NA), byrow=TRUE, nrow=2)),
+    "3Deme-outerIsBoth" = list("Name"="3Deme-outerIsBoth", "NumberDemes"=3, 
+                               "MigrationRateMatrix"=matrix(c(NA, 1, 1,
+                                                              1, NA, 1,
+                                                              1, 1, NA), 
+                                                            byrow=TRUE, nrow=3)),
+    "3Deme-outerIsCattle" = list("Name"="3Deme-outerIsCattle", "NumberDemes"=3, 
+                                 "MigrationRateMatrix"=matrix(c(NA, 1, 1,
+                                                                1, NA, 1,
+                                                                1, 1, NA), 
+                                                              byrow=TRUE, nrow=3)),
+    "4Deme" = list("Name"="4Deme", "NumberDemes"=4, 
+                   "MigrationRateMatrix"=matrix(c(NA, 1, 0, 1,
+                                                  1, NA, 1, 0,
+                                                  0, 1, NA, 1,
+                                                  1, 0, 1, NA),
+                                                byrow=TRUE, nrow=4)),
+    "6Deme" = list("Name"="6Deme", "NumberDemes"=6, 
+                   "MigrationRateMatrix"=matrix(c(NA, 1, 0, 0, 1, 1,
+                                                  1, NA, 1, 1, 0, 0,
+                                                  0, 1, NA, 1, 1, 0,
+                                                  0, 1, 1, NA, 0, 1,
+                                                  1, 0, 1, 0, NA, 1,
+                                                  1, 0, 0, 1, 1, NA),
+                                                byrow=TRUE, nrow=6)),
+    "8Deme" = list("Name"="8Deme", "NumberDemes"=8, 
+                   "MigrationRateMatrix"=matrix(c(NA, 1, 1, 0, 0, 0, 1, 0,
+                                                  1, NA, 0, 1, 0, 0, 0, 1,
+                                                  1, 0, NA, 1, 1, 0, 0, 0,
+                                                  0, 1, 1, NA, 0, 1, 0, 0,
+                                                  0, 0, 1, 0, NA, 1, 1, 0,
+                                                  0, 0, 0, 1, 1, NA, 0, 1,
+                                                  1, 0, 0, 0, 1, 0, NA, 1,
+                                                  0, 1, 0, 0, 0, 1, 1, NA),
+                                                byrow=TRUE, nrow=8))
   )
   
   return(demeInfo[[deme]][[infoWanted]])
 }
 
-addSubstitutionModelBlock <- function(fileLines, isolateInfo){
+addBranchRateModelBlock <- function(fileLines){
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t<!-- Branch rate model -->"
+  fileLines[length(fileLines) + 1] <- "\t<branchRateModel id=\"ExponentialRelaxedClock\" spec=\"beast.evolution.branchratemodel.UCRelaxedClockModel\" numberOfDiscreteRates=\"10\" tree=\"@tree\">"
+  fileLines[length(fileLines) + 1] <- "\t\t<parameter name='clock.rate' id='ucedMean' value=\"0.00000005\"  upper=\"0.0000003\" lower=\"0.00000001\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<Exponential id=\"Exponential\" name=\"distr\">"
+  fileLines[length(fileLines) + 1] <- "\t\t\t<parameter id=\"UCExpLambda\" name=\"mean\">1.0</parameter>"
+  fileLines[length(fileLines) + 1] <- "\t\t</Exponential>"
+  fileLines[length(fileLines) + 1] <- "\t\t<rateCategories spec='parameter.IntegerParameter' id='expRateCategories' value=\"1\" dimension='10' estimate='true'/>"
+  fileLines[length(fileLines) + 1] <- "\t</branchRateModel>"
+  
+  return(fileLines)
+}
+
+addSubstitutionModelBlock <- function(fileLines, isolateInfo, relaxedOrStrict){
   
   # Calculate the average site frequencies
   baseFrequencies <- calculateAverageBaseFrequencies(isolateInfo$Sequence)
@@ -376,8 +543,10 @@ addSubstitutionModelBlock <- function(fileLines, isolateInfo){
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t<!-- Substitution model (HKY) -->"
   fileLines[length(fileLines) + 1] <- "\t<siteModel spec=\"SiteModel\" id=\"siteModel\">"
-  fileLines[length(fileLines) + 1] <- "\t\t<!-- Strong rate prior -->"
-  fileLines[length(fileLines) + 1] <- "\t\t<mutationRate spec='RealParameter' id=\"mutationRate\" value=\"0.00000005\"  upper=\"0.0000003\" lower=\"0.00000001\"/>"
+  if(relaxedOrStrict == "strict"){
+    fileLines[length(fileLines) + 1] <- "\t\t<!-- Strong rate prior -->"
+    fileLines[length(fileLines) + 1] <- "\t\t<mutationRate spec='RealParameter' id=\"mutationRate\" value=\"0.00000005\"  upper=\"0.0000003\" lower=\"0.00000001\"/>"
+  }
   fileLines[length(fileLines) + 1] <- "\t\t<substModel spec=\"HKY\">"
   fileLines[length(fileLines) + 1] <- "\t\t\t<kappa spec='RealParameter' id=\"hky.kappa\" value=\"1.0\"/>"
   fileLines[length(fileLines) + 1] <- "\t\t\t<frequencies estimate=\"false\" spec='Frequencies'>"
@@ -407,15 +576,13 @@ calculateAverageBaseFrequencies <- function(sequences){
   return(frequencies)
 }
 
-writeXMLFile <- function(fileLines, path, demeStructure, equalOrVaryingPopSizes, date){
+writeXMLFile <- function(fileLines, outputFileName){
   
   # Note the deme structure names
   demeStructureName <- getDemeInfo(demeStructure, "Name")
   
   # Open an output file
-  fileName <- paste(path, "BASTA/", "xmlInput_", demeStructureName, "_",
-                    equalOrVaryingPopSizes, "_", date, ".xml", sep="")
-  fileConnection <- file(fileName)
+  fileConnection <- file(outputFileName)
   
   # Print out file lines
   writeLines(fileLines, fileConnection)
@@ -513,6 +680,14 @@ addConstantSiteCountsBlock <- function(fileLines, constantSiteCountFile){
   return(fileLines)
 }
 
+addDistributionBlock <- function(fileLines){
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t<!-- Initialise distributions to refer to -->"
+  fileLines[length(fileLines) + 1] <- "\t<map name=\"Exponential\" >beast.math.distributions.Exponential</map>"
+  
+  return(fileLines)
+}
+
 addSequenceBlock <- function(fileLines, isolateInfo){
   
   fileLines[length(fileLines) + 1] <- "\t<!-- Sequence Alignment -->"
@@ -596,9 +771,12 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
   
   # Initialise the assignment
   output <- NULL
-  
-  # Build the assignment with the input information - specific for the deme
-  if(demeStructure == 1){
+
+  # Build the assignment with the input information - specific for the deme structure
+  if(demeStructure == "2Deme"){
+    output <- badgerOrCow
+    
+  }else if(demeStructure == "3Deme-outerIsBoth"){
     
     if(inOrOut == "inner"){
       output <- paste(badgerOrCow, inOrOut, sep="-")
@@ -606,7 +784,7 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
       output <- "outer"
     }
     
-  }else if(demeStructure == 2){
+  }else if(demeStructure == "3Deme-outerIsCattle"){
     
     if(badgerOrCow == "badger"){
       output <- paste(badgerOrCow, inOrOut, sep="-")
@@ -614,11 +792,11 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
       output <- badgerOrCow
     }
 
-  }else if(demeStructure == 3){
+  }else if(demeStructure == "4Deme"){
     
     output <- paste(badgerOrCow, inOrOut, sep="-")
     
-  }else if(demeStructure == 4){
+  }else if(demeStructure == "6Deme"){
     
     if(inOrOut == "inner"){
       output <- paste(badgerOrCow, inOrOut, sep="-")
@@ -626,12 +804,12 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
       output <- paste(badgerOrCow, inOrOut, eastOrWest, sep="-")
     }
     
-  }else if(demeStructure == 5){
+  }else if(demeStructure == "8Deme"){
     
     output <- paste(badgerOrCow, inOrOut, eastOrWest, sep="-")
     
   }else{
-    cat(paste("Deme number provided isn't recognised:", demeStructure, "\n"))
+    cat(paste("Deme structure name provided isn't recognised:", demeStructure, "\n"))
   }
   
   return(output)
