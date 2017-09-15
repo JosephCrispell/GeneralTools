@@ -2,14 +2,14 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/"
 
 #####################################
 # Read in variant position coverage #
 #####################################
 
 # Read in the genome coverage file
-coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_01-08-2017.txt", sep="")
+coverageFile <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_10-09-2017.txt", sep="")
 coverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column
@@ -23,14 +23,14 @@ coverage$Isolate <- parseIsolateColumn(coverage$Isolate)
 file <- paste(substr(coverageFile, 1, nchar(coverageFile) - 4), ".pdf", sep="")
 pdf(file)
 
-plot(coverage$VariantPositionCoverage, pch=20, xaxt="n", xlab="", bty="n", las=1,
+plot(coverage$VariantPositionCoverage, pch=20, xaxt="n", xlab="", las=1, 
      col=ifelse(grepl(x=coverage$Isolate, pattern="WB"), rgb(1,0,0, 0.5),
                 rgb(0,0,1, 0.5)),
      ylab="Proportion", main="Variant Position Coverage")
 
 text(y=coverage$VariantPositionCoverage,
      x=1:nrow(coverage),
-     labels = coverage$Isolate, cex=0.1,
+     labels = coverage$Isolate, cex=0.3, xpd=TRUE,
      col=ifelse(coverage$VariantPositionCoverage < 0.75, rgb(0,0,0, 1), rgb(0,0,0, 0)))
 
 coverage$Species <- "COW"

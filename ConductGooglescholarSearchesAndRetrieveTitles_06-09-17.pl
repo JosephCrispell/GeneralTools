@@ -29,6 +29,8 @@ use strict;
 
 # Notes:
 # <h3 class="gs_rt"> is the class for each result. Title is found between >...</a>
+# Think about changing ip - system('ipconfig /release & ipconfig /renew');
+# Think about changing user or cycling through random users
 
 ###########################
 # Check if help requested #
@@ -203,51 +205,62 @@ sub printTitlesIntoOutputFile{
 #########################
 
 # Set the user - needed to access google scholar
-my $user = "JosephCrispell";
+my $user = "Joseph Crispell"
 
 # Set the search criteria
 my $all = "";
 my $exactPhrase = "Whole Genome Sequencing";
-my $atLeastOne = "tuberculosis mycobacterium";
+my $atLeastOne = "bacteria bacterium";
 my $without = "";
-my $where = "title"; # "any" or "title"
-my $minYear = 2000;
+my $where = "any"; # "any" or "title"
+my $minYear = 2007;
 my $maxYear = 2017;
 my $start = 0;
 
 ##############################
-# Get google scholar results # DON'T RUN SCRIPT TOO MANY TIMES - MIGHT GET SHUT OUT OF GOOGLE SERVER
+# Get google scholar results # DOESN'T WORK FOR LARGE NUMBERS OF REQUESTS - LEADS TO BLOCKING OF IP???
 ##############################
 
 # Loop through each page - until no results found
-my @starts = range(0, 200, 10);
+my @starts = range(0, 1000, 10);
 
 # Create arrays to store the overall list of titles and a list for each google scholar page
 my @currentPageTitles = ();
 my @titles = ();
 
+# Initialise variables for parsing the search results
+my $url;
+my $page;
+my @containers;
+
+# Intialise variables for sleeping
+my $secondsToSleep;
+
 foreach my $start(@starts){
 	
-	# Wait random number of seconds - between 10 and 30 seconds - trying to not get stopped by google
-	sleep (int(rand(21)) + 10);
+	# Wait random number of seconds - between 10 and 60 seconds - trying to not get stopped by google
+	$secondsToSleep = int(rand(51)) + 10;
+	print "Sleeping $secondsToSleep seconds...\n";
+	sleep($secondsToSleep);
 	
 	# Build the URL for the google scholar webpage
-	my $url = "\"https://scholar.google.co.uk/scholar?as_viz=1&as_q=$all&as_epq=$exactPhrase&as_oq=$atLeastOne&as_eq=$without&as_occt=$where";
+	$url = "\"https://scholar.google.co.uk/scholar?as_viz=1&as_q=$all&as_epq=$exactPhrase&as_oq=$atLeastOne&as_eq=$without&as_occt=$where";
 	$url .= "&as_sauthors=&as_publication=&as_ylo=$minYear&as_yhi=$maxYear&start=$start&btnG=&hl=en&&as_std=1,5%2C5\"";
 	
 	# Get the html formatted text from the URL
-	my $page = `wget -U $user $url -O -`;
+	$page = `wget -U $user $url -O -`;
 	
 	# Get the article containers
-	my @containers = getArticleContainers($page);
+	@containers = getArticleContainers($page);
 
 	# Check that there were results on the current page
 	if(scalar(@containers) == 0){
+		print "Found the last page of results! Started at $start result\n";
 		last;
 	}
 	
 	# Get the titles from the article containers
-	my @currentPageTitles = getArticleTitles(\@containers);
+	@currentPageTitles = getArticleTitles(\@containers);
 	
 	# Combine the titles from the current page with the growing list for all the google scholar pages
 	@titles = (@titles, @currentPageTitles);

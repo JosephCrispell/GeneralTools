@@ -7,21 +7,21 @@
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/vcfFiles/"
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/PoorlyMappedBadgers/"
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/MislabelledBadgers/"
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/vcfFiles/"
 newZealand <- grepl(x=path, pattern="NewZealand")
 
 # Read in the variant site coverage and alternate allele support files
-coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_25-07-2017.txt", sep="")
+coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_10-09-2017.txt", sep="")
 siteInfoCoverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE,
-                               comment.char="~")
-altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_25-07-2017.txt", sep="")
+                               comment.char="~", check.names=FALSE)
+altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_10-09-2017.txt", sep="")
 siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=FALSE,
-                                 comment.char="~")
+                                 comment.char="~", check.names=FALSE)
 
 # Read in the genome coverage information
-genomeCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_25-07-2017.txt", sep="")
+genomeCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_10-09-2017.txt", sep="")
 genomeCoverage <- read.table(genomeCoverageFile, header=TRUE, stringsAsFactors=FALSE,
-                             comment.char="~")
+                             comment.char="~", check.names=FALSE)
 
 # Parse the VCF file names in the columns
 isolateIDs <- getIDsFromFileNames(colnames(siteInfoAltSupport)[-1], newZealand)
@@ -94,9 +94,9 @@ plot(x=nHeterozygousSites, y=genomeCoverage$PercentageCoverage,
 text(x=nHeterozygousSites, y=genomeCoverage$MeanDepth,
      labels = genomeCoverage$IsolateID, cex=0.5,
      col=ifelse(nHeterozygousSites > 100, rgb(0,0,0, 1), rgb(0,0,0, 0)))
-if(newZealand == FALSE){
-  legend("topright", legend=c("Badger", "Cow"), text.col=c("red", "blue"), bty="n")
-}
+#if(newZealand == FALSE){
+#  legend("topright", legend=c("Badger", "Cow"), text.col=c("red", "blue"), bty="n")
+#}
 
 plot(x=nHeterozygousSites, y=genomeCoverage$MeanDepth,
      pch=20, bty="n", las=1,
@@ -107,25 +107,25 @@ plot(x=nHeterozygousSites, y=genomeCoverage$MeanDepth,
 text(x=nHeterozygousSites, y=genomeCoverage$MeanDepth,
      labels = genomeCoverage$IsolateID, cex=0.5,
      col=ifelse(nHeterozygousSites > 100, rgb(0,0,0, 1), rgb(0,0,0, 0)))
-if(newZealand == FALSE){
-  legend("topright", legend=c("Badger", "Cow"), text.col=c("red", "blue"), bty="n")
-}
+#if(newZealand == FALSE){
+#  legend("topright", legend=c("Badger", "Cow"), text.col=c("red", "blue"), bty="n")
+#}
   
 # Note the species of the isolates
-if(newZealand == FALSE){
-  species <- getSpecies(isolateIDs)
-  
-  boxplot(nHeterozygousSites ~ species, 
-          ylab="Number of heterozygous sites", border=c("red", "blue"),
-          names=c("Badgers", "Cattle"), outline=FALSE,
-          las=1, pch=20, ylim=range(nHeterozygousSites))
-  
-  stripchart(nHeterozygousSites ~ species,
-             vertical = TRUE, jitter=0.2,
-             method = "jitter", add = TRUE, pch = 21,
-             col = c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)),
-             bg=rgb(0.5,0.5,0.5, 0.5))
-}
+#if(newZealand == FALSE){
+#  species <- getSpecies(isolateIDs)
+#  
+#  boxplot(nHeterozygousSites ~ species, 
+#          ylab="Number of heterozygous sites", border=c("red", "blue"),
+#          names=c("Badgers", "Cattle"), outline=FALSE,
+#          las=1, pch=20, ylim=range(nHeterozygousSites))
+#  
+#  stripchart(nHeterozygousSites ~ species,
+#             vertical = TRUE, jitter=0.2,
+#             method = "jitter", add = TRUE, pch = 21,
+#             col = c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)),
+#             bg=rgb(0.5,0.5,0.5, 0.5))
+#}
 
 dev.off()
 

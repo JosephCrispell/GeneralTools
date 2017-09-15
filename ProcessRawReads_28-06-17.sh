@@ -87,6 +87,7 @@ function checkToolsAreInstalled {
 	if ! type "blastn" > /dev/null 2>&1;
 	then
 		echo -e "\e[0;31m ERROR! A necessary program is not accessible: \e[0m""blastn"
+		echo "	(Note if previously installed blastn with suao apt-get install ncbi-blast+. Remove using sudo apt-get remove ncbi-blast+)"
 		echo "	Download tar file from: http://mirrors.vbi.vt.edu/mirrors/ftp.ncbi.nih.gov/blast/executables/LATEST/"
 		echo "	Follow the instructions available here: https://www.ncbi.nlm.nih.gov/books/NBK52640/"
 		echo "	tar zxvpf ncbi-blast+2.2.29-x64-linux.tar.gz"

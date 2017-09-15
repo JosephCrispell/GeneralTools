@@ -71,7 +71,7 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 
 # Note deme structure to use
 demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme", "6Deme", "8Deme")
-demeStructure <- demeStructures[2]
+demeStructure <- demeStructures[6]
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -93,7 +93,7 @@ selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, select
 # Options
 equalOrVaryingPopSizes <- "equal" # "equal" or "varying"
 relaxedOrStrict <- "relaxed" # "strict" or "relaxed"
-chainLength <- 100000000
+chainLength <- 200000000
 
 # Note the constant site counts file name
 constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_01-08-2017.txt", sep="")
