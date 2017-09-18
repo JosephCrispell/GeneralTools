@@ -22,8 +22,8 @@ use Term::ANSIColor; # For Coloured Print Statements
 # #CHROM	POS	Sample 1:Sample 2:Sample 3:...      \t
 # 0			1	2
 #				|
-#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		;
-# 						0 	1  		2 	3				5				6		7		8	
+#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		RefAlt	;
+# 						0 	1  		2 	3				4				5		6		7			8
 
 # Fasta File Structure
 # 	2 18					noSamples sequenceLength
@@ -162,11 +162,11 @@ if($verbose eq "-help" || $verbose eq ""){
 			}	
 
 			# Extract the Current Sample SNP Position Details:
-			# DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result
-			# 0		1		2	3				4				5		6		7
+			# DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result	RefAlt
+			# 0		1		2	3				4				5		6		7		8
 			@isolateSnpDetails = split /\;/, $isolateInfo[$pos];
 		
-			if($isolateSnpDetails[7] eq "Pass"){
+			if($isolateSnpDetails[7] ne "Fail"){
 				$isolateSequences[$pos][$sequencePos] = $isolateSnpDetails[4]; # If passed print out allele called
 			}else{
 				$isolateSequences[$pos][$sequencePos] = "N"; # If failed insert an "N" - no information available for this particular site
