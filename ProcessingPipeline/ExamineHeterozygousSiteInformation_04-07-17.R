@@ -78,8 +78,8 @@ for(i in 1:length(isolateIDs)){
          x=siteInfoCoverage[badRows, isolate],
          pch=20, cex=2, 
          col=rgb(1,0,0, 0.5))
-#  legend(x=70, y=0.9, bty="n", cex=0.75,
-#         legend=paste("n = ", nHeterozygousSites[i], "\nCoverage = ", 
+  legend(x=70, y=0.9, bty="n", cex=0.75,
+         legend=paste("n = ", nHeterozygousSites[i], sep=""))# "\nCoverage = ", 
 #                      round(genomeCoverage[which(genomeCoverage$IsolateID == isolate),
 #                                           "PercentageCoverage"], digits=2), sep=""))
 }

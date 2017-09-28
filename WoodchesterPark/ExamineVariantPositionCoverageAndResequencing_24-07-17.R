@@ -9,10 +9,10 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 ###############################################################
 
 # Read in the genome coverage file
-file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_25-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_27-09-2017.txt", sep="")
 before <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
-file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_RESCUED_25-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_RESCUED_27-09-2017.txt", sep="")
 after <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Parse the Isolate columns

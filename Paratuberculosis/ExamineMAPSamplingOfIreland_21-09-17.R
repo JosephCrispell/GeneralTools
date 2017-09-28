@@ -13,7 +13,7 @@ library(rgeos) # Polygon centroids
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Paratuberculosis/"
 
 # Read in the shape file
-file <- paste(path, "CountyPolygonCoordsROI_CountyBoundaries/counties.shp", sep="")
+file <- paste(path, "CountyPolygonCoords/ROI_CountyBoundaries/counties.shp", sep="")
 countyBorders <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
 
 # Get the coordinates of the counties
