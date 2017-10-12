@@ -23,7 +23,6 @@ if [ ! $1 == "" ]
 then
 	COMMIT=$1
 fi
-echo $COMMIT
 
 #####################
 # Update Repository #
@@ -39,13 +38,12 @@ do
 	echo "Added "$FILE" to git repository."
 done
 
+#### Remove any files that have been deleted
+git add . -A
+
 #### Commit changes to repository
 TODAY=`date +%d-%m-%Y`
 git commit -m $COMMIT" "$TODAY
-
-#### Remove any files that have been deleted
-git add . -A
-git commit -m "Automated File Removal "$TODAY
 
 #### Push any changes in repository to git server
 git push
