@@ -49,7 +49,7 @@ for(row in 1:nrow(breakdownInfo)){
 ####################################
 
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
               sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
@@ -108,7 +108,7 @@ breakdownsTable <- breakdownsTable[breakdownsTable$cbConfFin == "Y", ]
 # Spatial plot - shape by herd type and size by the number of samples
 expand <- 15000
 
-file <- paste(path, "BreakdownSampling_10-08-17.pdf")
+file <- paste(path, "BreakdownSampling_02-10-17.pdf")
 pdf(file, height=14, width=21)
 
 par(mfrow=c(2,3))
@@ -142,7 +142,7 @@ legend(x=365909, y=216377, legend=c(200, 100, 10, 1), pch=c(17, 17, 17, 17), bty
        pt.cex=log(c(200, 100, 10, 1))+1, col=rgb(0,0,0, 0.9), 
        y.intersp=2.5, x.intersp=2, cex=2)
 legend("bottomleft", legend=c("COUNT", "MANSION", "HOLDING"), pch=c(17,15, 19), 
-       col=c("red", "black", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
+       col=c("red", "blue", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
        bty="n", cex=1.5)
 
 ### CULTURE
@@ -173,7 +173,7 @@ legend(x=365909, y=216377, legend=c(25, 10, 5, 1), pch=c(17, 17, 17, 17), bty="n
        pt.cex=(c(25, 10, 5, 1)/4)+1, col=rgb(0,0,0, 0.9),
        y.intersp=2.5, x.intersp=2, cex=2)
 legend("bottomleft", legend=c("COUNT", "MANSION", "HOLDING"), pch=c(17, 15, 19), 
-       col=c("red", "black", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
+       col=c("red", "blue", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
        bty="n", cex=1.5)
 
 ### SAMPLING
@@ -204,7 +204,7 @@ legend(x=365909, y=216377, legend=c(4, 3, 2, 1), pch=c(17, 17, 17, 17), bty="n",
        pt.cex=c(4, 3, 2, 1)*1.5, col=rgb(0,0,0, 0.9),
        y.intersp=2.5, x.intersp=2, cex=2)
 legend("bottomleft", legend=c("COUNT", "MANSION", "HOLDING"), pch=c(17, 15, 19), 
-       col=c("red", "black", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
+       col=c("red", "blue", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
        bty="n", cex=1.5)
 
 
@@ -242,11 +242,102 @@ plotCountsThroughTime(column="NSequencedIsolates", columnInCounts="NSequenced",
 dev.off()
 
 
+######################################
+# Dynamic figure with space and time #
+######################################
 
+### BREAKDOWNS
 
+prefix <- paste(path, "CattleTestData/DynamicGiff/BreakdownSampling_%02d.png", sep="")
+png(file=prefix, height=480, width=960)
+par(mfrow=c(1,2))
+par(mar=c(6.1,6.1,7.1,2.1)) # bottom, left, top and right
 
+breakdownsTable$Year <- format(breakdownsTable$Date, "%Y")
 
+for(year in 1997:2012){
+  
+  # Get the data subset for current year
+  subset <- breakdownsTable[breakdownsTable$Year == year, ]
+  
+  ### Breakdowns
+  
+  holdingColour <- rgb(1,0,0, 0.5)
+  
+  # Create empty plot
+  plot(1, type="n", yaxt="n", xaxt="n", bty="n",
+       xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand),
+       ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand),
+       xlab=paste((expand * 2) / 1000, "km"), ylab=paste((expand * 2) / 1000, "km"),
+       main="Locations of Cattle Reactors", cex.lab=2, cex.main=2)
+  
+  # Add year
+  text(x=badgerCentre[1] + expand, y=badgerCentre[2] + expand, labels=year, xpd=TRUE, cex=2)
+  
+  # Add point for Woodchester Mansion
+  points(x=badgerCentre[1], y=badgerCentre[2], pch=15, col="blue", cex=3)
+  
+  # Add points for each cattle herd
+  points(x=locationInfo$x, y=locationInfo$y, 
+         col=rgb(0,0,0, 0.2),
+         pch=19, cex=1)
+  points(x=subset$X, y=subset$Y, 
+         col=holdingColour,
+         pch=17, cex=log(subset$cbNumCattleReactors)+1)
+  
+  # Add Legend
+  legend(x=365909, y=216377, legend=c(200, 100, 10, 1), pch=c(17, 17, 17, 17), bty="n", 
+         pt.cex=log(c(200, 100, 10, 1))+1, col=rgb(0,0,0, 0.9), 
+         y.intersp=2.5, x.intersp=2, cex=1.05, xpd=TRUE)
+  legend("bottomleft", legend=c("COUNT", "MANSION", "HOLDING"), pch=c(17,15, 19), 
+         col=c("red", "blue", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
+         bty="n", cex=0.75)
+  
+  ### SAMPLING
+  
+  holdingColour <- rgb(1,0,0, 0.75)
+  
+  # Create empty plot
+  plot(1, type="n", yaxt="n", xaxt="n", bty="n",
+       xlim=c(badgerCentre[1] - expand, badgerCentre[1] + expand),
+       ylim=c(badgerCentre[2] - expand, badgerCentre[2] + expand),
+       xlab=paste((expand * 2) / 1000, "km"), ylab=paste((expand * 2) / 1000, "km"),
+       main="Locations of Sequenced Isolates", cex.lab=2, cex.main=2)
+  
+  # Add year
+  text(x=badgerCentre[1] + expand, y=badgerCentre[2] + expand, labels=year, xpd=TRUE, cex=2)
+  
+  # Add point for Woodchester Mansion
+  points(x=badgerCentre[1], y=badgerCentre[2], pch=15, col="blue", cex=3)
+  
+  # Add points for each cattle herd
+  points(x=locationInfo$x, y=locationInfo$y, 
+         col=rgb(0,0,0, 0.2),
+         pch=19, cex=1)
+  points(x=subset$X, y=subset$Y, 
+         col=holdingColour,
+         pch=17,
+         cex=subset$NSequencedIsolates*1.5)
+  
+  # Add Legend
+  legend(x=365909, y=216377, legend=c(4, 3, 2, 1), pch=c(17, 17, 17, 17), bty="n", 
+         pt.cex=c(4, 3, 2, 1)*1.5, col=rgb(0,0,0, 0.9),
+         y.intersp=2.5, x.intersp=2, cex=1.05, xpd=TRUE)
+  legend("bottomleft", legend=c("COUNT", "MANSION", "HOLDING"), pch=c(17, 15, 19), 
+         col=c("red", "blue", "dimgrey"), text.col=c("red", "blue", "dimgrey"),
+         bty="n", cex=0.75)
+}
 
+# Close the PNG file output
+dev.off()
+
+# Bind the PNG files into a Giff
+dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_13-07-17\\CattleTestData\\"
+system(paste("magick -delay 120 ", '\"', dosPath, "DynamicGiff/BreakdownSampling_*.png\" \"",
+             dosPath, "DynamicGiff/BreakdownSampling.gif\"", sep=""))
+
+# Delete the PNG files
+unlink(paste(path, "CattleTestData/DynamicGiff/BreakdownSampling_*.png", sep=""))
 
 #############
 # FUNCTIONS #

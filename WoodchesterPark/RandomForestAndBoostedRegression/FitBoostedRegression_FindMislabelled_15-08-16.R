@@ -10,7 +10,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Read Genetic V.s Epi Distances table
 file <- paste(path, "Mislabelling/Badger-RF-BR/",
-              "geneticVsEpiTable_01-08-2017.txt", sep="")
+              "geneticVsEpiTable_28-09-2017.txt", sep="")
 table <- read.table(file, header=TRUE)
 
 #################################
@@ -22,7 +22,7 @@ threshold <- 15
 
 # Open an output PDF file
 file <- paste(path, "Mislabelling/Badger-RF-BR/",
-              "GeneticDistanceDistribution_01-08-17.pdf", sep="")
+              "GeneticDistanceDistribution_28-09-2017.pdf", sep="")
 pdf(file)
 
 par(mfrow=c(1,1))
@@ -42,7 +42,7 @@ hist(table[table$GeneticDistance < threshold, ]$Genetic,
      las=1,
      xlab="Genetic Distance (SNPs)",
      main=paste("Inter-Isolate Genetic Distance Distribution < ",
-                threshold, "15 SNPs", sep=""))
+                threshold, "SNPs", sep=""))
 
 dev.off()
 
@@ -118,7 +118,7 @@ meanValues <- examinePredictedVersusActual(table, badgerInfo)
 
 # Open an output PDF file
 file <- paste(path, "Mislabelling/Badger-RF-BR/",
-              "FittedBoostedRegression_01-08-17.pdf", sep="")
+              "FittedBoostedRegression_28-09-17.pdf", sep="")
 pdf(file)
 
 par(mfrow=c(1,1))
@@ -155,7 +155,7 @@ outputTable$WBID <- rownames(outputTable)
 # Re-order table columns
 outputTable <- outputTable[, c(ncol(outputTable), ncol(outputTable)-1, 1:(ncol(outputTable) - 2))]
 file <- paste(path, "Mislabelling/Badger-RF-BR/", 
-              "MeanValuesTable_BoostedRegression_01-08-2017.csv", sep="")
+              "MeanValuesTable_BoostedRegression_28-09-2017.csv", sep="")
 write.table(outputTable, file, quote=FALSE, row.names=FALSE, sep=",")
 
 

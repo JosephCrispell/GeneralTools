@@ -8,7 +8,7 @@ use Term::ANSIColor; # For Coloured Print Statements
 # For sites, of isolates, that fail filtering - this script looks back at data available to rescue an allele where possible
 
 # Command Line Run Structure:
-# perl RescueVariantPositionInfo.pl nIsolateAlleleMustBePresentIn highQualityBaseDepthThreshold alleleSupportThreshold filtered.txt
+# perl RescueVariantPositionInfo.pl nIsolatesAlleleMustBePresentIn highQualityBaseDepthThreshold alleleSupportThreshold filtered.txt
 
 # For each Variant Position within the filtered file the following information is available:
 # #CHROM	POS	Sample 1:Sample 2:Sample 3:...      \t

@@ -6,7 +6,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_09-08-2017.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_02-10-2017.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -29,14 +29,14 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 par(mar=c(2.5,2.5,3,2.1)) # bottom, left, top and right
 
 # Get an array of all the clusters
-clusters <- sort(names(clusterTables))[-8] # Remove last cluster - sampled animals
+clusters <- sort(names(clusterTables))[-5] # Remove last cluster - sampled animals
 
 # Note the centre of the badger territories
 badgerCentre <- c(381761.7, 200964.3)
 expand <- c(15000, 5000)
 
 # Open a pdf
-file <- paste(path, "sampledAnimalMovementsInClusters_09-08-17.pdf", sep="")
+file <- paste(path, "sampledAnimalMovementsInClusters_02-10-17.pdf", sep="")
 pdf(file, height=7, width=14)
 
 # Set plotting window dimensions
@@ -57,7 +57,7 @@ dev.off()
 # Plot the animal movements for each year
 for(cluster in clusters){
   
-  plotMovementsOfAnimalsInClusterInEachYear(cluster, clusterTables, expand)
+  plotMovementsOfAnimalsInClusterInEachYear(cluster, clusterTables, expand, alpha=0.75)
 }
 
 
@@ -65,7 +65,8 @@ for(cluster in clusters){
 # Functions - Dynamic #
 #######################
 
-plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, expand){
+plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, expand,
+                                                      alpha){
   
   
   # Get the life history information for the current cluster
@@ -101,14 +102,14 @@ plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, ex
     mtext(side=3, text=year, line=0.5, at=badgerCentre[1] - expand[1], cex=2)
     
     # Plot the movements of the animals in current year
-    plotMovementsOfAnimalsInClusterInCurrentYear(year, clusterTable)
+    plotMovementsOfAnimalsInClusterInCurrentYear(year, clusterTable, alpha)
     addLegend()
     
     # Create empty plot
     createEmptyPlot(badgerCentre, expand[2], cluster)
 
     # Plot the movements of the animals in current year
-    plotMovementsOfAnimalsInClusterInCurrentYear(year, clusterTable)
+    plotMovementsOfAnimalsInClusterInCurrentYear(year, clusterTable, alpha)
   }
   
   # Close the PNG file output
@@ -124,7 +125,7 @@ plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, ex
   unlink(paste(path, "MovementGiff/Movements_cluster-", cluster, "_*.png", sep=""))
 }
 
-plotMovementsOfAnimalsInClusterInCurrentYear <- function(year, clusterTable){
+plotMovementsOfAnimalsInClusterInCurrentYear <- function(year, clusterTable, alpha){
   
   # Examine each animal in the table - add movements where appropriate
   for(row in 1:nrow(clusterTable)){
@@ -135,11 +136,11 @@ plotMovementsOfAnimalsInClusterInCurrentYear <- function(year, clusterTable){
     }
     
     # Plot the current animals movements for current year
-    plotMovementsOfAnimalInCurrentYear(year, row, clusterTable)
+    plotMovementsOfAnimalInCurrentYear(year, row, clusterTable, alpha)
   }
 }
 
-plotMovementsOfAnimalInCurrentYear <- function(year, row, clusterTable){
+plotMovementsOfAnimalInCurrentYear <- function(year, row, clusterTable, alpha){
   
   # Get the movement information for the current animal
   movementDates <- as.Date(strsplit(
@@ -701,7 +702,6 @@ removeMovementsWhereLocationAreUnknownOrIfToSlaughter <- function(table, premise
   
   return(table)
 }
-
 
 combineTwoTables <- function(tableA, tableB){
   

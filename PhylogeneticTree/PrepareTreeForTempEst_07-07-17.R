@@ -15,7 +15,7 @@ badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the cattle isolate metadata
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 #######################################
@@ -23,7 +23,7 @@ cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 #######################################
 
 # Read in the newick tree
-file <- paste(path, "vcfFiles/", "mlTree-rescued_01-08-2017.tree", sep="")
+file <- paste(path, "vcfFiles/", "mlTree_29-09-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Get a list of the isolates at the tips
@@ -42,7 +42,7 @@ tree$tip.label <- addSamplingTimes(isolates, badgerInfo, cattleInfo)
 
 # Create a file
 file <- paste(path, "vcfFiles/",
-              "mlTree-rescued_DatedTips_01-08-17.tree", sep="")
+              "mlTree-rescued_DatedTips_02-10-17.tree", sep="")
 
 write.tree(tree, file = file, append = FALSE,
            digits = 20, tree.names = FALSE)
@@ -52,9 +52,9 @@ write.tree(tree, file = file, append = FALSE,
 ######################
 
 # Set node number
-nodeDefiningBastaClade <- 209
+nodeDefiningBastaClade <- 301
 
-pdf(paste(path, "vcfFiles/mlTree_BastaClade_01-08-17.pdf", sep=""))
+pdf(paste(path, "vcfFiles/mlTree_BastaClade_02-10-17.pdf", sep=""))
 
 branchColours <- defineBranchColoursOfClade(tree, nodeDefiningBastaClade,
                                             "black", "lightgrey")
@@ -69,7 +69,7 @@ dev.off()
 bastaClade <- extract.clade(tree, nodeDefiningBastaClade)
 
 # Print out tree
-file <- paste(path, "vcfFiles/", "mlTree-rescued_BASTAClade_DatedTips_01-08-17.tree", sep="")
+file <- paste(path, "vcfFiles/", "mlTree-rescued_BASTAClade_DatedTips_02-10-17.tree", sep="")
 
 write.tree(bastaClade, file = file, append = FALSE,
            digits = 20, tree.names = FALSE)

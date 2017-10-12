@@ -37,7 +37,7 @@ socialGroupColumns <- noteColumnsOfSocialGroups(colnames(counts[["ProportionInfe
 
 # Get list of isolate IDs from fasta file
 fileName <- paste(path, "vcfFiles/", 
-                  "sequences_Prox-10_01-08-2017.fasta", sep="")
+                  "sequences_Prox-10_29-09-2017.fasta", sep="")
 isolateIDs <- getSequenceIDsFromFastaFile(fileName)
 
 # Read in the isolate metadata
@@ -74,44 +74,113 @@ groupsCentroidsPerYear <- list()
 
 # Open a PDF file
 file <- paste(path, "BadgerCaptureData/", 
-              "PropInfected_SocialGroups_2000-11_10-08-17.pdf", sep="")
-pdf(file, height=11.69, width=8.27)
+              "PropInfected_SocialGroups_2000-11_02-10-17.pdf", sep="")
 
-par(mfrow=c(6,2))
+# Plot on single figure
+plotPropInfectedInSocialGroupsInSingleFigure(path, file, years, shapeFileNames, badgerGroupCentroid,
+                                             expand, counts, socialGroupColumns)
 
-# Examine the territories in each year
-for(i in 1:length(years)){
-  
-  year <- years[i]
-  shapeFileName <- shapeFileNames[i]
-  
-  # Read in the shape file
-  file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/", 
-                "Baitmarking ", year, "/", shapeFileName, sep="")
-  territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
-  
-  # Extract the polygon coordinates
-  territoryCoords <- getPolygonCoords(territories)
-  
-  # Get the full social group names
-  territoryIDs <- getSocialGroupNames(territories@data, year)
-  
-  # Assign polygons to their social group names
-  socialGroupTerritories <- assignTerritoriesToSocialGroupNames(territoryIDs, territoryCoords)
-  
-  # Calculate the territory centroids - mean X and Y
-  territoryCentroids <- calculateTerritoryCentroids(territoryCoords, territoryIDs)
-  
-  # Plot the group territories - colour by proportion infected
-  plotTerritories(socialGroupTerritories, badgerGroupCentroid, expand, year,
-                  counts, socialGroupColumns, territoryCentroids)
-}
+# Plot as a giff
+plotPropInfectedInSocialGroupsInGiff(path, years, shapeFileNames, badgerGroupCentroid, expand, 
+                                     counts, socialGroupColumns)
 
-dev.off()
 
 #############
 # FUNCTIONS #
 #############
+
+plotPropInfectedInSocialGroupsInGiff <- function(path, years, shapeFileNames,
+                                                 badgerGroupCentroid, expand, 
+                                                 counts, socialGroupColumns){
+  # Open a png set - distuinguish by plot number
+  prefix <- paste(path, "BadgerCaptureData/PropInfected_SocialGroups_2000-11_Giff/SocialGroupSampling_%02d.png", sep="")
+  png(file=prefix, height=480, width=600)
+  
+  # Examine the territories in each year
+  for(i in 1:length(years)){
+    
+    year <- years[i]
+    shapeFileName <- shapeFileNames[i]
+    
+    # Read in the shape file
+    file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/", 
+                  "Baitmarking ", year, "/", shapeFileName, sep="")
+    territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
+    
+    # Extract the polygon coordinates
+    territoryCoords <- getPolygonCoords(territories)
+    
+    # Get the full social group names
+    territoryIDs <- getSocialGroupNames(territories@data, year)
+    
+    # Assign polygons to their social group names
+    socialGroupTerritories <- assignTerritoriesToSocialGroupNames(territoryIDs, territoryCoords)
+    
+    # Calculate the territory centroids - mean X and Y
+    territoryCentroids <- calculateTerritoryCentroids(territoryCoords, territoryIDs)
+    
+    # Plot the group territories - colour by proportion infected
+    plotTerritories(socialGroupTerritories, badgerGroupCentroid, expand, year,
+                    counts, socialGroupColumns, territoryCentroids)
+    
+    legend("bottomright", legend=c("Prop badgers infected",
+                                   "N. badgers", "N. Sampled"), 
+           text.col=c("grey25", "red", "blue"), bty="n")
+    
+    legend("bottom", legend=paste((expand * 2) / 1000, "km"), bty="n", cex=1.5)
+  }
+  
+  # Close the PNG file output
+  dev.off()
+  
+  # Bind the PNG files into a Giff
+  dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_13-07-17\\BadgerCaptureData\\"
+  system(paste("magick -delay 160 ", '\"', dosPath, "PropInfected_SocialGroups_2000-11_Giff\\SocialGroupSampling_*.png\" \"",
+               dosPath, "PropInfected_SocialGroups_2000-11_Giff\\SocialGroupSampling.gif\"", sep=""))
+  
+  # Delete the PNG files
+  unlink(paste(path, "BadgerCaptureData/PropInfected_SocialGroups_2000-11_Giff/SocialGroupSampling_*.png", sep=""))
+
+}
+
+plotPropInfectedInSocialGroupsInSingleFigure <- function(path, pdfFile, years, shapeFileNames,
+                                             badgerGroupCentroid, expand, 
+                                             counts, socialGroupColumns){
+  
+  pdf(pdfFile, height=11.69, width=8.27)
+  
+  par(mfrow=c(6,2))
+  
+  # Examine the territories in each year
+  for(i in 1:length(years)){
+    
+    year <- years[i]
+    shapeFileName <- shapeFileNames[i]
+    
+    # Read in the shape file
+    file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/", 
+                  "Baitmarking ", year, "/", shapeFileName, sep="")
+    territories <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
+    
+    # Extract the polygon coordinates
+    territoryCoords <- getPolygonCoords(territories)
+    
+    # Get the full social group names
+    territoryIDs <- getSocialGroupNames(territories@data, year)
+    
+    # Assign polygons to their social group names
+    socialGroupTerritories <- assignTerritoriesToSocialGroupNames(territoryIDs, territoryCoords)
+    
+    # Calculate the territory centroids - mean X and Y
+    territoryCentroids <- calculateTerritoryCentroids(territoryCoords, territoryIDs)
+    
+    # Plot the group territories - colour by proportion infected
+    plotTerritories(socialGroupTerritories, badgerGroupCentroid, expand, year,
+                    counts, socialGroupColumns, territoryCentroids)
+  }
+  
+  dev.off()
+}
 
 countNSamplesPerGroupPerYear <- function(metadata, counts){
   sampled <- counts[["Negative"]]

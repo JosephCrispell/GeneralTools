@@ -14,7 +14,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Read in the table
 file <- paste(path, "GeneticVsEpidemiologicalDistances/", 
-              "GeneticVsEpidemiologicalDistances_10-08-17.txt", sep="")
+              "GeneticVsEpidemiologicalDistances_02-10-17.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 ####################
@@ -52,7 +52,7 @@ isolateTattoos <- noteIsolateTattoos(file)
 badgerIsolates <- noteIsolatesAvailableForEachBadger(geneticVsEpi, isolateTattoos)
 
 # Note the isolate sequence quality
-file <- paste(path, "vcfFiles/", "sequences_Prox-10_01-08-2017.fasta", sep="")
+file <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
 isolatePropNs <- calculatePropotionNsForEachIsolate(file)
 
 # Select single isolate for each badger - based upon prop Ns

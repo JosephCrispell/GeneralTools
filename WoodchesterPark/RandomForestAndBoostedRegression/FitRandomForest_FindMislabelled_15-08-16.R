@@ -9,7 +9,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Read Genetic V.s Epi Distances table
 file <- paste(path, "Mislabelling/Badger-RF-BR/",
-              "geneticVsEpiTable_01-08-2017.txt", sep="")
+              "geneticVsEpiTable_28-09-2017.txt", sep="")
 table <- read.table(file, header=TRUE)
 
 #################################
@@ -131,7 +131,7 @@ meanValues <- examinePredictedVersusActual(table, badgerInfo)
 
 # Open an output PDF file
 file <- paste(path, "Mislabelling/Badger-RF-BR/",
-              "FittedRandomForest_01-08-17.pdf", sep="")
+              "FittedRandomForest_28-09-17.pdf", sep="")
 pdf(file)
 
 par(mfrow=c(1,1))
@@ -173,7 +173,7 @@ outputTable$WBID <- rownames(outputTable)
 # Re-order table columns
 outputTable <- outputTable[, c(ncol(outputTable), ncol(outputTable)-1, 1:(ncol(outputTable) - 2))]
 file <- paste(path, "Mislabelling/Badger-RF-BR/", 
-              "MeanValuesTable_RandomForest_01-08-2017.csv", sep="")
+              "MeanValuesTable_RandomForest_28-09-2017.csv", sep="")
 write.table(outputTable, file, quote=FALSE, row.names=FALSE, sep=",")
 
 #############

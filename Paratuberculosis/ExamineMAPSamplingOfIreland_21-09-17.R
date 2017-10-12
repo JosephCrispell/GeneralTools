@@ -3,7 +3,7 @@
 ##################
 
 library(maptools) # Read shape file
-library(rgeos) # Polygon centroids
+#slibrary(rgeos) # Polygon centroids
 
 ###################################
 # Read in ROI counties shape file # https://www.townlands.ie/page/download/

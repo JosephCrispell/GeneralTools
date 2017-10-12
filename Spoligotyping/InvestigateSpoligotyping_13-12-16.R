@@ -7,10 +7,10 @@ library(geiger) # For the tips function
 ####################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 # Read in the newick tree
-file <- paste(path, "InvestigatingCattleMislabelling/",
+file <- paste(path, "vcfFiles/",
               "mlTree_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.tree", sep="")
 tree <- read.tree(file=file)
 tips <- tree$tip.label
@@ -25,12 +25,12 @@ tree$edge.length <- tree$edge.length * fastaLength
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Badger Isolates
 file <- paste(path, "IsolateData/",
-              "BadgerInfo_08-04-15_LatLongs_XY.csv", sep="")
+              "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 badgerInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Initialise an array to store the tip spoligotypes

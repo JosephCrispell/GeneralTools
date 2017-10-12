@@ -19,7 +19,7 @@ library(gplots)
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/GeneticVsEpidemiologicalDistances/"
 
 # Read in the table
-file <- paste(path, "GeneticVsEpidemiologicalDistances_10-08-17.txt", sep="")
+file <- paste(path, "GeneticVsEpidemiologicalDistances_02-10-17.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 ####################
@@ -43,7 +43,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 ###############
 
 ###### Open a PDF
-file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_22-08-17.pdf", sep="")
+file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_02-10-17.pdf", sep="")
 pdf(file, height=10, width=10)
 
 par(mfrow=c(1,1))
@@ -1139,7 +1139,8 @@ plotEpidemiologicalMetricDistributionsWithMissingData <- function(table, fullNam
   marginSizes <- list(
     "BB" = 26,
     "CC" = 33,
-    "CB" = 22
+    "CB" = 22,
+    "BC" = 22
   )
   par(mar=c(0,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
   

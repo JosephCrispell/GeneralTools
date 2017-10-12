@@ -103,11 +103,11 @@ cphs <- noteLandParcelsAssociatedWithCPHs(landParcels@data)
 
 # Read in the newick tree
 file <- paste(path, "vcfFiles/",
-              "mlTree_01-08-2017.tree", sep="")
+              "mlTree_29-09-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Get a list of the isolates in the clade
-node <- 209
+node <- 301
 cladeTips <- tips(tree, node=node)
 
 ##########################################
@@ -128,7 +128,7 @@ badgerInfo <- badgerInfo[badgerInfo$WB_id %in% cladeTips, ]
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Select info only for cattle isolates in clade
@@ -143,15 +143,15 @@ sampledCPHs <- names(cphs)[names(cphs) %in% cattleInfo$CPH]
 
 # Define inner circle radius
 thresholdDistance <- 3500
-outerDistance <- 7300
+outerDistance <- 8100
 
 # Open a PDF
-file <- paste(path, "BASTA/", "DemeAssignmentDiagram_10-08-17.pdf", sep="")
+file <- paste(path, "BASTA/", "DemeAssignmentDiagram_02-10-17.pdf", sep="")
 pdf(file)
 
 # Find centre point of badger locations
 badgerCentre <- findBadgerGroupsCentre(groupsCentroidsPerYear)
-expand <- 7000
+expand <- 8000
 
 ##############################################
 # Plot the badger territories from all years #
@@ -208,7 +208,7 @@ text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
 ##############
 
 # Add legend
-legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("red", "blue"),
+legend("bottomright", legend=c("Badger", "Cow"), text.col=c("red", "blue"),
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5), col=c("red", "blue"))
 
 
@@ -282,7 +282,7 @@ text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
 ##############
 
 # Add legend
-legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("black", "black"),
+legend("bottomright", legend=c("Badger", "Cow"), text.col=c("black", "black"),
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5))
 
 
@@ -295,8 +295,8 @@ legend(x=387400, y=196500, legend=c("Badger", "Cow"), text.col=c("black", "black
 #####################################
 
 # Note the clades
-nodesDefiningClades <- c(364, 354, 322, 263, 216, 213) # Removed Clade 0 - outside BASTA clade
-cladeColours <- c("blue", "green", "cyan", "orange", "darkorchid4", "deeppink")
+nodesDefiningClades <- c(521, 305, 332, 382) # use nodelabels() to show node numbers
+cladeColours <- c("cyan", "pink", "green", "darkorchid4")
 isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
 
 # Note which CPHs are associated with which clusters
@@ -390,12 +390,11 @@ text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
 ##############
 
 # Add legend
-legend(x=387450, y=197000, legend=c("Badger", "Cow"), text.col=c("black", "black"),
+legend("bottomright", legend=c("Badger", "Cow"), text.col=c("black", "black"),
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5),
        col=c("black", "black"))
 
-legend(x=387150, y=196000, legend=c("Cluster-1","Cluster-2","Cluster-3",
-                                    "Cluster-4", "Cluster-5", "Cluster-6"),
+legend(x=387150, y=196000, legend=c("Cluster-0", "Cluster-1","Cluster-2","Cluster-3"),
        text.col=cladeColours, bty="n", cex=0.75)
 
 

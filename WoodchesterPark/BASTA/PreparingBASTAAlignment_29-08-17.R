@@ -2,7 +2,7 @@
 ## Alignment from main WP clade
 ## Sampling dates of associated animals
 ## Sampling locations of associated animals
-## Single isolates from the badgers involved (from within clade) - random or best quality
+## Single isolates from the badgers involved (from within clade) - best quality
 
 #############
 # Libraries #
@@ -24,15 +24,15 @@ date <- format(Sys.Date(), "%d-%m-%y")
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 # Read in the newick tree
-file <- paste(path, "vcfFiles/",  "mlTree_01-08-2017.tree", sep="")
-isolatesInClade <- getIsolatesInClade(file, node=209)
+file <- paste(path, "vcfFiles/",  "mlTree_29-09-2017.tree", sep="")
+isolatesInClade <- getIsolatesInClade(file, node=301)
 
 #############################
 # Read in Isolate Sequences #
 #############################
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/", "sequences_Prox-10_01-08-2017.fasta", sep="")
+file <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
 isolateSequences <- getIsolateSequences(file, isolatesInClade)
 
 ######################################
@@ -41,9 +41,10 @@ isolateSequences <- getIsolateSequences(file, isolatesInClade)
 
 # Note the sampling infor file names
 cattleInfoFile <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv",
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
               sep="")
-badgerInfoFile <- paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
+badgerInfoFile <- paste(path, "IsolateData/",
+                        "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 
 # Get Isolate sampling information
 isolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile, 
@@ -54,7 +55,7 @@ isolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile,
 ###################################
 
 # Read in genome coverage table
-file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_01-08-2017.txt", sep="")
+file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_RESCUED_29-09-2017.txt", sep="")
 isolateInfo <- getIsolateVariantPositionCoverage(file, isolateInfo)
 
 ####################################################
@@ -82,7 +83,7 @@ selectedIsolateInfo <- calculateDistanceToBadgerCentre(badgerCentre, selectedIso
 # Define inner circle radius
 innerDistance <- 3500
 
-# Select Deme structure # 3 outer=cattle, 3 outer=both, 4, 6, 8
+# Select Deme structure 
 selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, selectedIsolateInfo,
                                              innerDistance, badgerCentre)
 
@@ -91,12 +92,12 @@ selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, select
 ##################
 
 # Options
-equalOrVaryingPopSizes <- "equal" # "equal" or "varying"
+equalOrVaryingPopSizes <- "varying" # "equal" or "varying"
 relaxedOrStrict <- "relaxed" # "strict" or "relaxed"
 chainLength <- 200000000
 
 # Note the constant site counts file name
-constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_01-08-2017.txt", sep="")
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt", sep="")
 
 # Build the XML file
 buildXMLFile(demeStructure, equalOrVaryingPopSizes, paste(path, "BASTA/", sep=""), date,
@@ -903,7 +904,7 @@ getIsolateVariantPositionCoverage <- function(vpCoverageFile, isolateInfo){
     if(isolateInfo[row, "IsolateID"] %in% coverageInfo$Isolate){
       isolateInfo[row, "Coverage"] <- 
         coverageInfo[which(coverageInfo$Isolate == isolateInfo[row, "IsolateID"]),
-                     "VariantPositionCoverage"]
+                     "Coverage"]
     }
   }
   

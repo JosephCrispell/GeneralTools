@@ -12,14 +12,14 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Read in the newick tree
 file <- paste(path, "vcfFiles/",
-              "mlTree_01-08-2017.tree", sep="")
+              "mlTree_29-09-2017.tree", sep="")
 tree <- read.tree(file=file)
 
 # Drop badger beside reference - WB129 - THIS WILL MESS UP NODES DEFINING CLADES
 # tree <- drop.tip(tree, "WB129")
 
 # Convert Branch lengths to SNPs
-fastaLength <- 1366
+fastaLength <- 8893
 tree$edge.length <- tree$edge.length * fastaLength
 
 ##################################
@@ -27,7 +27,7 @@ tree$edge.length <- tree$edge.length * fastaLength
 ##################################
 
 file <- paste(path,"vcfFiles/",
-              "IsolateVariantPositionCoverage_01-08-2017.txt", sep="")
+              "IsolateVariantPositionCoverage_RESCUED_29-09-2017.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
 table$Isolate <- getIsolateIDFromFileNames(table$Isolate)
@@ -36,7 +36,7 @@ table$Isolate <- getIsolateIDFromFileNames(table$Isolate)
 # Plot the Phylogenetic Tree #
 ##############################
 
-file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_01-08-17.pdf")
+file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_02-10-17.pdf", sep="")
 pdf(file, height=10, width=10)
 
 # Set the margins
@@ -46,16 +46,16 @@ par(mar=c(0,0,0,0)) # Bottom, Left, Top, Right
 plotType <- "fan" # "phylogram", "cladogram", "fan", "unrooted", "radial"
 
 # Plot initial tree to find nodes defining clades
-# pdf(paste(path, "vcfFiles/", "test.pdf", sep=""), height=40, width=40)
+#pdf(paste(path, "vcfFiles/", "test.pdf", sep=""), height=40, width=40)
 # 
-# plot.phylo(tree, "fan")
-# nodelabels()
+#plot.phylo(tree, "fan")
+#nodelabels()
 # 
-# dev.off()
+#dev.off()
 
 # Define branch colours by clade
-nodesDefiningClades <- c(201, 364, 354, 322, 263, 216, 213) # use nodelabels() to show node numbers
-cladeColours <- c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink")
+nodesDefiningClades <- c(521, 305, 332, 382) # use nodelabels() to show node numbers
+cladeColours <- c("cyan", "pink", "green", "darkorchid4")
 branchColours <- defineBranchColoursOfClades(tree, nodesDefiningClades,
                                              cladeColours, "lightgrey")
 
@@ -75,9 +75,8 @@ nodelabels(node=1:length(tree$tip.label),
            col="dimgrey")
 
 # Add Legends
-text(x=140, y=-130, labels="Variant Position Coverage:", col="black", cex=1)
-addLegendForQuality("bottomright", 1)
-text(x=-113, y=-140, labels="Species:", col="black", cex=1)
+#text(x=140, y=-130, labels="Variant Position Coverage:", col="black", cex=1)
+#addLegendForQuality("bottomright", 1)
 legend("bottomleft", legend=c("Cow", "Badger"),
        pch=c(17, 16), cex=1, col=c("blue", "red"), 
        text.col=c("blue", "red"), bty='n')
@@ -88,13 +87,10 @@ points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3)
 text(x=5, y=-135, labels="50 SNPs", cex=1)
 
 # Add Clade labels
-text(x=153, y=52, labels="0", col=cladeColours[1], cex=2)
-text(x=100, y=-60, labels="1", col=cladeColours[2], cex=2)
-text(x=75, y=-105, labels="2", col=cladeColours[3], cex=2)
-text(x=-30, y=-115, labels="3", col=cladeColours[4], cex=2)
-text(x=-120, y=0, labels="4", col=cladeColours[5], cex=2)
-text(x=90, y=80, labels="5", col=cladeColours[6], cex=2)
-text(x=100, y=65, labels="6", col=cladeColours[7], cex=2)
+text(x=92.5, y=-82, labels="0", col=cladeColours[1], cex=2)
+text(x=90, y=80, labels="1", col=cladeColours[2], cex=2)
+text(x=19.5, y=128.5, labels="2", col=cladeColours[3], cex=2)
+text(x=-82, y=-95, labels="3", col=cladeColours[4], cex=2)
 
 ################################
 # Get the sampling information #
@@ -110,7 +106,7 @@ badgerIsolateLocations <- noteBadgerIsolateSamplingLocations(metadata)
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedTB1453-TB1456-TB1785.csv", sep="")
+              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Get the locations of each of the isolates
@@ -129,7 +125,7 @@ isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
 
 # Note the centre of the badger territories
 badgerCentre <- c(381761.7, 200964.3)
-expand <- 12000
+expand <- 7000
 
 # Create an empty plot
 par(mar=c(0,0,0,0))
@@ -174,11 +170,8 @@ legend("bottomleft", legend=c("CATTLE", "BADGERS"),
        text.col="black", bty='n')
 
 # Add the cluster numbers
-legend("bottomright", legend=addTextToArray("Cluster ", 0:6, ""),
+legend("bottomright", legend=addTextToArray("Cluster ", 0:3, ""),
        text.col=cladeColours, bty="n", cex=2)
-
-# Add Scale
-#legend("bottom", legend=paste(round(expand/1000, digits=2), "KM"), bty="n")
 
 dev.off()
 
@@ -190,7 +183,7 @@ dev.off()
 isolateClades <- noteCladesOfIsolates(tree, nodesDefiningClades)
 
 # Print out table
-file <- paste(path, "vcfFiles/", "clusters_01-08-17.csv", sep="")
+file <- paste(path, "vcfFiles/", "clusters_02-10-17.csv", sep="")
 write.table(isolateClades, file, quote=FALSE, sep=",", row.names=FALSE)
 
 #############
@@ -390,7 +383,7 @@ addLegendForQuality <- function(position, cex){
 getIsolateQuality <- function(table){
   isolateQuality <- list()
   for(i in 1:nrow(table)){
-    isolateQuality[[table[i, "Isolate"]]] <- table[i, "VariantPositionCoverage"]
+    isolateQuality[[table[i, "Isolate"]]] <- table[i, "Coverage"]
   }
   
   return(isolateQuality)
@@ -414,7 +407,7 @@ defineTipSizeBySequencingQuality <- function(tipLabels, isolateQuality){
 defineBranchColoursOfClades <- function(tree, nodesDefiningClades,
                                         CladeColours, defaultColour){
   branchColours <- rep(defaultColour, dim(tree$edge)[1])
-  for(i in 1:length(cladeColours)){
+  for(i in 1:length(nodesDefiningClades)){
     clade <- tips(tree, node=nodesDefiningClades[i])
     branchesInClades <- which.edge(tree, clade)
     branchColours[branchesInClades] <- cladeColours[i]

@@ -9,7 +9,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Set up the file name
 prefix <- paste(path, "geneticVsEpiTable_SHUFFLED_", sep="")
-date <- "01-08-2017"
+date <- "28-09-2017"
 
 # Initialise an array of shuffling proportions
 shufflingProps <- c("0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3", "0.35", "0.4",
@@ -118,7 +118,7 @@ for(i in 1:length(shufflingProps)){
 
 
 # Open an output PDF file
-file <- paste(path, "ShufflingProportion_01-08-17.pdf", sep="")
+file <- paste(path, "ShufflingProportion_28-09-17.pdf", sep="")
 pdf(file)
 
 plot(summary$ProportionShuffled, summary$Mean,
@@ -139,7 +139,7 @@ dev.off()
 # Print the Fitted RF Model Results to File #
 #############################################
 
-file <- paste(path, "ShufflingProportion_RFModelResults_16-08-16.csv", sep="")
+file <- paste(path, "ShufflingProportion_RFModelResults_28-09-17.csv", sep="")
 write.table(shufflingResults, file, quote=FALSE, row.names=FALSE, sep=",")
 
 

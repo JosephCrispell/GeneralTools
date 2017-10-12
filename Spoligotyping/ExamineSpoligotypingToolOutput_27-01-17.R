@@ -7,7 +7,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Open the file
 file <- paste(path, "Mislabelling/Spoligotyping/",
-              "SpoligotypeMatches_27-07-2017.txt", sep="")
+              "SpoligotypeMatches_28-09-2017.txt", sep="")
 matchTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 nColToSkip <- 4
 
@@ -37,7 +37,7 @@ cattleIsolateSequenceIds <- noteSequenceIDsOfCattleIsolates(linkTable)
 #####################################
 
 file <- paste(path, "vcfFiles/",
-              "isolateCoverageSummary_DP-20_27-07-2017.txt", sep="")
+              "IsolateVariantPositionCoverage_RESCUED_27-09-2017.txt", sep="")
 coverage <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 isolateCoverage <- getIsolateCoverage(coverage)
 
@@ -52,6 +52,8 @@ summary <- summariseIsolateSpoligotypeMatchingInfo(isolates,
                                                    isolateMatchingInfo,
                                                    averageReadDepthForIsolates,
                                                    proportionNsForIsolates)
+
+
 
 # Add the sequenceIDs of the cattle isolates
 summary <- addCattleIsolateSequenceIDs(summary, cattleIsolateSequenceIds)
@@ -75,25 +77,275 @@ misMatches <- misMatches[misMatches$AHVLAType != misMatches$BestMatch, ]
 misMatches <- misMatches[order(misMatches$AHVLAType), ]
 misMatches$Reason <- rep("Unknown", nrow(misMatches))
 rownames(misMatches) <- seq(1, nrow(misMatches), 1)
-
+misMatches <- addReasonGuesses(misMatches)
 # Add some guesses
-misMatches[misMatches$ProportionNs > 0.5, "Reason"] <- "Low Sequencing Quality"
-misMatches[which(grepl(x=misMatches$Isolate, 
-                       pattern="WB174|TB1775|TB1391|TB1398|TB1783")),
-           "Reason"] <- "Close Enough?"
-misMatches[which(grepl(x=misMatches$Isolate, 
-                       pattern="TB1471|TB1491")),
-           "Reason"] <- "Not close to Anything"
-misMatches <- misMatches[order(misMatches$Reason, decreasing=TRUE), ]
+#misMatches[misMatches$ProportionNs > 0.5, "Reason"] <- "Low Sequencing Quality"
+#misMatches[which(grepl(x=misMatches$Isolate, 
+#                       pattern="WB174|TB1775|TB1391|TB1398|TB1783")),
+#           "Reason"] <- "Close Enough?"
+#misMatches[which(grepl(x=misMatches$Isolate, 
+#                       pattern="TB1471|TB1491")),
+#           "Reason"] <- "Not close to Anything"
+#misMatches <- misMatches[order(misMatches$Reason, decreasing=TRUE), ]
 
-# Write out the table
+#########################################################################
+# Add Mean genetic distance to isolates that matched that are same type #
+#########################################################################
+
+# Read in the FASTA file
+file <- paste(path, "vcfFiles/sequences_Prox-10_27-09-2017.fasta", sep="")
+sequences <- readFasta(file)
+
+# Build genetic distance matrix
+geneticDistances <- buildGeneticDistanceMatrix(sequences)
+
+# Note index of each isolate from match table in sequences
+isolateSequenceIndices <- getIndicesOfIsolatesInArray(isolates, names(sequences))
+
+# Get info for isolates that matched spoligotypes
+matched <- summary[summary$AHVLAType == summary$BestMatch, ]
+matchedTypes <- getIsolateTypes(matched$BestMatch)
+
+# Calculate mean distance of each mismatched isolate between it and 
+# - Isolates carrying its sample info type
+# - Isolates carrying its best match type
+misMatches$AssignedRatio <- rep(NA, nrow(misMatches))
+misMatches$BestRatio <- rep(NA, nrow(misMatches))
+for(row in 1:nrow(misMatches)){
+  
+  misMatches[row, "AssignedRatio"] <- calculateMeanGeneticDistanceToIsolatesOfType(
+    isolate=misMatches[row, "Isolate"],
+    type=strsplit(misMatches[row, "AHVLAType"], split=" ")[[1]][1],
+    geneticDistances=geneticDistances,
+    matchedIsolates=matched$Isolate,
+    matchedIsolateTypes=matchedTypes,
+    isolatesIndicesInMatrix=isolateSequenceIndices
+  )
+  
+  misMatches[row, "BestRatio"] <- calculateMeanGeneticDistanceToIsolatesOfType(
+    isolate=misMatches[row, "Isolate"],
+    type=strsplit(misMatches[row, "BestMatch"], split=" ")[[1]][1],
+    geneticDistances=geneticDistances,
+    matchedIsolates=matched$Isolate,
+    matchedIsolateTypes=matchedTypes,
+    isolatesIndicesInMatrix=isolateSequenceIndices
+  )
+}
+
+
+#######################
+# Write out the table #
+#######################
+
+# Re-order the columns
+misMatches <- misMatches[, c(1,2,3,4,5,6,7,8,9,11,12,10)]
+
 file <- paste(path, "Mislabelling/Spoligotyping/",
-              "SpoligotypeMatches_Summary_31-01-2017.txt", sep="")
+              "SpoligotypeMatches_Summary_28-09-2017.txt", sep="")
 write.table(x=misMatches, file, quote=FALSE, sep="\t", row.names=FALSE)
 
 #############
 # Functions #
 #############
+
+addReasonGuesses <- function(misMatches){
+  
+  for(row in 1:nrow(misMatches)){
+    
+    # Get the Type matching information
+    parts <- as.numeric(strsplit(misMatches[row, "AHVLATypeInfo"], split=":")[[1]])
+    nMissingInfo <- parts[1]
+    nMisMatchInfo <- parts[2]
+    parts <- as.numeric(strsplit(misMatches[row, "BestMatchInfo"], split=":")[[1]])
+    nMissingBest <- parts[1]
+    nMisMatchBest <- parts[2]
+    
+    # Close enough - no more than 3 missing
+    if(nMisMatchInfo == 0 && nMissingInfo <= 3){
+      misMatches[row, "Reason"] <- "Close Enough?"
+      next
+    }
+    
+    # Note close to anything - more than 3 missing against both
+    if(nMisMatchInfo == 0 && nMisMatchBest == 0 &&
+       nMissingInfo > 3 && nMissingBest > 3){
+      misMatches[row, "Reason"] <- "Not Close to anything"
+      next
+    }
+    
+    # Mislabelled - Higher ratio against metadata type than best match
+    # Ratio of the mean within / mean between type distance
+    parts <- as.numeric(strsplit(misMatches[row, "AssignedRatio"], split=":")[[1]])
+    AssignedRatio <- parts[1] / parts[2]
+    parts <- as.numeric(strsplit(misMatches[row, "BestRatio"], split=":")[[1]])
+    BestRatio <- parts[1] / parts[2]
+    if(is.na(BestRatio) == FALSE && is.na(AssignedRatio) == FALSE &&
+       AssignedRatio > BestRatio){
+      misMatches[row, "Reason"] <- "Mislabelled - better distances"
+      next
+    }
+    
+    # If mismatches present against metadata and not for Best match
+    if(nMisMatchInfo > 0 && nMisMatchBest == 0){
+      misMatches[row, "Reason"] <- "Mislabelled - mismatches"
+      next
+    }
+    
+    # If poor region coverage
+    if(misMatches[row, "ProportionNs"] > 0.2){
+      misMatches[row, "Reason"] <- "Poor sequencing coverage"
+      next
+    }
+  }
+  
+  return(misMatches)
+}
+
+getIsolateTypes <- function(typeInfo){
+  
+  output <- c()
+  for(i in 1:length(typeInfo)){
+    
+    output[i] <- strsplit(typeInfo[i], split=" ")[[1]][1]
+  }
+  
+  return(output)
+}
+
+calculateMeanGeneticDistanceToIsolatesOfType <- function(isolate, type, geneticDistances, matchedIsolates, 
+                                                         matchedIsolateTypes, isolatesIndicesInMatrix){
+  
+  # Initialise a variable to calculate the mean genetic distance when comparing
+  # to isolates of the same type and of different
+  meanWithin <- NA
+  meanBetween <- NA
+  withinCounts <- 0
+  betweenCounts <- 0
+  
+  # Calculate mean genetic distance of distances only to isolates of same type
+  for(i in 1:length(matchedIsolates)){
+    
+    # Check if same or different type and add to appropriate running total
+    if(type == matchedIsolateTypes[i]){
+      if(is.na(meanWithin) == TRUE){
+        meanWithin <- 0
+      }
+      
+      meanWithin <- meanWithin + geneticDistances[isolatesIndicesInMatrix[[isolate]], 
+                                                  isolatesIndicesInMatrix[[matchedIsolates[i]]]]
+      withinCounts <- withinCounts + 1
+    }else{
+      if(is.na(meanBetween) == TRUE){
+        meanBetween <- 0
+      }
+      meanBetween <- meanBetween + geneticDistances[isolatesIndicesInMatrix[[isolate]], 
+                                                    isolatesIndicesInMatrix[[matchedIsolates[i]]]]
+      betweenCounts <- betweenCounts + 1
+    }
+  }
+  
+  #print("----------------------------------------------------")
+  #print(paste("Isolate", isolate, "with type", type))
+  #print(paste("Found", withinCounts, "within type distances"))
+  #print(paste("Found", betweenCounts, "between type distances"))
+  
+  # Complete the mean calculation
+  meanWithin <- meanWithin / withinCounts
+  meanBetween <- meanBetween / betweenCounts
+  
+  # Return the ratio of the two
+  return(paste(round(meanWithin, digits=1), ":", round(meanBetween, digits=1), sep=""))
+}
+
+getIndicesOfIsolatesInArray <- function(isolates, array){
+  indices <- list()
+  
+  for(i in 1:length(isolates)){
+    
+    indices[isolates[i]] <- which(array == isolates[i])
+  }
+  
+  return(indices)
+}
+
+buildGeneticDistanceMatrix <- function(sequences){
+  
+  matrix <- matrix(nrow=length(sequences), ncol=length(sequences))
+  
+  
+  keys <- names(sequences)
+  rownames(matrix) <- keys
+  colnames(matrix) <- keys
+  
+  for(i in 1:length(sequences)){
+    
+    for(j in 1:length(sequences)){
+      
+      if(i >= j){
+        next
+      }
+      
+      distance <- geneticDistance(sequences[[keys[i]]], sequences[[keys[j]]])
+      matrix[i, j] <- distance
+      matrix[j, i] <- distance
+    }
+  }
+  
+  return(matrix)
+}
+
+geneticDistance <- function(a, b){
+  
+  distance <- 0
+  
+  for(i in 1:length(a)){
+    
+    if(a[i] != "N" && b[i] != "N" && a[i] != b[i]){
+      
+      distance <- distance + 1
+    }
+  }
+  
+  return(distance)
+}
+
+readFasta <- function(fileName){
+  
+  # Store all file lines
+  connection <- file(fileName, open="r")
+  fileLines <- readLines(connection)
+  close(connection)
+  
+  # Initialise a list to store the fasta sequences
+  sequences <- list()
+  
+  # Examine each line - skip first line
+  for(i in 2:length(fileLines)){
+    
+    # Check if sequence header
+    if(startsWith(fileLines[i], prefix=">") == TRUE){
+      
+      # Store previous sequence
+      if(i != 2){
+        sequences[[name]] <- strsplit(sequence, split="")[[1]]
+      }
+      
+      # Get sequence name
+      name <- substr(fileLines[i], start=2, stop=nchar(fileLines[i]))
+      name <- strsplit(name, split="_")[[1]][1]
+      
+      # Reset sequence
+      sequence <- ""
+    }else{
+      sequence <- paste(sequence, fileLines[i], sep="")
+    }
+  }
+  
+  # Store last sequence
+  sequences[[name]] <- strsplit(sequence, split="")[[1]]
+  
+  return(sequences)
+}
 
 addIsolateCoverage <- function(summary, isolateCoverage){
   
@@ -103,7 +355,7 @@ addIsolateCoverage <- function(summary, isolateCoverage){
     
     if(is.null(isolateCoverage[[summary[row, "Isolate"]]]) == FALSE){
       
-      summary[row, "Coverage"] <- isolateCoverage[[summary[row, "Isolate"]]][2]
+      summary[row, "Coverage"] <- isolateCoverage[[summary[row, "Isolate"]]][1]
     }
   }
   
@@ -117,8 +369,8 @@ getIsolateCoverage <- function(coverage){
   
   for(row in 1:nrow(coverage)){
     
-    id <- strsplit(coverage[row, "IsolateID"], split="_")[[1]][1]
-    isolateCoverage[[id]] <- coverage[row, c(2,3)]
+    id <- strsplit(coverage[row, "Isolate"], split="_")[[1]][1]
+    isolateCoverage[[id]] <- coverage[row, "Coverage"]
   }
   
   return(isolateCoverage)

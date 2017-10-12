@@ -53,7 +53,7 @@ propNs <- calculatePropNsForSequences(sequences)
 geneticDistances <- buildGeneticDistanceMatrix(sequences)
 
 # Drop referencce and isolates that are only different from the reference
-geneticDistances <- removeRefAndBlankIsolates(geneticDistances)
+geneticDistances <- removeBlankIsolates(geneticDistances)
 
 # Build neighbour joining tree
 tree <- NJ(geneticDistances)
@@ -62,9 +62,11 @@ tree <- NJ(geneticDistances)
 tips <- tree$tip.label
 tree$tip.label <- getValues(idLabels, tree$tip.label)
 
-# Plot tree
-file <- paste(path, "CumbrianIsolates_SummaryPlots_10-09-17.pdf", sep="")
+# Plot tree with and without reference
+file <- paste(path, "vcfFIles/CumbrianIsolates_SummaryPlots_12-09-17.pdf", sep="")
 pdf(file)
+
+#### WITH REFERENCE
 
 badgers <- c("AF-21-05293-17",
              "AF-21-5220-17",
@@ -108,6 +110,56 @@ points(x=c(0, 1),
        type="l", lwd=3, xpd=TRUE)
 text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd=TRUE)
 
+
+##### WITHOUT REFERENCE
+
+# Drop reference tip
+tree <- drop.tip(tree, "Ref-1997")
+
+# Note badgers
+badgers <- c("AF-21-05293-17",
+             "AF-21-5220-17",
+             "AF-21-5712-17")
+factor <- 2
+plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
+           edge.color="dimgrey", edge.width=3,
+           show.node.label=TRUE, label.offset=0.15,
+           underscore=TRUE)
+
+# Add node labels
+nodelabels(node=1:length(tree$tip.label), 
+           cex=(1 - getValues(propNs, tips)) * factor,
+           pch=ifelse(tips %in% badgers, 21, 24),
+           bg=ifelse(tips %in% badgers, "red", "blue"), 
+           col="dimgrey")
+
+# Get the plotting region dimensions = x1, x2, y1, y2 
+# (coordinates of bottom left and top right corners)
+dimensions <- par("usr")
+xLength <- dimensions[2] - dimensions[1]
+yLength <- dimensions[4] - dimensions[3]
+
+# Add quality legend
+legend(x=dimensions[2] - (0.1 * xLength), 
+       y=dimensions[3] + (0.3 * yLength),
+       legend=seq(0.5, 1, 0.1), pch=24, bty='n',
+       pt.cex=seq(0.5, 1, 0.1) * factor, xpd=TRUE,
+       title="Coverage")
+
+# Add species legend
+legend(x=dimensions[1] + (0.4 * xLength),
+       y=dimensions[3], 
+       legend=c("Cow", "Badger"),
+       pch=c(17, 16), cex=1, col=c("blue", "red"), 
+       text.col=c("blue", "red"), bty='n', xpd=TRUE)
+
+# Add Scale bar
+points(x=c(0, 1), 
+       y=c(dimensions[3] - (0.05 * yLength), dimensions[3] - (0.05 * yLength)),
+       type="l", lwd=3, xpd=TRUE)
+text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd=TRUE)
+
+
 #############
 # SNP table #
 #############
@@ -115,12 +167,12 @@ text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd
 # Build SNP table for sites where there are two isolates with coverage that are different
 informativeSites <- noteInformativeSites(sequences)
 
-# Built smaller sequences using only the informative sites
+# Build smaller sequences using only the informative sites
 informativeSequences <- keepSites(sequences, informativeSites)
 
 # Print out SNP table
 newLabels <- getValues(idLabels, names(informativeSequences))
-file <- paste(path, "InformativeFasta_10-09-17.fasta", sep="")
+file <- paste(path, "vcfFIles/InformativeFasta_12-09-17.fasta", sep="")
 printOutInformativeSequences(informativeSequences, file, newLabels)
 
 #################################
@@ -130,15 +182,12 @@ printOutInformativeSequences(informativeSequences, file, newLabels)
 # Build genetic distance matrix
 geneticDistances <- buildGeneticDistanceMatrix(sequences)
 
-# Remove reference
-ref <- which(rownames(geneticDistances) == "Ref-1997")
-geneticDistances <- geneticDistances[-ref, -ref]
-
-# Plot ordered heatmap
+# Plot ordered heatmap with Reference
 plotHeatmap(geneticDistances, order=TRUE, propNs, badgers)
 
-# Plot unordered heatmap
-#plotHeatmap(geneticDistances, order=FALSE, propNs, badgers)
+# Plot ordered heatmap without Reference
+refRow <- which(rownames(geneticDistances) == "Ref-1997")
+plotHeatmap(geneticDistances[-refRow, -refRow], order=TRUE, propNs, badgers)
 
 # Close the PDF file (must be closed when code is running as well)
 dev.off()
@@ -369,10 +418,9 @@ parseIds <- function(strings){
   return(output)
 }
 
-removeRefAndBlankIsolates <- function(geneticDistances){
+removeBlankIsolates <- function(geneticDistances){
   
-  refRow <- which(rownames(geneticDistances) == "Ref-1997")
-  output <- geneticDistances[-refRow, -refRow]
+  output <- geneticDistances
   
   ignore <- c()
   for(i in 1:nrow(output)){
