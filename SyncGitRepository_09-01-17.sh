@@ -8,11 +8,22 @@
 # Note create permissions first ---> chmod +x script.sh
 
 # Command Line Structure:
-# bash SyncGitRepository.sh
+# bash SyncGitRepository.sh commitMessage
 
 # Note need to assign your email and username to github
 # git config --global user.email "you@example.com"
 # git config --global user.name "Your Name"
+
+######################
+# Set commit message #
+######################
+
+COMMIT="General Update"
+if [ ! $1 == "" ]
+then
+	COMMIT=$1
+fi
+echo $COMMIT
 
 #####################
 # Update Repository #
@@ -30,7 +41,7 @@ done
 
 #### Commit changes to repository
 TODAY=`date +%d-%m-%Y`
-git commit -m "Automated commit "$TODAY
+git commit -m $COMMIT" "$TODAY
 
 #### Remove any files that have been deleted
 git add . -A
