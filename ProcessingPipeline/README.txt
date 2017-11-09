@@ -6,11 +6,13 @@
 # Created by Joseph Crispell
 # Email: crispelljoseph@gmail.com
 # This file created: 12-10-2017
-# Last updated: 12-10-2017
+# Last updated: 09-11-2017
 
 ################
 # Requirements #
 ################
+
+## FOR FULL INSTALLATION INSTRUCTIONS SEE installation.txt
 
 # Running on Ubuntu v16.04
 # fastqc - tool to examine quality of FASTQ files

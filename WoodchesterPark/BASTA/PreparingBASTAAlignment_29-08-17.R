@@ -71,8 +71,10 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 ################################
 
 # Note deme structure to use
-demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme", "6Deme", "8Deme")
-demeStructure <- demeStructures[6]
+demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme",
+                    "6Deme-EastWest", "6Deme-NorthSouth", "8Deme-EastWest",
+                    "8Deme-NorthSouth")
+demeStructure <- demeStructures[5]
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -496,7 +498,7 @@ getDemeInfo <- function(deme, infoWanted){
                                                   0, 1, NA, 1,
                                                   1, 0, 1, NA),
                                                 byrow=TRUE, nrow=4)),
-    "6Deme" = list("Name"="6Deme", "NumberDemes"=6, 
+    "6Deme-EastWest" = list("Name"="6Deme-EastWest", "NumberDemes"=6, 
                    "MigrationRateMatrix"=matrix(c(NA, 1, 0, 0, 1, 1,
                                                   1, NA, 1, 1, 0, 0,
                                                   0, 1, NA, 1, 1, 0,
@@ -504,16 +506,34 @@ getDemeInfo <- function(deme, infoWanted){
                                                   1, 0, 1, 0, NA, 1,
                                                   1, 0, 0, 1, 1, NA),
                                                 byrow=TRUE, nrow=6)),
-    "8Deme" = list("Name"="8Deme", "NumberDemes"=8, 
-                   "MigrationRateMatrix"=matrix(c(NA, 1, 1, 0, 0, 0, 1, 0,
-                                                  1, NA, 0, 1, 0, 0, 0, 1,
-                                                  1, 0, NA, 1, 1, 0, 0, 0,
-                                                  0, 1, 1, NA, 0, 1, 0, 0,
-                                                  0, 0, 1, 0, NA, 1, 1, 0,
-                                                  0, 0, 0, 1, 1, NA, 0, 1,
-                                                  1, 0, 0, 0, 1, 0, NA, 1,
-                                                  0, 1, 0, 0, 0, 1, 1, NA),
-                                                byrow=TRUE, nrow=8))
+    "6Deme-NorthSouth" = list("Name"="6Deme-NorthSouth", "NumberDemes"=6, 
+                            "MigrationRateMatrix"=matrix(c(NA, 1, 0, 0, 1, 1,
+                                                           1, NA, 1, 1, 0, 0,
+                                                           0, 1, NA, 1, 1, 0,
+                                                           0, 1, 1, NA, 0, 1,
+                                                           1, 0, 1, 0, NA, 1,
+                                                           1, 0, 0, 1, 1, NA),
+                                                         byrow=TRUE, nrow=6)),
+    "8Deme-EastWest" = list("Name"="8Deme-EastWest", "NumberDemes"=8, 
+                            "MigrationRateMatrix"=matrix(c(NA, 1, 1, 0, 0, 0, 1, 0,
+                                                           1, NA, 0, 1, 0, 0, 0, 1,
+                                                           1, 0, NA, 1, 1, 0, 0, 0,
+                                                           0, 1, 1, NA, 0, 1, 0, 0,
+                                                           0, 0, 1, 0, NA, 1, 1, 0,
+                                                           0, 0, 0, 1, 1, NA, 0, 1,
+                                                           1, 0, 0, 0, 1, 0, NA, 1,
+                                                           0, 1, 0, 0, 0, 1, 1, NA),
+                                                         byrow=TRUE, nrow=8)),
+    "8Deme-NorthSouth" = list("Name"="8Deme-NorthSouth", "NumberDemes"=8, 
+                              "MigrationRateMatrix"=matrix(c(NA, 1, 1, 0, 0, 0, 1, 0,
+                                                             1, NA, 0, 1, 0, 0, 0, 1,
+                                                             1, 0, NA, 1, 1, 0, 0, 0,
+                                                             0, 1, 1, NA, 0, 1, 0, 0,
+                                                             0, 0, 1, 0, NA, 1, 1, 0,
+                                                             0, 0, 0, 1, 1, NA, 0, 1,
+                                                             1, 0, 0, 0, 1, 0, NA, 1,
+                                                             0, 1, 0, 0, 0, 1, 1, NA),
+                                                           byrow=TRUE, nrow=8))
   )
   
   return(demeInfo[[deme]][[infoWanted]])
@@ -737,13 +757,14 @@ assignIsolatesToDemes <- function(demeStructure, isolateInfo, innerThreshold, ba
   # Examine each isolate
   for(row in 1:nrow(isolateInfo)){
     
-    # Check if location data available and note whether inner/outer, east/west
+    # Check if location data available and note whether inner/outer, east/west, north/south
     inOrOut <- "inner"
     eastOrWest <- sample(c("east", "west"), size=1)
+    northOrSouth <- sample(c("north", "south"), size=1)
     if(is.na(isolateInfo[row, "X"]) == FALSE){
       inOrOut <- checkIfInner(isolateInfo[row, "Distance"], innerThreshold)
       eastOrWest <- checkIfEast(isolateInfo[row, "X"], badgerCentre[1])
-      
+      northOrSouth <- checkIfNorth(isolateInfo[row, "Y"], badgerCentre[2])
     }else{
       
       cat(paste("Location data not available for isolate:", isolateInfo[row, "IsolateID"], "\n"))
@@ -753,13 +774,15 @@ assignIsolatesToDemes <- function(demeStructure, isolateInfo, innerThreshold, ba
     badgerOrCow <- tolower(isolateInfo[row, "Species"])
     
     # Build deme assignment
-    isolateInfo[row, "Deme"] <- buildDemeAssignment(inOrOut, eastOrWest, badgerOrCow, demeStructure)
+    isolateInfo[row, "Deme"] <- buildDemeAssignment(inOrOut, eastOrWest,
+                                                    northOrSouth, badgerOrCow,
+                                                    demeStructure)
   }
   
   return(isolateInfo)
 }
 
-buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure){
+buildDemeAssignment <- function(inOrOut, eastOrWest, northOrSouth, badgerOrCow, demeStructure){
   
   #   No.     No. Demes   Deme names
   #   1       3           innerBadger, innerCow, outer
@@ -797,7 +820,7 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
     
     output <- paste(badgerOrCow, inOrOut, sep="-")
     
-  }else if(demeStructure == "6Deme"){
+  }else if(demeStructure == "6Deme-EastWest"){
     
     if(inOrOut == "inner"){
       output <- paste(badgerOrCow, inOrOut, sep="-")
@@ -805,12 +828,34 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, badgerOrCow, demeStructure)
       output <- paste(badgerOrCow, inOrOut, eastOrWest, sep="-")
     }
     
-  }else if(demeStructure == "8Deme"){
+  }else if(demeStructure == "6Deme-NorthSouth"){
+    
+    if(inOrOut == "inner"){
+      output <- paste(badgerOrCow, inOrOut, sep="-")
+    }else{
+      output <- paste(badgerOrCow, inOrOut, northOrSouth, sep="-")
+    }
+    
+  }else if(demeStructure == "8Deme-EastWest"){
     
     output <- paste(badgerOrCow, inOrOut, eastOrWest, sep="-")
     
+  }else if(demeStructure == "8Deme-NorthSouth"){
+    
+    output <- paste(badgerOrCow, inOrOut, northOrSouth, sep="-")
+    
   }else{
     cat(paste("Deme structure name provided isn't recognised:", demeStructure, "\n"))
+  }
+  
+  return(output)
+}
+
+checkIfNorth <- function(y, badgerCentreY){
+  
+  output <- "north"
+  if(y < badgerCentreY){
+    output <- "south"
   }
   
   return(output)

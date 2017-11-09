@@ -74,7 +74,7 @@ groupsCentroidsPerYear <- list()
 
 # Open a PDF file
 file <- paste(path, "BadgerCaptureData/", 
-              "PropInfected_SocialGroups_2000-11_02-10-17.pdf", sep="")
+              "PropInfected_SocialGroups_2000-11_13-10-17.pdf", sep="")
 
 # Plot on single figure
 plotPropInfectedInSocialGroupsInSingleFigure(path, file, years, shapeFileNames, badgerGroupCentroid,

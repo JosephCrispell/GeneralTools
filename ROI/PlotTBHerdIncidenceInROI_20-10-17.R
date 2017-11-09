@@ -1,7 +1,3 @@
-##################
-# Load Libraries #
-##################
-
 library(maptools) # Read shape file
 #slibrary(rgeos) # Polygon centroids
 
@@ -23,43 +19,99 @@ countyCoords <- getPolygonCoords(countyBorders)
 countyNames <- getPolygonNames(countyBorders@data, "NAME_TAG")
 
 #########################
-# Read in MAP VNTR data #
+# Read in TP statistics #
 #########################
 
 # Read in the file
-file <- paste(path, "Genotyping data.csv", sep="")
-vntrInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE,
+file <- paste(path, "DAFM_TBHerdPrevalence_2015.txt", sep="")
+tbInfo <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
                        check.names=FALSE)
 
-# Remove rows with no DNA extraction
-vntrInfo <- vntrInfo[vntrInfo[, "Date DNA extraction"] != "", ]
+# Combine counties that have been split
+tbInfo <- combineSplitCountyData(tbInfo)
 
-# Count number of samples per county
-nSamplesPerCounty <- countNumberSamplesPerCounty(vntrInfo)
-maxCount <- max(getValues(nSamplesPerCounty))
+# Get proportion herds infected per county
+countyProps <- getCountyPropHerdsInfected(tbInfo)
 
 #####################
 # Plot the counties #
 #####################
 
-plotNSamplesPerCounty(countyCoords, countyNames, nSamplesPerCounty, maxCount)
-
-#################################
-# Print out the county polygons #
-#################################
-
-writePolygonCoordsToFile(countyCoords, countyNames, path)
-
-
-
-
+plotProportionHerdsInfectedPerCounty(countyCoords, countyNames,
+                                     countyProps)
 
 #############
 # FUNCTIONS #
 #############
 
-plotNSamplesPerCounty <- function(countyCoords, countyNames, nSamplesPerCounty,
-                                  maxCount){
+findMax <- function(list){
+  
+  max <- 0
+  for(key in names(list)){
+    if(list[[key]] > max){
+      max <- list[[key]]
+    }
+  }
+  
+  return(max)
+}
+
+getCountyPropHerdsInfected <- function(tbInfo){
+  
+  countyProps <- list()
+  for(row in 1:nrow(tbInfo)){
+    
+    countyProps[[tbInfo[row, 1]]] <- tbInfo[row, 4] / 100
+  }
+  
+  return(countyProps)
+}
+
+combineSplitCountyData <- function(tbInfo){
+  
+  rowsToRemove <- c()
+  for(row in 1:nrow(tbInfo)){
+    
+    parts <- strsplit(tbInfo[row, "RVO"], split=" ")[[1]]
+    
+    if(row %in% rowsToRemove){
+      next
+    }
+    
+    if(length(parts) > 1){
+      
+      newValues <- c()
+      
+      newValues[2] <- tbInfo[row, 2] + tbInfo[row + 1, 2]
+      newValues[3] <- tbInfo[row, 3] + tbInfo[row + 1, 3]
+      newValues[4] <- (((tbInfo[row, 3] * (tbInfo[row, 4] / 100)) +
+                          (tbInfo[row + 1, 3] * (tbInfo[row + 1, 4] / 100))) /
+                         newValues[3] ) * 100
+      
+      newValues[5] <- tbInfo[row, 5] + tbInfo[row + 1, 5]
+      newValues[6] <- (((tbInfo[row, 5] * (tbInfo[row, 6] / 1000)) +
+                          (tbInfo[row + 1, 5] * (tbInfo[row + 1, 6] / 1000))) /
+                         newValues[5]) * 1000
+      
+      tbInfo[row, ] <- newValues
+      tbInfo[row, 1] <- parts[1]
+      rowsToRemove[length(rowsToRemove) + 1] <- row + 1
+    }
+  }
+  tbInfo <- tbInfo[-rowsToRemove, ]
+  
+  return(tbInfo)
+}
+
+plotProportionHerdsInfectedPerCounty <- function(countyCoords, countyNames,
+                                                 countyProps){
+  
+  niCounties <- c(
+    "LONDONDERRY", "ANTRIM", "DOWN", "ARMAGH", "TYRONE", "FERMANAGH")
+  
+  # Calculate max proportion herds infected
+  maxProp <- findMax(countyProps)
+  
   par(mar=c(0,0,0,0))
   
   plot(x=NULL, y=NULL, yaxt="n", xaxt="n", ylab="", xlab="", bty="n",
@@ -72,24 +124,30 @@ plotNSamplesPerCounty <- function(countyCoords, countyNames, nSamplesPerCounty,
       next
     }
     
-    nSamples <- nSamplesPerCounty[[countyNames[[key]]]]
-    if(length(nSamples) == 0){
-      nSamples <- 0
+    if(countyNames[[key]] %in% niCounties){
+      polygon(countyCoords[[key]], border=rgb(0,0,0, 1), 
+              col=rgb(0,0,0, 0.75),
+              lwd=2)
+      next
+    }
+    
+    prop <- countyProps[[countyNames[[key]]]]
+    if(length(prop) == 0){
+      print(countyNames[[key]])
+      prop <- 0
     }
     
     polygon(countyCoords[[key]], border=rgb(0,0,0, 1), 
-            col=rgb(0,0,1,nSamples / maxCount),
+            col=rgb(1,0,0,prop / maxProp),
             lwd=2)
     
-    if(nSamples != 0){
+    if(prop != 0){
       text(x=mean(countyCoords[[key]][, 1]),
            y=mean(countyCoords[[key]][, 2]),
-           labels=paste(countyNames[[key]], " (", nSamples, ")", sep=""),
-           cex=0.6, col="red")
+           labels=paste(round(prop * 100, digits=1), "%", sep=""),
+           cex=0.75, col="blue")
     }else{
-      text(x=mean(countyCoords[[key]][, 1]),
-           y=mean(countyCoords[[key]][, 2]),
-           labels=countyNames[[key]], cex=0.6, col="gray50")
+      print(countyNames[[key]])
     }
   }
 }
@@ -150,7 +208,7 @@ getPolygonNames <- function(polygonInfo, column){
   rowNames <- rownames(polygonInfo)
   
   for(row in 1:nrow(polygonInfo)){
-    names[[rowNames[row]]] <- as.character(polygonInfo[row, column])
+    names[[rowNames[row]]] <- toupper(as.character(polygonInfo[row, column]))
   }
   
   return(names)
