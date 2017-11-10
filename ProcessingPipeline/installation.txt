@@ -22,8 +22,6 @@
 		$tar xvzf trim_galore.tar.gz
 		$mv TrimGalore-0.4.3/trim_galore /usr/bin
 
-# trimGalore
-
 # fastqc - tool for assessing quality of reads in FASTQ files
 	sudo apt-get install fastqc
 
