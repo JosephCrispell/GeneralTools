@@ -12,6 +12,18 @@
 # Instructions for Ubuntu #
 ###########################
 
+# prinseq - tool to trimming reads in FASTQ file
+	Download the tar file from: https://sourceforge.net/projects/prinseq/files/standalone/
+	$tar -xvzf prinseq-lite-0.20.4.tar.gz
+	
+# trimGalore - tool for removing adaptor sequences
+	Following the instructions available here: https://github.com/FelixKrueger/TrimGalore
+		$curl -fsSL https://github.com/FelixKrueger/TrimGalore/archive/0.4.3.tar.gz -o trim_galore.tar.gz
+		$tar xvzf trim_galore.tar.gz
+		$mv TrimGalore-0.4.3/trim_galore /usr/bin
+
+# trimGalore
+
 # fastqc - tool for assessing quality of reads in FASTQ files
 	sudo apt-get install fastqc
 

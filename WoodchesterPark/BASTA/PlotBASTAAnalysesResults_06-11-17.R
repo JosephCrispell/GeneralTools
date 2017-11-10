@@ -65,7 +65,10 @@ for(analysis in analyses){
 arrowWeights <- list("0_1"=1, "1_0"=1, "0_2"=1, "2_0"=1, "1_2"=1,
                      "2_1"=1, "3_2"=1, "2_3"=1, "2_4"=1, "4_2"=1,
                      "3_5"=1, "5_3"=1, "4_5"=1, "5_4"=1, "0_4"=1,
-                     "4_0"=1)
+                     "4_0"=1, "4_5"=1, "5_4"=1, "6_7"=1, "7_6"=1,
+                     "4_6"=1, "6_4"=1, "5_7"=1, "7_5"=1, "0_6"=1,
+                     "6_0"=1, "1_7"=1, "7_1"=1, "3_5"=1, "5_3"=1,
+                     "4_6"=1, "6_4"=1)
 
 
 
@@ -375,7 +378,7 @@ plot6DemeNS <- function(arrowWeights, code){
 
 }
 
-plot6DemeEW <- function(arrowWeights, code){
+plot8DemeEW <- function(arrowWeights, code){
   
   demeStructure <- "8Deme-EastWest"
   
@@ -397,23 +400,112 @@ plot6DemeEW <- function(arrowWeights, code){
   arrows(x0=x[1]-0.05, x1=x[3]-0.05, y0=y[1]+0.05, y1=y[3]-0.05,
          code=code, lwd=arrowWeights[["0_2"]]) 
   # cow-inner-east -> badger-inner-east
-  arrows(x0=x[3]-0.15, x1=x[1]-0.15, y0=y[3]-0.05, y1=y[1]+0.05,
+  arrows(x0=x[3]-0.125, x1=x[1]-0.125, y0=y[3]-0.05, y1=y[1]+0.05,
          code=code, lwd=arrowWeights[["2_0"]])
   
   # badger-inner-west -> cow-inner-west
   arrows(x0=x[2]+0.05, x1=x[4]+0.05, y0=y[2]+0.05, y1=y[4]-0.05,
          code=code, lwd=arrowWeights[["1_3"]]) 
   # cow-inner-west -> badger-inner-west
-  arrows(x0=x[4]+0.15, x1=x[2]+0.15, y0=y[4]-0.05, y1=y[2]+0.05,
+  arrows(x0=x[4]+0.125, x1=x[2]+0.125, y0=y[4]-0.05, y1=y[2]+0.05,
          code=code, lwd=arrowWeights[["3_1"]])
   
   # badger-inner-east -> badger-inner-west
-  arrows(x0=x[1]-0.05, x1=x[3]-0.05, y0=y[1]+0.05, y1=y[3]-0.05,
-         code=code, lwd=arrowWeights[["0_2"]]) 
+  arrows(x0=x[1]-0.175, x1=x[2]+0.175, y0=y[1]+0.05, y1=y[2]+0.05,
+         code=code, lwd=arrowWeights[["0_1"]]) 
   # badger-inner-west -> badger-inner-west
-  arrows(x0=x[3]-0.15, x1=x[1]-0.15, y0=y[3]-0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["2_0"]])
+  arrows(x0=x[2]+0.175, x1=x[1]-0.175, y0=y[2]-0.05, y1=y[1]-0.05,
+         code=code, lwd=arrowWeights[["1_0"]])
   
+  # cow-inner-east -> cow-inner-west
+  arrows(x0=x[3]-0.175, x1=x[4]+0.175, y0=y[3]-0.05, y1=y[4]-0.05,
+         code=code, lwd=arrowWeights[["2_3"]]) 
+  # cow-inner-west -> cow-inner-east
+  arrows(x0=x[4]+0.175, x1=x[3]-0.175, y0=y[4]+0.05, y1=y[3]+0.05,
+         code=code, lwd=arrowWeights[["3_2"]])
+  
+  # cow-outer-east -> cow-outer-west
+  arrows(x0=x[5]-0.15, x1=x[6]+0.15, y0=y[5]-0.05, y1=y[6]-0.05,
+         code=code, lwd=arrowWeights[["4_5"]]) 
+  # cow-outer-west -> cow-outer-east
+  arrows(x0=x[6]+0.15, x1=x[5]-0.15, y0=y[6]+0.05, y1=y[5]+0.05,
+         code=code, lwd=arrowWeights[["5_4"]])
+  
+  # badger-outer-east -> badger-outer-west
+  arrows(x0=x[7]-0.15, x1=x[8]+0.15, y0=y[7]+0.05, y1=y[8]+0.05,
+         code=code, lwd=arrowWeights[["6_7"]]) 
+  # badger-outer-west -> badger-outer-east
+  arrows(x0=x[8]+0.15, x1=x[7]-0.15, y0=y[8]-0.05, y1=y[7]-0.05,
+         code=code, lwd=arrowWeights[["7_6"]])
+ 
+  # cow-outer-east -> badger-outer-east
+  arrows(x0=x[5]-0.05, x1=x[7]-0.05, y0=y[5]-0.05, y1=y[7]+0.05,
+         code=code, lwd=arrowWeights[["4_6"]]) 
+  # badger-outer-east -> cow-outer-east
+  arrows(x0=x[7]+0.05, x1=x[5]+0.05, y0=y[7]+0.05, y1=y[5]-0.05,
+         code=code, lwd=arrowWeights[["6_4"]])
+  
+  # cow-outer-west -> badger-outer-west
+  arrows(x0=x[6]+0.05, x1=x[8]+0.05, y0=y[6]-0.05, y1=y[8]+0.05,
+         code=code, lwd=arrowWeights[["5_7"]]) 
+  # badger-outer-west -> cow-outer-west
+  arrows(x0=x[8]-0.05, x1=x[6]-0.05, y0=y[8]+0.05, y1=y[6]-0.05,
+         code=code, lwd=arrowWeights[["7_5"]])
+  
+  # badger-inner-east -> badger-outer-east
+  arrows(x0=x[1]+0.15, x1=x[7]+0.05, y0=y[1]+0.05, y1=y[7]-0.05,
+         code=code, lwd=arrowWeights[["0_6"]]) 
+  # badger-outer-east -> badger-inner-east
+  arrows(x0=x[7]-0.05, x1=x[1]+0.05, y0=y[7]-0.05, y1=y[1]+0.05,
+         code=code, lwd=arrowWeights[["6_0"]])
+  
+  # badger-inner-west -> badger-outer-west
+  arrows(x0=x[2]-0.15, x1=x[8]-0.05, y0=y[2]+0.05, y1=y[8]-0.05,
+         code=code, lwd=arrowWeights[["1_7"]]) 
+  # badger-outer-west -> badger-inner-west
+  arrows(x0=x[8]+0.05, x1=x[2]-0.05, y0=y[8]-0.05, y1=y[2]+0.05,
+         code=code, lwd=arrowWeights[["7_1"]])
+  
+  # cow-inner-east -> cow-outer-east
+  arrows(x0=x[3]+0.15, x1=x[5]+0.05, y0=y[3]-0.05, y1=y[5]+0.05,
+         code=code, lwd=arrowWeights[["2_4"]]) 
+  # cow-outer-east -> cow-inner-east
+  arrows(x0=x[5]-0.05, x1=x[3]+0.05, y0=y[5]+0.05, y1=y[3]-0.05,
+         code=code, lwd=arrowWeights[["4_2"]])
+  
+  # cow-inner-west -> cow-outer-west
+  arrows(x0=x[4]-0.15, x1=x[6]-0.05, y0=y[4]-0.05, y1=y[6]+0.05,
+         code=code, lwd=arrowWeights[["3_5"]]) 
+  # cow-outer-west -> cow-inner-west
+  arrows(x0=x[6]+0.05, x1=x[4]-0.05, y0=y[6]+0.05, y1=y[4]-0.05,
+         code=code, lwd=arrowWeights[["5_3"]])
+  
+}
+
+plot8DemeNS <- function(arrowWeights, code){
+  
+  demeStructure <- "8Deme-NorthSouth"
+  
+  # Create empty plot
+  createEmptyPlot()
+  
+  # Get deme names and assign colours
+  demeNames <- getDemeNamesForDemeStructure(demeStructure)
+  demeColours <- rep("black", length(demeNames))
+  demeColours[grepl(demeNames, pattern="badger")] <- "red"
+  demeColours[grepl(demeNames, pattern="cow")] <- "blue"
+  
+  # Add labels
+#  x <- c(0.25, 0.25, 0.75, 0.75, 0.9,  0.9,  0.1,  0.1)
+#  y <- c(0.9,  0.1,  0.9,  0.1,  0.65, 0.35, 0.65, 0.35)
+
+#  x <- c(0.1, 0.1, 0.9, 0.9, 0.75,  0.75,  0.25,  0.25)
+#  y <- c(0.65,  0.35,  0.65,  0.35,  0.9, 0.1, 0.9, 0.1)
+  
+  x <- c(0.25, 0.25, 0.75, 0.75, 0.9,  0.9,  0.1,  0.1)
+  y <- c(0.65,  0.35,  0.65,  0.35,  0.9, 0.1, 0.9, 0.1)
+  
+  text(x=x, y=y, labels=demeNames, col=demeColours)
 }
 
 calculateForwardMigrationRates <- function(logTable){
