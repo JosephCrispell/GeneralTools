@@ -18,7 +18,7 @@
 # Set commit message #
 ######################
 
-COMMIT="General Update"
+COMMIT="GeneralUpdate"
 if [ ! $1 == "" ]
 then
 	COMMIT=$1
