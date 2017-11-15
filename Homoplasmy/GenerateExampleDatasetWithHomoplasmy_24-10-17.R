@@ -16,8 +16,14 @@ date <- format(Sys.Date(), "%d-%m-%y")
 # Generate sequences #
 ######################
 
+# Set the seed
+#seed <- sample(x=1:10000000, size=1)
+#print(seed)
+#set.seed(seed)
+#set.seed(5962222)
+
 # Generate the sequences
-sequences <- simulateSequences(n=500, genomeSize=1000000)
+sequences <- simulateSequences(n=10, genomeSize=10000)
 
 ####################
 # Insert homoplasy #
@@ -39,9 +45,100 @@ writeFasta(sequences, paste(path, "example_", date, ".fasta", sep=""))
 
 buildPhylogeny(sequences, paste(path, "example_", date, ".tree", sep=""), ij)
 
+##################
+# Plot a heatmap #
+##################
+
+plotHeatmap(buildGeneticDistanceMatrix(sequences), order=TRUE)
+
 #############
 # FUNCTIONS #
 #############
+
+plotHeatmap <- function(geneticDistances, order){
+  
+  # Create vectors to store the Row and Column numbers
+  colNumbers <- seq(from=1, to=ncol(geneticDistances))
+  rowNumbers <- seq(from=1, to=nrow(geneticDistances))
+  
+  # Define the colour breaks
+  colBreaks <- seq(0, max(geneticDistances, na.rm=TRUE), by=0.1)
+  
+  # Plot the heatmap
+  heatmap <- heatmap.2(geneticDistances, # matrix is the input data
+                       
+                       # Create the colour scale 
+                       col=colorpanel(n=length(colBreaks)-1, low="yellow", high="red"),
+                       breaks=colBreaks,
+                       
+                       # Turn off a density plot
+                       density.info="none", 
+                       
+                       # Turn off the trace
+                       trace="none",
+                       
+                       # Column Labels
+                       cexCol=2, # Change the size of the column labels
+                       srtCol=0, # Set the angle of the column labels (degrees from horizontal)
+                       offsetCol=1, # Set size of space between column labels and heatmap
+
+                       # Cell seperating lines
+                       colsep=colNumbers, # What columns to place seperator lines between (All)
+                       rowsep=rowNumbers, # What rows to place seperator lines between (All)
+                       sepwidth=c(0.01, 0.01), # Set size of the seperator lines (colwidth, rowWidth)
+                       sepcolor='white', # Set the colour of the seperator line
+                       
+                       # Change the size of the margins around the plot: c(column space, row space)
+                       margins = c(5, 5), 
+                       
+                       # Row labels
+                       cexRow=2, # Change the size of the Row labels
+                       srtRow=0,
+                       labRow=rownames(geneticDistances), # Create row labels (blank ones in this case)
+
+                       # Make sure the order of the rows and columns is changed
+                       Rowv=order, Colv=order,
+                       
+                       # Make sure all NA values are kept in        
+                       na.rm=TRUE,
+                       
+                       # Don't plot any dendogram
+                       dendrogram="none",
+                       
+                       # Set up the Key
+                       key=FALSE, # Turn the key on
+                       
+                       # Say where to plot each part of the heatmap
+                       #     4     3
+                       #     2     1
+                       # 1. Heatmap
+                       # 2. Row Dendrogram
+                       # 3. Column Dendrogram
+                       # 4. Key
+                       lmat=rbind(4:3, 2:1),
+                       
+                       # Set the size of the spaces for output plots:
+                       #     Colour Key      |   Column Dendrogram
+                       #     -------------------------------------
+                       #     Row Dendrogram  |   Heatmap
+                       #
+                       # Note that these will be affected by the width and height you set for the PDF
+                       lhei=c(1, 10), # c(row1Width, row2Width)
+                       lwid=c(1, 10), # c(column1Width, column2Width)
+                       
+                       # Note that the input matrix is not symmetric
+                       symm = FALSE
+  )
+  
+  # Get the plotting window dimensions
+  dimensions <- par("usr")
+  xLength <- dimensions[2] - dimensions[1]
+  yLength <- dimensions[4] - dimensions[3]
+  
+  # Add title
+  text(x=dimensions[1] + (0.4 * xLength), 
+       y=dimensions[4] + (0.1 * yLength), "Minimum Genetic distance", cex=1, xpd=TRUE)
+}
 
 removeUninformativeSites <- function(sequences){
   
@@ -92,6 +189,10 @@ buildPhylogeny <- function(sequences, file, ij){
              show.node.label=TRUE, label.offset=0.15,
              tip.color=ifelse(tree$tip.label %in% ij, "red", "black"))
   
+  # Add scale
+  lines(x=c(2,3), y=c(1.5, 1.5), lwd=4)
+  text(x=2.5, y=1.2, labels="1 SNP")
+  
   # Write the tree to file
   write.tree(tree, file=file, append=FALSE,
              digits=20, tree.names=FALSE)
@@ -137,7 +238,8 @@ simulateSequences <- function(n, genomeSize){
   
   # Store each individual's sequence
   sequences <- c()
-  sequences[[as.character(sources[1])]] <- rep("A", genomeSize)
+  sequences[[as.character(sources[1])]] <- sample(x=nucleotides, size=genomeSize,
+                                                  replace=TRUE)
   
   # Run infection
   while(length(susceptibles) > 0){
