@@ -11,10 +11,10 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 newZealand <- grepl(x=path, pattern="NewZealand")
 
 # Read in the variant site coverage and alternate allele support files
-coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_26-09-2017.txt", sep="")
+coverageFile <- paste(path, "PreviousMergings/", "heterozygousSiteInfo_Coverage_26-09-2017.txt", sep="")
 siteInfoCoverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE,
                                comment.char="~", check.names=FALSE)
-altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_26-09-2017.txt", sep="")
+altSupportFile <- paste(path, "PreviousMergings/", "heterozygousSiteInfo_AltSupport_26-09-2017.txt", sep="")
 siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=FALSE,
                                  comment.char="~", check.names=FALSE)
 
@@ -42,7 +42,9 @@ nHeterozygousSites <- c()
 
 # Open a pdf
 file <- paste(path, "heterozygousSiteInfo_26-09-2017.pdf", sep="")
-pdf(file)
+pdf(file, width=14)
+
+par(mfrow=c(1,2))
 
 for(i in 1:length(isolateIDs)){
   
@@ -82,6 +84,11 @@ for(i in 1:length(isolateIDs)){
          legend=paste("n = ", nHeterozygousSites[i], sep=""))# "\nCoverage = ", 
 #                      round(genomeCoverage[which(genomeCoverage$IsolateID == isolate),
 #                                           "PercentageCoverage"], digits=2), sep=""))
+  
+  # Plot as histogram
+  hist(siteInfoAltSupport[badRows, isolate], breaks=10,
+       xlab="Proportion HQ Reads Supporting Alternate", las=1,
+       xlim=c(0, 1), main=isolate)
 }
 
 

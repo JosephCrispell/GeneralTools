@@ -23,7 +23,11 @@
 		$mv TrimGalore-0.4.3/trim_galore /usr/bin
 
 # fastqc - tool for assessing quality of reads in FASTQ files
-	sudo apt-get install fastqc
+	Download the most recent version as a zip file from here: https://www.bioinformatics.babraham.ac.uk/projects/download.html
+		$unzip fastqc_vx.x.x.zip
+		$nano ~/.bashrc
+			Add: export PATH=$PATH:/path/to/fastqc_vx.x.x
+		$source ~/.bashrc
 
 # cutadapt - tool for trimming raw reads
 	Following the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html:

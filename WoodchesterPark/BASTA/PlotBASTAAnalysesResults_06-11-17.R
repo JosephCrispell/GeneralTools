@@ -14,18 +14,18 @@ demeStructureDates <- list(
   "2Deme"="09-10-17",
   "3Deme-outerIsBoth"="09-10-17",
   "3Deme-outerIsCattle"="09-10-17",
-  "4Deme"="09-10-17"#,
-#  "6Deme-EastWest"="13-10-17",
-#  "6Deme-NorthSouth"="13-10-17",
-#  "8Deme-EastWest"="13-10-17",
-#  "8Deme-NorthSouth"="13-10-17"
+  "4Deme"="09-10-17",
+  "6Deme-EastWest"="13-10-17",
+  "6Deme-NorthSouth"="13-10-17",
+  "8Deme-EastWest"="13-10-17",
+  "8Deme-NorthSouth"="13-10-17"
 )
 
 # Note the population size estimation options
 popEstimationTypes <- c("varying", "equal")
 
 # Note the clock model options
-clockEstimateTypes <- "relaxed" # strict not used
+clockEstimateTypes <- c("relaxed") # strict not used
 
 # Store each of the log tables in a list
 logTables <- readInBASTALogTables(demeStructureDates, popEstimationTypes, clockEstimateTypes,
@@ -35,61 +35,401 @@ logTables <- readInBASTALogTables(demeStructureDates, popEstimationTypes, clockE
 # Examine each run #
 ####################
 
-# Get analysis names
-analyses <- names(logTables)
-
-# Examine each analysis
-for(analysis in analyses){
-  
-  # Get the deme structure
-  demeStructure <- 
-  
-  # Get the log table
-  logTable <- logTables[[analysis]]
-  
-  # Plot the ESS values of each parameter estimated
-  plotParameterEssValues(logTable, colNamesForESS)
-  
-  # Plot the posterior support for each deme as source
-  plotPosteriorSupportForEachDemeAsRoot(logTable, demeStructure)
-  
-  # Produce a migration rate estimation figure - weight by rate flags
-  # Diagrams designed with code = 2 (FORWARDS) in mind
-  
-}
-
-
-
-
-
-arrowWeights <- list("0_1"=1, "1_0"=1, "0_2"=1, "2_0"=1, "1_2"=1,
-                     "2_1"=1, "3_2"=1, "2_3"=1, "2_4"=1, "4_2"=1,
-                     "3_5"=1, "5_3"=1, "4_5"=1, "5_4"=1, "0_4"=1,
-                     "4_0"=1, "4_5"=1, "5_4"=1, "6_7"=1, "7_6"=1,
-                     "4_6"=1, "6_4"=1, "5_7"=1, "7_5"=1, "0_6"=1,
-                     "6_0"=1, "1_7"=1, "7_1"=1, "3_5"=1, "5_3"=1,
-                     "4_6"=1, "6_4"=1)
-
-
-
-
-
+# Create summary plots, note migration rates and calculate AICM scores for each model
+nBootstraps <- 1000
+migrationRateEstimates <- summarisePosteriorLogTables(path, logTables, code=2,
+                                                      arrowFactor=20, nBootstraps)
 
 #################################
 # Plot Model comparison results #
 #################################
 
+# Open a PDF
+file <- paste(path, "SummaryFiguresOfModelEstimations_01-12-17.pdf", sep="")
+pdf(file)
+
+# Examine the model likelihoods
+plotModelAICMScores(migrationRateEstimates, nBootstraps)
 
 ######################################################################
 # Produce single summary plot of rate estimation: BADGERS <-> CATTLE #
 ######################################################################
 
-# Weight each model's input by model likelihood
+# Calculate the weighted mean estimated transition rates between cattle and badger demes
+# weighted by the AICM model scores
+weightedMeanEstimates <- 
+  calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
+    migrationRateEstimates)
 
+# Plot the rates
+plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
+                                       cowToBadger=weightedMeanEstimates[2],
+                                       code=2)
+
+# Close the pdf
+dev.off()
 
 #############
 # FUNCTIONS #
 #############
+
+plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, code){
+  
+  # Create empty plot
+  createEmptyPlot()
+  
+  # Get deme names and assign colours
+  demeNames <- c("badgers", "cattle")
+  demeColours <- c("red", "blue")
+  
+  # Add labels
+  x <- c(0.1, 0.9)
+  y <- c(0.5, 0.5)
+  text(x=x, y=y, 
+       labels=demeNames,
+       col=demeColours, cex=2)
+  
+  # badger -> cow
+  arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.15, y1=y[2]-0.15,
+         code=code, lwd=badgerToCow)
+  
+  # cow -> badger
+  arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.15, y1=y[1]+0.15,
+         code=code, lwd=cowToBadger)
+  
+  legend("topleft", legend=c("Badgers -> Cattle",
+                       paste("-------------- =", round(badgerToCow /cowToBadger, digits=2)),
+                             "Cattle -> Badgers"),
+         bty="n", cex=1)
+  
+  # Reset the margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+}
+
+calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM <-
+  function(migrationRateEstimates){
+    
+    # Calculating the weighted mean rates of transitions between badger and cattle demes
+    # across BASTA models
+    # Weighting is by the AICM score
+    #
+    # 1. Create a normalised AICM score varying between 0 and 100
+    # 2. For each analysis calculate the mean transition rates between cattle and badger demes
+    # 3. Add the calculated means for each BASTA model into a growing array X times. Where X 
+    #    is the normalised AICM score
+    # 4. Once examined each of the BASTA model calculate mean of the two arrays for the 
+    #    estimated transition rates between cattle and badger demes
+    #
+    # This is known as Ensemble Bayesian Model Averaging
+    
+    # Get the analysis names
+    analyses <- names(migrationRateEstimates)
+    
+    # Create two arrays to store the rate estimates between cattle and badgers
+    badgerToCow <- c()
+    cowToBadger <- c()
+    
+    # Get the AICM values
+    aicmScores <- c()
+    for(i in 1:length(analyses)){
+      aicmScores[i] <- migrationRateEstimates[[analyses[i]]][["AICM"]][1]
+    }
+    
+    # Get a normalised vector of the AICM values
+    aicmNormalised <- setRangeOfValues(aicmScores, minToSet=0, maxToSet=99)
+    
+    # Examine each of the different model structures
+    for(i in 1:length(analyses)){
+      
+      # Initialise arrays to store the rates from badgers to cattle and vice versa
+      ratesBadgerToCow <- c()
+      ratesCowToBadger <- c()
+      
+      # Get the demeStructure
+      demeStructure <- strsplit(analyses[i], "_")[[1]][1]
+      
+      # Examine each rate
+      for(key in names(migrationRateEstimates[[analyses[i]]])){
+        
+        # Ignore AICM
+        if(key == "AICM"){
+          next
+        }
+        
+        # Split the key into its deme numbers
+        demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
+        
+        # Check if current rate is between badger and cattle populations
+        if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+                 pattern="badger") == TRUE &&
+           grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
+                 pattern="cow") == TRUE){
+          
+          ratesBadgerToCow[length(ratesBadgerToCow) + 1] <- 
+            migrationRateEstimates[[analyses[i]]][[key]]
+          
+        }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+                       pattern="cow") == TRUE &&
+                 grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
+                       pattern="badger") == TRUE){
+          
+          ratesCowToBadger[length(ratesCowToBadger) + 1] <- 
+            migrationRateEstimates[[analyses[i]]][[key]]
+        }
+      }
+      
+      # Calculate mean rates between cattle and badgers
+      meanRateBadgerToCow <- mean(ratesBadgerToCow)
+      meanRateCowToBadger <- mean(ratesCowToBadger)
+      
+      # Store the rates in overall array
+      badgerToCow <- c(badgerToCow, rep(meanRateBadgerToCow, 100 - aicmNormalised[i]))
+      cowToBadger <- c(cowToBadger, rep(meanRateCowToBadger, 100 - aicmNormalised[i]))
+    }
+    
+    # Calculate the weighted means for the rates between badgers and cattle
+    weightedMeanBadgerToCow <- mean(badgerToCow)
+    weightedMeanCowToBadger <- mean(cowToBadger)
+    
+    return(c(weightedMeanBadgerToCow, weightedMeanCowToBadger))
+}
+
+plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
+  
+  # Get the deme structure names
+  analyses <- names(migrationRateEstimates)
+  
+  # Initialise an array to store the shortened analyses names
+  names <- c()
+  
+  # Get the AICM values
+  aicmScores <- c()
+  bootstrapMins <- c()
+  bootstrapMaxs <- c()
+  for(i in 1:length(analyses)){
+    
+    values <- migrationRateEstimates[[analyses[i]]][["AICM"]]
+    
+    aicmScores[i] <- values[1]
+    bootstrapMins[i] <- values[2]
+    bootstrapMaxs[i] <- values[3]
+    
+    parts <- strsplit(analyses[i], split="_")[[1]]
+    names[i] <- paste(parts[1], parts[2], sep="_")
+  }
+  
+  # Calculate the range of the AICM scores - y axis limits
+  range <- range(aicmScores, bootstrapMins, bootstrapMaxs)
+  yLim <- c(range[1] - (0.1 * (range[2] - range[1])),
+            range[2] + (0.1 * (range[2] - range[1])))
+  
+  # Set the margins
+  par(mar=c(10, 7, 0, 0.1))
+  
+  # Set bar colours to highlight min
+  colours <- rep("gray", length(aicmScores))
+  min <- min(aicmScores)
+  minIndex <- which(aicmScores == min)
+  colours[minIndex] <- "red"
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, bty="n", 
+       xlim=c(0.5, length(analyses) + 1), ylim=yLim,
+       xaxt="n", yaxt="n", ylab="", xlab="")
+  axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2)
+  mtext(side=2, text="AICM Scores", line=5.5, cex=1.5)
+  axis(side=1, at=1:length(analyses),
+       labels=names, las=2, tick=FALSE, cex.axis=0.75)
+  
+  # Add the bars
+  for(i in 1:length(analyses)){
+    polygon(x=c(i-0.4, i-0.4, i+0.4, i+0.4),
+            y=c(0, aicmScores[i], aicmScores[i], 0),
+            col=colours[i])
+    lines(x=c(i, i),
+          y=c(bootstrapMins[i], bootstrapMaxs[i]))
+  }
+  
+  # Add some horizontal lines
+  points(x=c(1, length(analyses)),
+         y=c(min, min), lty=2, col="red", type="l")
+  points(x=c(1, length(analyses)),
+         y=c(bootstrapMins[minIndex], bootstrapMins[minIndex]),
+         lty=2, col=rgb(0,0,0, 0.5), type="l")
+  points(x=c(1, length(analyses)),
+         y=c(bootstrapMaxs[minIndex], bootstrapMaxs[minIndex]),
+         lty=2, col=rgb(0,0,0, 0.5), type="l")
+
+  # Reset the margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+}
+
+summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBootstraps){
+  
+  # Get analysis names
+  analyses <- names(logTables)
+  
+  # Initialise a list to store the migration rate estimates and AICM
+  migrationRateEstimates <- list()
+  
+  # Examine each analysis
+  for(analysis in analyses){
+    
+    # Open a pdf file
+    file <- paste(path, analysis, "/", analysis, "_ResultsSummary.pdf", sep="")
+    pdf(file)
+    
+    # Get the deme structure
+    demeStructure <- strsplit(analysis, "_")[[1]][1]
+    
+    # Note progress
+    cat(paste("\rExamining log table for: ", demeStructure, "                    ", sep=""))
+    
+    # Get the log table
+    logTable <- logTables[[analysis]]
+    
+    # Note which parameters to examine posterior support for
+    colsToCalculateESS <- colnames(logTable)[
+      grepl(x=colnames(logTable), pattern="Sample|rateMatrixFlag|forward") == FALSE]
+
+    # Plot the ESS values of each parameter estimated
+    plotParameterESSValues(logTable, colsToCalculateESS)
+    
+    # Plot the posterior support for each deme as source
+    plotPosteriorSupportForEachDemeAsRoot(logTable, demeStructure)
+    
+    # Produce a migration rate estimation figure - weight by rate flags
+    # Diagrams designed with code = 2 (FORWARDS) in mind
+    migrationRateEstimates[[analysis]] <- 
+      plotMigrationRates(logTable, demeStructure, code, arrowFactor)
+    
+    # Calculate the acim
+    migrationRateEstimates[[analysis]][["AICM"]] <- 
+      calculateAICM(logTable$treeLikelihood1, nBootstraps)
+    
+    # Close the pdf file
+    dev.off()
+  }
+  cat("\rFinished examining log tables...          ")
+  
+  # Reset the margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  
+  return(migrationRateEstimates)
+}
+
+calculateAICM <- function(logLikelihoodValues, nBootstraps){
+  # Calculation taken from:
+  # Baele et al. 2012 - Improving the accuracy of demographic and molecular clock
+  # model comparison while accomodating phylogenetic uncertainty
+  # Equation 10: AICM = k - 2m
+  #   k = effective number of parameters = 2 * variance of the posterior log likehoods
+  #   m = mean of the posterior log likelihoods
+  aicm <- (2 * var(logLikelihoodValues)) - (2 * mean(logLikelihoodValues))
+ 
+  # Conduct some bootstrapping
+  bootstrapAICMs <- c()
+  for(i in 1:nBootstraps){
+    
+    sample <- sample(logLikelihoodValues, size=length(logLikelihoodValues), replace=TRUE)
+    bootstrapAICMs[i] <- (2 * var(sample)) - (2 * mean(sample))
+  }
+  
+  # Summarise the bootstraps
+  quantiles <- quantile(bootstrapAICMs, probs=c(0.025, 0.975))
+  output <- c(aicm, quantiles[[1]], quantiles[[2]])
+  
+  return(output)
+}
+
+getValues <- function(list){
+  values <- c()
+  keys <- names(list)
+  for(i in 1:length(keys)){
+    values[i] <- list[[keys[i]]]
+  }
+  
+  return(values)
+}
+
+setRangeOfValues <- function(values, minToSet, maxToSet){
+  output <- c()
+  range <- range(values)
+  for(i in 1:length(values)){
+    output[i] <- ((values[i] - range[1]) / (range[2] - range[1]) * maxToSet) + minToSet
+  }
+  
+  return(output)
+}
+
+setRangeOfValuesInList <- function(arrowRates, minToSet, maxToSet){
+  
+  range <- range(getValues(arrowRates))
+  for(key in names(arrowRates)){
+    arrowRates[[key]] <- ((arrowRates[[key]] - range[1]) / (range[2] - range[1]) * maxToSet) + minToSet
+  }
+  
+  return(arrowRates)
+}
+
+getArrowRates <- function(logTable){
+  
+  # Initialise a list to store the arrow weights
+  arrowRates <- list()
+  
+  # Get the column names
+  colNames <- colnames(logTable)
+  
+  # Examine each column
+  for(col in colNames){
+  
+    # Ignore all columns except the forward rate columns
+    if(grepl(x=col, pattern="forward") == FALSE){
+      next
+    }
+    
+    # Get the directional information (i.e. 0_1, 2_0)
+    parts <- strsplit(col, split="_")[[1]]
+    direction <- paste(parts[length(parts) - 1], "_", parts[length(parts)], sep="")
+    
+    # Store a summary statistic for the rate distribution
+    arrowRates[[direction]] <- median(logTable[, col])
+  }
+  
+  return(arrowRates)
+}
+
+plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
+  
+  # Get the migration rates
+  migrationRates <- getArrowRates(logTable)
+  
+  # Normalise those rates to vary between 0 and MAX (arrow factor)
+  migrationRates <- setRangeOfValuesInList(migrationRates, minToSet=0, maxToSet=arrowFactor)
+  
+  # Plot the demes and associated rates
+  if(demeStructure == "2Deme"){
+    plot2Deme(migrationRates, code)
+  }else if(demeStructure == "3Deme-outerIsBoth"){
+    plot3Deme(migrationRates, code)
+  }else if(demeStructure == "3Deme-outerIsCattle"){
+    plot3Deme(migrationRates, code)
+  }else if(demeStructure == "4Deme"){
+    plot4Deme(migrationRates, code)
+  }else if(demeStructure == "6Deme-EastWest"){
+    plot6DemeEW(migrationRates, code)
+  }else if(demeStructure == "6Deme-NorthSouth"){
+    plot6DemeNS(migrationRates, code)
+  }else if(demeStructure == "8Deme-EastWest"){
+    plot8DemeEW(migrationRates, code)
+  }else if(demeStructure == "8Deme-NorthSouth"){
+    plot8DemeNS(migrationRates, code)
+  }else{
+    cat(paste("Input deme structure not recognised:", demeStructure, "\n"))
+  }
+  
+  return(migrationRates)
+}
 
 plot2Deme <- function(arrowWeights, code){
 
@@ -112,12 +452,15 @@ plot2Deme <- function(arrowWeights, code){
        col=demeColours)
   
   # badger -> cow
-  arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.15, y1=y[2]-0.15,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.15, y1=y[2]-0.15,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # cow -> badger
-  arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.15, y1=y[1]+0.15,
-         code=code, lwd=arrowWeights[["0_1"]])
- 
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.15, y1=y[1]+0.15,
+         code=code, lwd=arrowWeights[["1_0"]])
+  }
 }
 
 plot3Deme <- function(arrowWeights, code, demeStructure){
@@ -140,25 +483,37 @@ plot3Deme <- function(arrowWeights, code, demeStructure){
        labels=demeNames, col=demeColours)
   
   # badger -> cow/cow-inner
-  arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["0_1"]]) 
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # cow/cow-inner -> badger
-  arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.05, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["1_0"]])
+  }
   
   # badger -> outer/cow-outer
-  arrows(x0=x[1]-0.05, x1=x[3]-0.15, y0=y[1]+0.1, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["0_2"]])
+  if(arrowWeights[["0_2"]] != 0){
+    arrows(x0=x[1]-0.05, x1=x[3]-0.15, y0=y[1]+0.1, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["0_2"]])
+  }
   # outer/cow-outer -> badger
-  arrows(x0=x[3]-0.05, x1=x[1]+0.05, y0=y[3]-0.1, y1=y[1]+0.1,
-         code=code, lwd=arrowWeights[["2_0"]])
+  if(arrowWeights[["2_0"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[1]+0.05, y0=y[3]-0.1, y1=y[1]+0.1,
+           code=code, lwd=arrowWeights[["2_0"]])
+  }
   
   # cow/cow-inner -> outer/cow-outer
-  arrows(x0=x[2]+0.05, x1=x[3]+0.15, y0=y[2]+0.1, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["1_2"]])
+  if(arrowWeights[["1_2"]] != 0){
+    arrows(x0=x[2]+0.05, x1=x[3]+0.15, y0=y[2]+0.1, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["1_2"]])
+  }
   # outer/cow-outer -> cow/cow-inner
-  arrows(x0=x[3]+0.05, x1=x[2]-0.05, y0=y[3]-0.1, y1=y[2]+0.1,
-         code=code, lwd=arrowWeights[["2_1"]])
+  if(arrowWeights[["2_1"]] != 0){
+    arrows(x0=x[3]+0.05, x1=x[2]-0.05, y0=y[3]-0.1, y1=y[2]+0.1,
+           code=code, lwd=arrowWeights[["2_1"]])
+  }
 }
 
 plot4Deme <- function(arrowWeights, code){
@@ -183,32 +538,48 @@ plot4Deme <- function(arrowWeights, code){
        labels=demeNames, col=demeColours)
 
   # badger-inner -> cow-inner
-  arrows(x0=x[1]-0.05, x1=x[2]-0.05, y0=y[1]+0.1, y1=y[2]-0.1,
-         code=code, lwd=arrowWeights[["0_1"]]) 
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]-0.05, x1=x[2]-0.05, y0=y[1]+0.1, y1=y[2]-0.1,
+          code=code, lwd=arrowWeights[["0_1"]])
+  }
   # cow-inner -> badger-inner
-  arrows(x0=x[2]+0.05, x1=x[1]+0.05, y0=y[2]-0.1, y1=y[1]+0.1,
-         code=code, lwd=arrowWeights[["0_1"]])
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[2]+0.05, x1=x[1]+0.05, y0=y[2]-0.1, y1=y[1]+0.1,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   
   # badger-outer -> cow-outer
-  arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.1, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["3_2"]]) 
+  if(arrowWeights[["3_2"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.1, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["3_2"]])
+  }
   # cow-outer -> badger-outer
-  arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.1, y1=y[4]+0.1,
-         code=code, lwd=arrowWeights[["2_3"]]) 
+  if(arrowWeights[["2_3"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.1, y1=y[4]+0.1,
+           code=code, lwd=arrowWeights[["2_3"]])
+  }
   
   # badger-inner -> badger-outer
-  arrows(x0=x[1]+0.15, x1=x[4]-0.15, y0=y[1]-0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["0_3"]]) 
+  if(arrowWeights[["0_3"]] != 0){
+    arrows(x0=x[1]+0.15, x1=x[4]-0.15, y0=y[1]-0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["0_3"]])
+  }
   # badger-outer -> badger-inner
-  arrows(x0=x[4]-0.15, x1=x[1]+0.15, y0=y[4]+0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["3_0"]])
+  if(arrowWeights[["3_0"]] != 0){
+    arrows(x0=x[4]-0.15, x1=x[1]+0.15, y0=y[4]+0.05, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["3_0"]])
+  }
   
   # cow-inner -> cow-outer
-  arrows(x0=x[2]+0.15, x1=x[3]-0.15, y0=y[2]+0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["1_2"]]) 
+  if(arrowWeights[["1_2"]] != 0){
+    arrows(x0=x[2]+0.15, x1=x[3]-0.15, y0=y[2]+0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["1_2"]])
+  }
   # cow-outer -> cow-inner
-  arrows(x0=x[3]-0.15, x1=x[2]+0.15, y0=y[3]-0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["2_1"]])
+  if(arrowWeights[["2_1"]] != 0){
+    arrows(x0=x[3]-0.15, x1=x[2]+0.15, y0=y[3]-0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["2_1"]])
+  }
 }
 
 plot6DemeEW <- function(arrowWeights, code){
@@ -231,67 +602,103 @@ plot6DemeEW <- function(arrowWeights, code){
        labels=demeNames, col=demeColours)
   
   # badger-inner -> cow-inner
-  arrows(x0=x[1]-0.05, x1=x[2]-0.05, y0=y[1]+0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["0_1"]]) 
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]-0.05, x1=x[2]-0.05, y0=y[1]+0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # cow-inner -> badger-inner
-  arrows(x0=x[2]+0.05, x1=x[1]+0.05, y0=y[2]-0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]+0.05, x1=x[1]+0.05, y0=y[2]-0.05, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["1_0"]])
+  }
   
   # cow-outer-east -> badger-outer-east
-  arrows(x0=x[3]-0.05, x1=x[5]-0.05, y0=y[3]-0.1, y1=y[5]+0.1,
-         code=code, lwd=arrowWeights[["2_4"]]) 
+  if(arrowWeights[["2_4"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[5]-0.05, y0=y[3]-0.1, y1=y[5]+0.1,
+            code=code, lwd=arrowWeights[["2_4"]])
+  }
   # badger-outer-east -> cow-outer-east
-  arrows(x0=x[5]+0.05, x1=x[3]+0.05, y0=y[5]+0.1, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["4_2"]])
+  if(arrowWeights[["4_2"]] != 0){
+    arrows(x0=x[5]+0.05, x1=x[3]+0.05, y0=y[5]+0.1, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["4_2"]])
+  }
   
   # cow-outer-west -> badger-outer-west
-  arrows(x0=x[4]+0.05, x1=x[6]+0.05, y0=y[4]-0.1, y1=y[6]+0.1,
-         code=code, lwd=arrowWeights[["3_5"]]) 
+  if(arrowWeights[["3_5"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[6]+0.05, y0=y[4]-0.1, y1=y[6]+0.1,
+           code=code, lwd=arrowWeights[["3_5"]])
+  }
   # badger-outer-west -> cow-outer-west
-  arrows(x0=x[6]-0.05, x1=x[4]-0.05, y0=y[6]+0.1, y1=y[4]-0.1,
-         code=code, lwd=arrowWeights[["5_3"]]) 
+  if(arrowWeights[["5_3"]] != 0){
+    arrows(x0=x[6]-0.05, x1=x[4]-0.05, y0=y[6]+0.1, y1=y[4]-0.1,
+           code=code, lwd=arrowWeights[["5_3"]])
+  }
   
   # cow-outer-east -> cow-outer-west
-  arrows(x0=x[3]-0.2, x1=x[4]+0.2, y0=y[3]-0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["2_3"]]) 
-  # cow-outer-west -> cow-outer-east 
-  arrows(x0=x[4]+0.2, x1=x[3]-0.2, y0=y[4]+0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["3_2"]])
+  if(arrowWeights[["2_3"]] != 0){
+    arrows(x0=x[3]-0.2, x1=x[4]+0.2, y0=y[3]-0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["2_3"]])
+  }
+  # cow-outer-west -> cow-outer-east
+  if(arrowWeights[["3_2"]] != 0){
+    arrows(x0=x[4]+0.2, x1=x[3]-0.2, y0=y[4]+0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["3_2"]])
+  }
   
   # badger-outer-east -> badger-outer-west
-  arrows(x0=x[5]-0.2, x1=x[6]+0.2, y0=y[5]+0.05, y1=y[6]+0.05,
-         code=code, lwd=arrowWeights[["4_5"]]) 
-  # badger-outer-west -> badger-outer-east 
-  arrows(x0=x[6]+0.2, x1=x[5]-0.2, y0=y[6]-0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["5_4"]])
+  if(arrowWeights[["4_5"]] != 0){
+    arrows(x0=x[5]-0.2, x1=x[6]+0.2, y0=y[5]+0.05, y1=y[6]+0.05,
+           code=code, lwd=arrowWeights[["4_5"]])
+  }
+  # badger-outer-west -> badger-outer-east
+  if(arrowWeights[["5_4"]] != 0){
+    arrows(x0=x[6]+0.2, x1=x[5]-0.2, y0=y[6]-0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["5_4"]])
+  }
   
   # badger-inner -> badger-outer-east
-  arrows(x0=x[1]+0.2, x1=x[5]-0.1, y0=y[1]-0.05, y1=y[5]+0.1,
-         code=code, lwd=arrowWeights[["0_4"]])
+  if(arrowWeights[["0_4"]] != 0){
+    arrows(x0=x[1]+0.2, x1=x[5]-0.1, y0=y[1]-0.05, y1=y[5]+0.1,
+           code=code, lwd=arrowWeights[["0_4"]])
+  }
   # badger-outer-east -> badger-inner
-  arrows(x0=x[5]-0.2, x1=x[1]+0.1, y0=y[5]+0.1, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["0_4"]])
+  if(arrowWeights[["4_0"]] != 0){
+    arrows(x0=x[5]-0.2, x1=x[1]+0.1, y0=y[5]+0.1, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["4_0"]])
+  }
  
   # badger-inner -> badger-outer-west
-  arrows(x0=x[1]-0.2, x1=x[6]+0.1, y0=y[1]-0.05, y1=y[6]+0.1,
-         code=code, lwd=arrowWeights[["0_5"]])
+  if(arrowWeights[["0_5"]] != 0){
+    arrows(x0=x[1]-0.2, x1=x[6]+0.1, y0=y[1]-0.05, y1=y[6]+0.1,
+           code=code, lwd=arrowWeights[["0_5"]])
+  }
   # badger-outer-west -> badger-inner
-  arrows(x0=x[6]+0.2, x1=x[1]-0.1, y0=y[6]+0.1, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["5_0"]])
+  if(arrowWeights[["5_0"]] != 0){
+    arrows(x0=x[6]+0.2, x1=x[1]-0.1, y0=y[6]+0.1, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["5_0"]])
+  }
   
   # cow-inner -> cow-outer-east
-  arrows(x0=x[2]+0.2, x1=x[3]-0.1, y0=y[2]+0.05, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["1_2"]])
+  if(arrowWeights[["1_2"]] != 0){
+    arrows(x0=x[2]+0.2, x1=x[3]-0.1, y0=y[2]+0.05, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["1_2"]])
+  }
   # cow-outer-east -> cow-inner
-  arrows(x0=x[3]-0.2, x1=x[2]+0.1, y0=y[3]-0.1, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["2_1"]])
+  if(arrowWeights[["2_1"]] != 0){
+    arrows(x0=x[3]-0.2, x1=x[2]+0.1, y0=y[3]-0.1, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["2_1"]])
+  }
 
   # cow-inner -> cow-outer-west
-  arrows(x0=x[2]-0.2, x1=x[4]+0.1, y0=y[2]+0.05, y1=y[4]-0.1,
-         code=code, lwd=arrowWeights[["1_3"]])
+  if(arrowWeights[["1_3"]] != 0){
+    arrows(x0=x[2]-0.2, x1=x[4]+0.1, y0=y[2]+0.05, y1=y[4]-0.1,
+           code=code, lwd=arrowWeights[["1_3"]])
+  }
   # cow-outer-west -> cow-inner
-  arrows(x0=x[4]+0.2, x1=x[2]-0.1, y0=y[4]-0.1, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["3_1"]])
+  if(arrowWeights[["3_1"]] != 0){
+    arrows(x0=x[4]+0.2, x1=x[2]-0.1, y0=y[4]-0.1, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["3_1"]])
+  }
 }
 
 plot6DemeNS <- function(arrowWeights, code){
@@ -314,68 +721,103 @@ plot6DemeNS <- function(arrowWeights, code){
        labels=demeNames, col=demeColours)
   
   # badger-inner -> cow-inner
-  arrows(x0=x[1]+0.1, x1=x[2]-0.1, y0=y[1]-0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["0_1"]]) 
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]+0.1, x1=x[2]-0.1, y0=y[1]-0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # cow-inner -> badger-inner
-  arrows(x0=x[2]-0.1, x1=x[1]+0.1, y0=y[2]+0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["1_0"]] != 0){
+      arrows(x0=x[2]-0.1, x1=x[1]+0.1, y0=y[2]+0.05, y1=y[1]+0.05,
+             code=code, lwd=arrowWeights[["1_0"]])
+  }
 
   # cow-outer-north -> badger-outer-north
-  arrows(x0=x[3]-0.2, x1=x[5]+0.2, y0=y[3]-0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["2_4"]]) 
+  if(arrowWeights[["2_4"]] != 0){
+    arrows(x0=x[3]-0.2, x1=x[5]+0.2, y0=y[3]-0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["2_4"]])
+  }
   # cow-outer-north -> badger-outer-north
-  arrows(x0=x[5]+0.2, x1=x[3]-0.2, y0=y[5]+0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["4_2"]])
+  if(arrowWeights[["4_2"]] != 0){
+    arrows(x0=x[5]+0.2, x1=x[3]-0.2, y0=y[5]+0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["4_2"]])
+  }
   
   # cow-outer-south -> badger-outer-south
-  arrows(x0=x[4]-0.2, x1=x[6]+0.2, y0=y[4]+0.05, y1=y[6]+0.05,
-         code=code, lwd=arrowWeights[["3_5"]]) 
+  if(arrowWeights[["3_5"]] != 0){
+    arrows(x0=x[4]-0.2, x1=x[6]+0.2, y0=y[4]+0.05, y1=y[6]+0.05,
+           code=code, lwd=arrowWeights[["3_5"]]) 
+  }
   # badger-outer-south -> cow-outer-south 
-  arrows(x0=x[6]+0.2, x1=x[4]-0.2, y0=y[6]-0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["5_3"]])
+  if(arrowWeights[["5_3"]] != 0){
+    arrows(x0=x[6]+0.2, x1=x[4]-0.2, y0=y[6]-0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["5_3"]])
+  }
   
   # badger-outer-north -> badger-outer-south
-  arrows(x0=x[5]+0.05, x1=x[6]+0.05, y0=y[5]-0.1, y1=y[6]+0.1,
-         code=code, lwd=arrowWeights[["4_5"]]) 
+  if(arrowWeights[["4_5"]] != 0){
+    arrows(x0=x[5]+0.05, x1=x[6]+0.05, y0=y[5]-0.1, y1=y[6]+0.1,
+           code=code, lwd=arrowWeights[["4_5"]]) 
+  }
   # badger-outer-south -> badger-outer-north
-  arrows(x0=x[6]-0.05, x1=x[5]-0.05, y0=y[6]+0.1, y1=y[5]-0.1,
-         code=code, lwd=arrowWeights[["5_4"]]) 
+  if(arrowWeights[["5_4"]] != 0){
+    arrows(x0=x[6]-0.05, x1=x[5]-0.05, y0=y[6]+0.1, y1=y[5]-0.1,
+           code=code, lwd=arrowWeights[["5_4"]])
+  } 
   
   # cow-outer-north -> cow-outer-south
-  arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.1, y1=y[4]+0.1,
-         code=code, lwd=arrowWeights[["2_4"]]) 
+  if(arrowWeights[["2_4"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.1, y1=y[4]+0.1,
+           code=code, lwd=arrowWeights[["2_4"]]) 
+  }
   # cow-outer-south -> cow-outer-north
-  arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.1, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["3_2"]])
+  if(arrowWeights[["3_2"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.1, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["3_2"]])
+  }
   
   # badger-inner -> badger-outer-north
-  arrows(x0=x[1]-0.1, x1=x[5]+0.1, y0=y[1]+0.05, y1=y[5]-0.1,
-         code=code, lwd=arrowWeights[["0_4"]])
+  if(arrowWeights[["0_4"]] != 0){
+    arrows(x0=x[1]-0.1, x1=x[5]+0.1, y0=y[1]+0.05, y1=y[5]-0.1,
+           code=code, lwd=arrowWeights[["0_4"]])
+  }
   # badger-outer-north -> badger-inner
-  arrows(x0=x[5]+0.2, x1=x[1], y0=y[5]-0.1, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["4_0"]])
+  if(arrowWeights[["4_0"]] != 0){
+    arrows(x0=x[5]+0.2, x1=x[1], y0=y[5]-0.1, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["4_0"]])
+  }
   
   # badger-inner -> badger-outer-south
-  arrows(x0=x[1]-0.1, x1=x[6]+0.1, y0=y[1]-0.05, y1=y[6]+0.1,
-         code=code, lwd=arrowWeights[["0_5"]])
+  if(arrowWeights[["0_5"]] != 0){
+    arrows(x0=x[1]-0.1, x1=x[6]+0.1, y0=y[1]-0.05, y1=y[6]+0.1,
+           code=code, lwd=arrowWeights[["0_5"]])
+  }
   # badger-outer-south -> badger-inner
-  arrows(x0=x[6]+0.2, x1=x[1], y0=y[6]+0.1, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["5_0"]])
+  if(arrowWeights[["5_0"]] != 0){
+    arrows(x0=x[6]+0.2, x1=x[1], y0=y[6]+0.1, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["5_0"]])
+  }
   
   # cow-inner -> cow-outer-north
-  arrows(x0=x[2]+0.05, x1=x[3]-0.1, y0=y[2]+0.05, y1=y[3]-0.1,
-         code=code, lwd=arrowWeights[["1_2"]])
+  if(arrowWeights[["1_2"]] != 0){
+    arrows(x0=x[2]+0.05, x1=x[3]-0.1, y0=y[2]+0.05, y1=y[3]-0.1,
+           code=code, lwd=arrowWeights[["1_2"]])
+  }
   # cow-outer-north -> cow-inner
-  arrows(x0=x[3]-0.2, x1=x[2]-0.05, y0=y[3]-0.1, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["2_1"]])
+  if(arrowWeights[["2_1"]] != 0){
+    arrows(x0=x[3]-0.2, x1=x[2]-0.05, y0=y[3]-0.1, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["2_1"]])
+  }
   
   # cow-inner -> cow-outer-south
-  arrows(x0=x[2]+0.05, x1=x[4]-0.1, y0=y[2]-0.05, y1=y[4]+0.1,
-         code=code, lwd=arrowWeights[["1_3"]])
+  if(arrowWeights[["1_3"]] != 0){
+    arrows(x0=x[2]+0.05, x1=x[4]-0.1, y0=y[2]-0.05, y1=y[4]+0.1,
+           code=code, lwd=arrowWeights[["1_3"]])
+  }
   # cow-outer-south -> cow-inner
-  arrows(x0=x[4]-0.2, x1=x[2]-0.05, y0=y[4]+0.1, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["3_1"]])
-
+  if(arrowWeights[["3_1"]] != 0){
+    arrows(x0=x[4]-0.2, x1=x[2]-0.05, y0=y[4]+0.1, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["3_1"]])
+  }
 }
 
 plot8DemeEW <- function(arrowWeights, code){
@@ -401,88 +843,135 @@ plot8DemeEW <- function(arrowWeights, code){
   text(x=x, y=y, labels=demeNames, col=demeColours)
 
   # cow-inner-east -> cow-inner-west
-  arrows(x0=x[3]-0.175, x1=x[4]+0.175, y0=y[3]-0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["2_3"]])
+  if(arrowWeights[["2_3"]] != 0){
+    arrows(x0=x[3]-0.175, x1=x[4]+0.175, y0=y[3]-0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["2_3"]])
+  }
   # cow-inner-west -> cow-inner-east
-  arrows(x0=x[4]+0.175, x1=x[3]-0.175, y0=y[4]+0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["3_2"]])
+  if(arrowWeights[["3_2"]] != 0){
+    arrows(x0=x[4]+0.175, x1=x[3]-0.175, y0=y[4]+0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["3_2"]])
+  }
   
   # badger-inner-east -> badger-inner-west
-  arrows(x0=x[1]-0.175, x1=x[2]+0.175, y0=y[1]+0.05, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["0_1"]])
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]-0.175, x1=x[2]+0.175, y0=y[1]+0.05, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # badger-inner-west -> badger-inner-east
-  arrows(x0=x[2]+0.175, x1=x[1]-0.175, y0=y[2]-0.05, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]+0.175, x1=x[1]-0.175, y0=y[2]-0.05, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["1_0"]])
+  }
     
   # badger-inner-west -> cow-inner-west
-  arrows(x0=x[2]-0.05, x1=x[4]-0.05, y0=y[2]+0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["1_3"]])
+  if(arrowWeights[["1_3"]] != 0){
+    arrows(x0=x[2]-0.05, x1=x[4]-0.05, y0=y[2]+0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["1_3"]])
+  }
   # cow-inner-west -> badger-inner-west
-  arrows(x0=x[4]+0.05, x1=x[2]+0.05, y0=y[4]-0.05, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["3_1"]])
+  if(arrowWeights[["3_1"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[2]+0.05, y0=y[4]-0.05, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["3_1"]])
+  }
 
   # badger-inner-east -> cow-inner-east
-  arrows(x0=x[1]+0.05, x1=x[3]+0.05, y0=y[1]+0.05, y1=y[3]-0.05,
-         code=code, lwd=arrowWeights[["0_2"]])
+  if(arrowWeights[["0_2"]] != 0){
+    arrows(x0=x[1]+0.05, x1=x[3]+0.05, y0=y[1]+0.05, y1=y[3]-0.05,
+           code=code, lwd=arrowWeights[["0_2"]])
+  }
   # cow-inner-east -> badger-inner-east
-  arrows(x0=x[3]-0.05, x1=x[1]-0.05, y0=y[3]-0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["2_0"]])
+  if(arrowWeights[["2_0"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[1]-0.05, y0=y[3]-0.05, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["2_0"]])
+  }
   
   # cow-outer-east -> badger-outer-east
-  arrows(x0=x[5]+0.025, x1=x[7]+0.025, y0=y[5]-0.05, y1=y[7]+0.05,
-         code=code, lwd=arrowWeights[["4_6"]])
+  if(arrowWeights[["4_6"]] != 0){
+    arrows(x0=x[5]+0.025, x1=x[7]+0.025, y0=y[5]-0.05, y1=y[7]+0.05,
+           code=code, lwd=arrowWeights[["4_6"]])
+  }
   # badger-outer-east -> cow-outer-east
-  arrows(x0=x[7]+0.1, x1=x[5]+0.1, y0=y[7]+0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["6_4"]])
+  if(arrowWeights[["6_4"]] != 0){
+    arrows(x0=x[7]+0.1, x1=x[5]+0.1, y0=y[7]+0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["6_4"]])
+  }
   
   # cow-outer-west -> badger-outer-west
-  arrows(x0=x[6]-0.025, x1=x[8]-0.025, y0=y[6]-0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["5_7"]])
+  if(arrowWeights[["5_7"]] != 0){
+    arrows(x0=x[6]-0.025, x1=x[8]-0.025, y0=y[6]-0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["5_7"]])
+  }
   # badger-outer-west -> cow-outer-west
-  arrows(x0=x[8]-0.1, x1=x[6]-0.1, y0=y[8]+0.05, y1=y[6]-0.05,
-         code=code, lwd=arrowWeights[["7_5"]])
+  if(arrowWeights[["7_5"]] != 0){
+    arrows(x0=x[8]-0.1, x1=x[6]-0.1, y0=y[8]+0.05, y1=y[6]-0.05,
+           code=code, lwd=arrowWeights[["7_5"]])
+  }
  
   # cow-outer-east -> cow-outer-west
-  arrows(x0=x[5]-0.175, x1=x[6]+0.175, y0=y[5]-0.05, y1=y[6]-0.05,
-         code=code, lwd=arrowWeights[["4_5"]])
+  if(arrowWeights[["4_5"]] != 0){
+    arrows(x0=x[5]-0.175, x1=x[6]+0.175, y0=y[5]-0.05, y1=y[6]-0.05,
+           code=code, lwd=arrowWeights[["4_5"]])
+  }
   # cow-outer-west -> cow-outer-east
-  arrows(x0=x[6]+0.175, x1=x[5]-0.175, y0=y[6]+0.05, y1=y[5]+0.05,
-         code=code, lwd=arrowWeights[["5_4"]])
+  if(arrowWeights[["5_4"]] != 0){
+    arrows(x0=x[6]+0.175, x1=x[5]-0.175, y0=y[6]+0.05, y1=y[5]+0.05,
+           code=code, lwd=arrowWeights[["5_4"]])
+  }
   
   # badger-outer-east -> badger-outer-west
-  arrows(x0=x[7]-0.175, x1=x[8]+0.175, y0=y[7]+0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["6_7"]])
+  if(arrowWeights[["6_7"]] != 0){
+    arrows(x0=x[7]-0.175, x1=x[8]+0.175, y0=y[7]+0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["6_7"]])
+  }
   # badger-outer-west -> badger-outer-east
-  arrows(x0=x[8]+0.175, x1=x[7]-0.175, y0=y[8]-0.05, y1=y[7]-0.05,
-         code=code, lwd=arrowWeights[["7_6"]])
+  if(arrowWeights[["7_6"]] != 0){
+    arrows(x0=x[8]+0.175, x1=x[7]-0.175, y0=y[8]-0.05, y1=y[7]-0.05,
+           code=code, lwd=arrowWeights[["7_6"]])
+  }
 
   # badger-inner-west -> badger-outer-west
-  arrows(x0=x[2]-0.05, x1=x[8]+0.025, y0=y[2]-0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["1_7"]])
+  if(arrowWeights[["1_7"]] != 0){
+    arrows(x0=x[2]-0.05, x1=x[8]+0.025, y0=y[2]-0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["1_7"]])
+  }
   # badger-outer-west -> badger-inner-west
-  arrows(x0=x[8]+0.125, x1=x[2]+0.05, y0=y[8]+0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["7_1"]])
-  
+  if(arrowWeights[["7_1"]] != 0){
+    arrows(x0=x[8]+0.125, x1=x[2]+0.05, y0=y[8]+0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["7_1"]])
+  }
   # cow-inner-west -> cow-outer-west
-  arrows(x0=x[4]-0.05, x1=x[6]+0.025, y0=y[4]+0.05, y1=y[6]-0.05,
-         code=code, lwd=arrowWeights[["3_5"]])
+  if(arrowWeights[["3_5"]] != 0){
+    arrows(x0=x[4]-0.05, x1=x[6]+0.025, y0=y[4]+0.05, y1=y[6]-0.05,
+           code=code, lwd=arrowWeights[["3_5"]])
+  }
   # cow-outer-west -> cow-inner-west
-  arrows(x0=x[6]+0.125, x1=x[4]+0.05, y0=y[6]-0.05, y1=y[4]+0.05,
-         code=code, lwd=arrowWeights[["5_3"]])
+  if(arrowWeights[["5_3"]] != 0){
+    arrows(x0=x[6]+0.125, x1=x[4]+0.05, y0=y[6]-0.05, y1=y[4]+0.05,
+           code=code, lwd=arrowWeights[["5_3"]])
+  }
   
   # cow-inner-east -> cow-outer-east
-  arrows(x0=x[3]+0.05, x1=x[5], y0=y[3]+0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["2_4"]])
+  if(arrowWeights[["2_4"]] != 0){
+    arrows(x0=x[3]+0.05, x1=x[5], y0=y[3]+0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["2_4"]])
+  }
   # cow-outer-east -> cow-inner-east
-  arrows(x0=x[5]-0.1, x1=x[3]-0.05, y0=y[5]-0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["4_2"]])
+  if(arrowWeights[["4_2"]] != 0){
+    arrows(x0=x[5]-0.1, x1=x[3]-0.05, y0=y[5]-0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["4_2"]])
+  }
   
   # badger-inner-east -> badger-outer-east
-  arrows(x0=x[1]+0.05, x1=x[7], y0=y[1]-0.05, y1=y[7]+0.05,
-         code=code, lwd=arrowWeights[["0_6"]])
+  if(arrowWeights[["0_6"]] != 0){
+    arrows(x0=x[1]+0.05, x1=x[7], y0=y[1]-0.05, y1=y[7]+0.05,
+           code=code, lwd=arrowWeights[["0_6"]])
+  }
   # badger-outer-east -> badger-inner-east
-  arrows(x0=x[7]-0.1, x1=x[1]-0.05, y0=y[7]+0.05, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["6_0"]])
+  if(arrowWeights[["6_0"]] != 0){
+    arrows(x0=x[7]-0.1, x1=x[1]-0.05, y0=y[7]+0.05, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["6_0"]])
+  }
 }
 
 plot8DemeNS <- function(arrowWeights, code){
@@ -511,88 +1000,136 @@ plot8DemeNS <- function(arrowWeights, code){
   text(x=x, y=y, labels=demeNames, col=demeColours)
   
   # badger-inner-north -> badger-inner-south
-  arrows(x0=x[1]+0.05, x1=x[2]+0.05, y0=y[1]-0.05, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["0_1"]])
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]+0.05, x1=x[2]+0.05, y0=y[1]-0.05, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
   # badger-inner-south -> badger-inner-north
-  arrows(x0=x[2]-0.05, x1=x[1]-0.05, y0=y[2]+0.05, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["1_0"]])
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]-0.05, x1=x[1]-0.05, y0=y[2]+0.05, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["1_0"]])
+  }
   
   # cow-inner-north -> cow-inner-south
-  arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.05, y1=y[4]+0.05,
-         code=code, lwd=arrowWeights[["2_3"]])
+  if(arrowWeights[["2_3"]] != 0){
+    arrows(x0=x[3]-0.05, x1=x[4]-0.05, y0=y[3]-0.05, y1=y[4]+0.05,
+           code=code, lwd=arrowWeights[["2_3"]])
+  }
   # cow-inner-south -> cow-inner-north
-  arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.05, y1=y[3]-0.05,
-         code=code, lwd=arrowWeights[["3_2"]])
+  if(arrowWeights[["3_2"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[3]+0.05, y0=y[4]+0.05, y1=y[3]-0.05,
+           code=code, lwd=arrowWeights[["3_2"]])
+  }
   
   # badger-inner-north -> cow-inner-north
-  arrows(x0=x[1]+0.175, x1=x[3]-0.15, y0=y[1]+0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["0_2"]])
+  if(arrowWeights[["0_2"]] != 0){
+    arrows(x0=x[1]+0.175, x1=x[3]-0.15, y0=y[1]+0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["0_2"]])
+  }
   # cow-inner-north -> badger-inner-north
-  arrows(x0=x[3]-0.15, x1=x[1]+0.175, y0=y[3]-0.05, y1=y[1]-0.05,
-         code=code, lwd=arrowWeights[["2_0"]])
+  if(arrowWeights[["2_0"]] != 0){
+    arrows(x0=x[3]-0.15, x1=x[1]+0.175, y0=y[3]-0.05, y1=y[1]-0.05,
+           code=code, lwd=arrowWeights[["2_0"]])
+  }
   
   # badger-inner-south -> cow-inner-south
-  arrows(x0=x[2]+0.175, x1=x[4]-0.15, y0=y[2]-0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["1_3"]])
+  if(arrowWeights[["1_3"]] != 0){
+    arrows(x0=x[2]+0.175, x1=x[4]-0.15, y0=y[2]-0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["1_3"]])
+  }
   # cow-inner-south -> badger-inner-south
-  arrows(x0=x[4]-0.15, x1=x[2]+0.175, y0=y[4]+0.05, y1=y[2]+0.05,
-         code=code, lwd=arrowWeights[["3_1"]])
+  if(arrowWeights[["3_1"]] != 0){
+    arrows(x0=x[4]-0.15, x1=x[2]+0.175, y0=y[4]+0.05, y1=y[2]+0.05,
+           code=code, lwd=arrowWeights[["3_1"]])
+  }
   
   # cow-outer-south -> badger-outer-south
-  arrows(x0=x[6]-0.175, x1=x[8]+0.2, y0=y[6]+0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["5_7"]])
+  if(arrowWeights[["5_7"]] != 0){
+    arrows(x0=x[6]-0.175, x1=x[8]+0.2, y0=y[6]+0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["5_7"]])
+  }
   # badger-outer-south -> cow-outer-south
-  arrows(x0=x[8]+0.2, x1=x[6]-0.175, y0=y[8]-0.05, y1=y[6]-0.05,
-         code=code, lwd=arrowWeights[["7_5"]])
+  if(arrowWeights[["7_5"]] != 0){
+    arrows(x0=x[8]+0.2, x1=x[6]-0.175, y0=y[8]-0.05, y1=y[6]-0.05,
+           code=code, lwd=arrowWeights[["7_5"]])
+  }
   
   # cow-outer-north -> badger-outer-north
-  arrows(x0=x[5]-0.175, x1=x[7]+0.2, y0=y[5]-0.05, y1=y[7]-0.05,
-         code=code, lwd=arrowWeights[["4_6"]])
+  if(arrowWeights[["4_6"]] != 0){
+    arrows(x0=x[5]-0.175, x1=x[7]+0.2, y0=y[5]-0.05, y1=y[7]-0.05,
+           code=code, lwd=arrowWeights[["4_6"]])
+  }
   # badger-outer-north -> cow-outer-north
-  arrows(x0=x[7]+0.2, x1=x[5]-0.175, y0=y[7]+0.05, y1=y[5]+0.05,
-         code=code, lwd=arrowWeights[["6_4"]])
+  if(arrowWeights[["6_4"]] != 0){
+    arrows(x0=x[7]+0.2, x1=x[5]-0.175, y0=y[7]+0.05, y1=y[5]+0.05,
+           code=code, lwd=arrowWeights[["6_4"]])
+  }
   
   # badger-outer-north -> badger-outer-south
-  arrows(x0=x[7]-0.025, x1=x[8]-0.025, y0=y[7]-0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["6_7"]])
+  if(arrowWeights[["6_7"]] != 0){
+    arrows(x0=x[7]-0.025, x1=x[8]-0.025, y0=y[7]-0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["6_7"]])
+  }
   # badger-outer-south -> badger-outer-north
-  arrows(x0=x[8]-0.1, x1=x[7]-0.1, y0=y[8]+0.05, y1=y[7]-0.05,
-         code=code, lwd=arrowWeights[["7_6"]])
+  if(arrowWeights[["7_6"]] != 0){
+    arrows(x0=x[8]-0.1, x1=x[7]-0.1, y0=y[8]+0.05, y1=y[7]-0.05,
+           code=code, lwd=arrowWeights[["7_6"]])
+  }
   
   # cow-outer-north -> cow-outer-south
-  arrows(x0=x[5], x1=x[6], y0=y[5]-0.05, y1=y[6]+0.05,
-         code=code, lwd=arrowWeights[["5_6"]])
+  if(arrowWeights[["5_6"]] != 0){
+    arrows(x0=x[5], x1=x[6], y0=y[5]-0.05, y1=y[6]+0.05,
+           code=code, lwd=arrowWeights[["5_6"]])
+  }
   # cow-outer-south -> cow-outer-north
-  arrows(x0=x[6]+0.075, x1=x[5]+0.075, y0=y[6]+0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["6_5"]])
+  if(arrowWeights[["6_5"]] != 0){
+    arrows(x0=x[6]+0.075, x1=x[5]+0.075, y0=y[6]+0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["6_5"]])
+  }
   
   # badger-inner-north -> badger-outer-north
-  arrows(x0=x[1]-0.05, x1=x[7]+0.025, y0=y[1]+0.05, y1=y[7]-0.05,
-         code=code, lwd=arrowWeights[["0_6"]])
+  if(arrowWeights[["0_6"]] != 0){
+    arrows(x0=x[1]-0.05, x1=x[7]+0.025, y0=y[1]+0.05, y1=y[7]-0.05,
+           code=code, lwd=arrowWeights[["0_6"]])
+  }
   # badger-outer-north -> badger-inner-north
-  arrows(x0=x[7]+0.125, x1=x[1]+0.05, y0=y[7]-0.05, y1=y[1]+0.05,
-         code=code, lwd=arrowWeights[["6_0"]])
+  if(arrowWeights[["6_0"]] != 0){
+    arrows(x0=x[7]+0.125, x1=x[1]+0.05, y0=y[7]-0.05, y1=y[1]+0.05,
+           code=code, lwd=arrowWeights[["6_0"]])
+  }
   
   # badger-inner-south -> badger-outer-south
-  arrows(x0=x[2]-0.05, x1=x[8]+0.025, y0=y[2]-0.05, y1=y[8]+0.05,
-         code=code, lwd=arrowWeights[["1_7"]])
+  if(arrowWeights[["1_7"]] != 0){
+    arrows(x0=x[2]-0.05, x1=x[8]+0.025, y0=y[2]-0.05, y1=y[8]+0.05,
+           code=code, lwd=arrowWeights[["1_7"]])
+  }
   # badger-outer-south -> badger-inner-south
-  arrows(x0=x[8]+0.125, x1=x[2]+0.05, y0=y[8]+0.05, y1=y[2]-0.05,
-         code=code, lwd=arrowWeights[["7_1"]])
+  if(arrowWeights[["7_1"]] != 0){
+    arrows(x0=x[8]+0.125, x1=x[2]+0.05, y0=y[8]+0.05, y1=y[2]-0.05,
+           code=code, lwd=arrowWeights[["7_1"]])
+  }
   
   # cow-inner-north -> cow-outer-north
-  arrows(x0=x[3]+0.05, x1=x[5]-0.025, y0=y[3]+0.05, y1=y[5]-0.05,
-         code=code, lwd=arrowWeights[["2_4"]])
+  if(arrowWeights[["2_4"]] != 0){
+    arrows(x0=x[3]+0.05, x1=x[5]-0.025, y0=y[3]+0.05, y1=y[5]-0.05,
+           code=code, lwd=arrowWeights[["2_4"]])
+  }
   # cow-outer-north -> cow-inner-north
-  arrows(x0=x[5]-0.125, x1=x[3]-0.05, y0=y[5]-0.05, y1=y[3]+0.05,
-         code=code, lwd=arrowWeights[["4_2"]])
+  if(arrowWeights[["4_2"]] != 0){
+    arrows(x0=x[5]-0.125, x1=x[3]-0.05, y0=y[5]-0.05, y1=y[3]+0.05,
+           code=code, lwd=arrowWeights[["4_2"]])
+  }
   
   # cow-inner-south -> cow-outer-south
-  arrows(x0=x[4]+0.05, x1=x[6]-0.025, y0=y[4]-0.05, y1=y[6]+0.05,
-         code=code, lwd=arrowWeights[["3_5"]])
+  if(arrowWeights[["3_5"]] != 0){
+    arrows(x0=x[4]+0.05, x1=x[6]-0.025, y0=y[4]-0.05, y1=y[6]+0.05,
+           code=code, lwd=arrowWeights[["3_5"]])
+  }
   # cow-outer-south -> cow-inner-south
-  arrows(x0=x[6]-0.125, x1=x[4]-0.05, y0=y[6]+0.05, y1=y[4]-0.05,
-         code=code, lwd=arrowWeights[["5_3"]])
+  if(arrowWeights[["5_3"]] != 0){
+    arrows(x0=x[6]-0.125, x1=x[4]-0.05, y0=y[6]+0.05, y1=y[4]-0.05,
+           code=code, lwd=arrowWeights[["5_3"]])
+  }
 }
 
 calculateForwardMigrationRates <- function(logTable){
@@ -606,6 +1143,11 @@ calculateForwardMigrationRates <- function(logTable){
   #   MR: Migration rate (F - Forward, B - Backward)
   #   N: Effective population size
   #   Demes: a, b
+  # Equation taken from second paragraph of Methods section in:
+  # De Maio et al. 2015 - New routes to phylogeography ...
+  # BMR_ba = FMR_ab * (Na / Nb)
+  # FMR_ab = BMR_ba / (Na / Nb)
+  # FMR_ab = BMR_ba * (Nb / Na)
   
   for(backwardMigrationRateCol in migrationRateCols){
     
@@ -633,21 +1175,42 @@ createEmptyPlot <- function(){
 
 plotPosteriorSupportForEachDemeAsRoot <- function(logTable, demeStructure){
 
-  barplot(table(logTable$treePrior.rootColor), yaxt="n", names=getDemeNamesForDemeStructure(demeStructure),
-          main="Assignment of Demes to Root State")
-}
+  # Reset Margins
+  par(mar=c(7, 0, 3, 0))
+  
+  barplot(table(logTable$treePrior.rootColor), yaxt="n", 
+          names=getDemeNamesForDemeStructure(demeStructure),
+          main="Assignment of Demes to Root State",
+          cex.names=0.5, las=2)
+  
+  # Reset Margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))}
 
 plotParameterESSValues <- function(logTable, colNamesToPlot){
   
-  essValues <- c()
+  essValues <- rep(NA, length(colNamesToPlot))
 
-  for(i in 1:length(colsToPlot)){
+  for(i in 1:length(colNamesToPlot)){
+
+    # Remove NAs, if present
+    values <- as.numeric(logTable[, colNamesToPlot[i]])
+    values <- values[is.na(values) == FALSE]
     
-    essValues[i] <- calculateEffectiveSampleSize(logTable[, colNamestoPlot[i]])
+    # Note and skip those where the value is always the same
+    range <- range(values)
+    if(range[1] == range[2]){
+      #cat(paste("Parameter \"", colNamesToPlot[i],
+      #          "\" always has single value: ", range[1], "\n", sep=""))
+      next
+    }
+    
+    essValues[i] <- calculateEffectiveSampleSize(values)
   }
-  
+
+  # Set the margins
   par(mar=c(0,11,2,0.5)) # bottom, left, top, right
-  barplot(essValues, las=1, names=colNamesToPlot, horiz=TRUE, xaxt="n", cex.names=0.9,
+  
+  barplot(essValues, las=1, names=colNamesToPlot, horiz=TRUE, xaxt="n", cex.names=0.3,
           main="Parameter Effective Sample Sizes")
   abline(v=100, lty=2, col="red")
   abline(v=1000, lty=2, col="blue")
@@ -697,7 +1260,7 @@ calculateEffectiveSampleSize <- function(posteriorSample){
   return(ess);
 }
 
-getDemeNamesForDemeStructure <- function(demeStructure){
+getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
 
   # Species-InOrOut-Location
   # badger  inner   east
@@ -724,11 +1287,16 @@ getDemeNamesForDemeStructure <- function(demeStructure){
                          "cow-outer-north", "cow-outer-south", "badger-outer-north", "badger-outer-south")
   )
   
-  return(demeNames[[demeStructure]])
+  output = demeNames[[demeStructure]]
+  if(is.null(number) == FALSE){
+    output = demeNames[[demeStructure]][number + 1]
+  }
+  
+  return(output)
 }
 
 readInBASTALogTables <- function(demeStructureDates, popEstimationTypes, clockEstimateTypes,
-                                 path){
+                                 path, burnInProp=0.1){
   
   # Store each of the log tables in a list
   logTables <- list()
@@ -756,7 +1324,7 @@ readInBASTALogTables <- function(demeStructureDates, popEstimationTypes, clockEs
         logTable[logTable == "N"] <- NA
         
         # Remove the burn-in
-        burnIn <- round(0.1 * nrow(logTable), digits=0)
+        burnIn <- round(burnInProp * nrow(logTable), digits=0)
         logTable <- logTable[burnIn:nrow(logTable), ]
         
         # Calculate the forward rates

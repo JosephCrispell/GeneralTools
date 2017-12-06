@@ -23,13 +23,18 @@ date <- format(Sys.Date(), "%d-%m-%y")
 #set.seed(5962222)
 
 # Generate the sequences
-sequences <- simulateSequences(n=10, genomeSize=10000)
+sequences <- simulateSequences(n=25, genomeSize=10000, mutationRate=1)
+
+# Note the source individual
+source <- sequences[["source"]]
+sequences[["source"]] <- NULL
+cat(paste("Source = ", source, "\n", sep=""))
 
 ####################
 # Insert homoplasy #
 ####################
 
-output <- insertHomoplasy(sequences, ancestralSite="A")
+output <- insertHomoplasy(sequences, source)
 sequences <- output[["sequences"]]
 ij <- c(output[["source"]], output[["sink"]])
 
@@ -57,6 +62,8 @@ plotHeatmap(buildGeneticDistanceMatrix(sequences), order=TRUE)
 
 plotHeatmap <- function(geneticDistances, order){
   
+  par(mar=c(2, 0, 0, 2))
+  
   # Create vectors to store the Row and Column numbers
   colNumbers <- seq(from=1, to=ncol(geneticDistances))
   rowNumbers <- seq(from=1, to=nrow(geneticDistances))
@@ -66,6 +73,10 @@ plotHeatmap <- function(geneticDistances, order){
   
   # Plot the heatmap
   heatmap <- heatmap.2(geneticDistances, # matrix is the input data
+                       
+                       # Add cell labels
+                       cellnote=geneticDistances,
+                       notecol="black",
                        
                        # Create the colour scale 
                        col=colorpanel(n=length(colBreaks)-1, low="yellow", high="red"),
@@ -129,15 +140,6 @@ plotHeatmap <- function(geneticDistances, order){
                        # Note that the input matrix is not symmetric
                        symm = FALSE
   )
-  
-  # Get the plotting window dimensions
-  dimensions <- par("usr")
-  xLength <- dimensions[2] - dimensions[1]
-  yLength <- dimensions[4] - dimensions[3]
-  
-  # Add title
-  text(x=dimensions[1] + (0.4 * xLength), 
-       y=dimensions[4] + (0.1 * yLength), "Minimum Genetic distance", cex=1, xpd=TRUE)
 }
 
 removeUninformativeSites <- function(sequences){
@@ -187,24 +189,42 @@ buildPhylogeny <- function(sequences, file, ij){
   plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
              edge.color="grey", edge.width=3,
              show.node.label=TRUE, label.offset=0.15,
-             tip.color=ifelse(tree$tip.label %in% ij, "red", "black"))
+             tip.color=ifelse(tree$tip.label %in% ij, "red", "black"),
+             cex=1.5)
   
   # Add scale
   lines(x=c(2,3), y=c(1.5, 1.5), lwd=4)
-  text(x=2.5, y=1.2, labels="1 SNP")
+  text(x=2.5, y=1.1, labels="1 SNP")
   
   # Write the tree to file
   write.tree(tree, file=file, append=FALSE,
              digits=20, tree.names=FALSE)
 }
 
-insertHomoplasy <- function(sequences, ancestralSite){
-  i <- sample(size=1, x=names(sequences))
-  j <- sample(size=1, x=names(sequences)[names(sequences) != i])
+insertHomoplasy <- function(sequences, source){
   
-  positionsToChooseFrom <- which(sequences[[i]] != sequences[[j]] &
-                                   sequences[[i]] != ancestralSite)
+  # Get the isolates IDs
+  isolates <- names(sequences)
+
+  # Initialise an array to store the positions to choose from
+  positionsToChooseFrom <- c()
   
+  # Initialise variables to store the source and sink individuals
+  i <- NULL
+  j <- NULL
+  
+  # Search for suitable source and sink individuals
+  while(length(positionsToChooseFrom) == 0){
+    # Select a source and sink
+    i <- sample(size=1, x=isolates[isolates != source])
+    j <- sample(size=1, x=isolates[isolates != i & isolates != source])
+    
+    # Note the positions to choose from - not the same or reference
+    positionsToChooseFrom <- 
+      which(sequences[[i]] != sequences[[j]] &
+            sequences[[i]] != sequences[[source]])
+  }
+    
   position <- positionsToChooseFrom[
     sample(size=1, x=1:length(positionsToChooseFrom))]
   
@@ -225,7 +245,7 @@ insertHomoplasy <- function(sequences, ancestralSite){
   return(output)
 }
 
-simulateSequences <- function(n, genomeSize){
+simulateSequences <- function(n, genomeSize, mutationRate){
   # Note the nucleotides
   nucleotides <- c("A", "T", "G", "C")
   
@@ -256,9 +276,12 @@ simulateSequences <- function(n, genomeSize){
     sequence <- sequences[[as.character(source)]]
     
     # Mutate sequence
-    position <- sample(size=1, x=1:length(sequence))
-    sequence[position] <- sample(size=1, x=nucleotides[nucleotides != sequence[position]])
-    
+    nMutations <- rpois(n=1, lambda=mutationRate)
+    positions <- sample(size=nMutations, x=1:length(sequence))
+    for(position in positions){
+      sequence[position] <- sample(size=1, x=nucleotides[nucleotides != sequence[position]])
+    }
+
     # Transfer sequence
     sequences[[as.character(sink)]] <- sequence
     
@@ -267,6 +290,9 @@ simulateSequences <- function(n, genomeSize){
   
   # Remove uninformative sites
   sequences <- removeUninformativeSites(sequences)
+  
+  # Record the source
+  sequences[["source"]] <- sources[1]
   
   return(sequences)
 }
