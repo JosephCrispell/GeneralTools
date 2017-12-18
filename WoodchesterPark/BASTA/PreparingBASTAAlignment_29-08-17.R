@@ -74,7 +74,7 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme",
                     "6Deme-EastWest", "6Deme-NorthSouth", "8Deme-EastWest",
                     "8Deme-NorthSouth")
-demeStructure <- demeStructures[5]
+demeStructure <- demeStructures[1]
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -274,28 +274,28 @@ addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, out
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"IntRandomWalkOperator\" id=\"ExpCategoriesRandomWalk\""
     fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\twindowSize=\"1\" weight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\twindowSize=\"1\" weight=\"1\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"SwapOperator\" id=\"ExpCategoriesSwapOperator\""
     fileLines[length(fileLines) + 1] <- "\t\t\tintparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"1\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"UniformOperator\" id=\"ExpCategoriesUniform\""
     fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"10\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"1\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
   }
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t\t<operator spec='ScaleOperator' id='kappaScaler'"
   fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@hky.kappa\""
-  fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"0.1\">"
+  fileLines[length(fileLines) + 1] <- "\t\t\tscaleFactor=\"0.8\" weight=\"0.05\">"
   fileLines[length(fileLines) + 1] <- "\t\t</operator>"
   fileLines[length(fileLines) + 1] <- ""                                        
   fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"DeltaExchangeOperator\" id=\"freqExchanger\""
   fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@hky.freq\""
-  fileLines[length(fileLines) + 1] <- "\t\t\tdelta=\"0.01\" weight=\"0.3\">"
+  fileLines[length(fileLines) + 1] <- "\t\t\tdelta=\"0.01\" weight=\"0.05\">"
   fileLines[length(fileLines) + 1] <- "\t\t</operator>"
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t\t<!-- BSVS -->"
@@ -305,10 +305,10 @@ addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, out
   fileLines[length(fileLines) + 1] <- ""
   
   fileLines[length(fileLines) + 1] <- "\t\t<!-- Multi-type tree operators -->"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='TypedSubtreeExchangeVolz' id='STX' weight=\"10\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"TypedWilsonBaldingVolz\" id=\"TWB\" weight=\"10\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\" alpha=\"0.2\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeUniformVolz\" id=\"MTU\" weight=\"10\" multiTypeTree=\"@tree\" includeRoot=\"true\" rootScaleFactor=\"0.9\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeTreeScaleVolz\" id=\"MTTS2\" weight=\"10\" multiTypeTree=\"@tree\" scaleFactor=\"0.98\" useOldTreeScaler=\"true\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='TypedSubtreeExchangeVolz' id='STX' weight=\"1\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"TypedWilsonBaldingVolz\" id=\"TWB\" weight=\"1\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\" alpha=\"0.2\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeUniformVolz\" id=\"MTU\" weight=\"1\" multiTypeTree=\"@tree\" includeRoot=\"true\" rootScaleFactor=\"0.9\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeTreeScaleVolz\" id=\"MTTS2\" weight=\"1\" multiTypeTree=\"@tree\" scaleFactor=\"0.98\" useOldTreeScaler=\"true\"/>"
   fileLines[length(fileLines) + 1] <- ""                                       
   fileLines[length(fileLines) + 1] <- "\t\t<!-- Posterior Log to File -->"
   fileLines[length(fileLines) + 1] <- paste("\t\t<logger logEvery=\"",

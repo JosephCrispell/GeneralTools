@@ -58,7 +58,7 @@ $bash ProcessRawReads_DATE.sh [FASTQFileEnding] [pathToTrimGalore|false] [pathTo
 ## Stage 3 - Merge the VCF files together
 Move to directory containing the VCF files resulting from the previous step - "vcfFiles"
 Run MergeVCFFiles_DATE.jar using:
-$java -jar MergeVCFFiles_DATA.jar . [pathToAnnotationsOfRefenceGenome]
+$java -jar MergeVCFFiles_DATE.jar [pathToDirectoryToRunToolIn] [pathToAnnotationsOfRefenceGenome]
 
 ## Stage 4 - Examine genome coverage of isolates
 Run ExamineGenomeCoverage_DATE.pl using:

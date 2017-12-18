@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Sync local UNIX repository with remote git server
-# Author: Joseph Crisp
+# Author: Joseph Crispell
 
 # RUN SCRIPT USING bash script.sh (in Directory containing Raw Reads)
 # Note create permissions first ---> chmod +x script.sh

@@ -3,11 +3,23 @@
 ##########
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/BASTA/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+
+#################################
+# Note the Genome Size examined #
+#################################
+
+# Get the constant site counts
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt", sep="")
+constantSiteCounts <- getConstantSiteCounts(constantSiteCountsFile)
+genomeSize <- sum(constantSiteCounts) + 8893
 
 #####################
 # Read in the files #
 #####################
+
+# Move the path
+path <- paste(path, "BASTA/Replicate1/", sep="")
 
 # Note deme structure to use
 demeStructureDates <- list(
@@ -38,14 +50,15 @@ logTables <- readInBASTALogTables(demeStructureDates, popEstimationTypes, clockE
 # Create summary plots, note migration rates and calculate AICM scores for each model
 nBootstraps <- 1000
 migrationRateEstimates <- summarisePosteriorLogTables(path, logTables, code=2,
-                                                      arrowFactor=20, nBootstraps)
+                                                      arrowFactor=20, nBootstraps,
+                                                      genomeSize)
 
 #################################
 # Plot Model comparison results #
 #################################
 
 # Open a PDF
-file <- paste(path, "SummaryFiguresOfModelEstimations_01-12-17.pdf", sep="")
+file <- paste(path, "SummaryFiguresOfModelEstimations_18-12-17.pdf", sep="")
 pdf(file)
 
 # Examine the model likelihoods
@@ -64,7 +77,20 @@ weightedMeanEstimates <-
 # Plot the rates
 plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
                                        cowToBadger=weightedMeanEstimates[2],
-                                       code=2)
+                                       code=2, arrowFactor=20)
+
+##############################################################################
+#                                                                            #
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
+# !!!                                                                    !!! #
+# !!! Combining the posteriors based upon the AICM weight probabilities? !!! #
+# !!!                                                                    !!! #
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
+#                                                                            #
+##############################################################################
+
 
 # Close the pdf
 dev.off()
@@ -73,7 +99,58 @@ dev.off()
 # FUNCTIONS #
 #############
 
-plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, code){
+getConstantSiteCounts <- function(constantSiteCountsFile){
+ 
+  # Open the file and store the file lines
+  connection <- file(constantSiteCountsFile, "r")
+  lines <- readLines(connection)
+  close(connection)
+  
+  # Calculate the constant site counts
+  counts <- c(0,0,0,0)
+  for(line in lines){
+    
+    # Skip lines without counts
+    if(grepl(line, pattern="Counts|A") == TRUE || line == ""){
+      next
+    }
+    
+    # Split the line into its parts
+    parts <- strsplit(line, "\t")[[1]]
+    
+    # Add the counts to the tally
+    counts <- counts + as.numeric(parts)
+  }
+  
+  return(counts)
+}
+
+plotParameterTraces <- function(logTable, colNamesToPlot){
+  
+  # Define a grid of plots
+  nPlots <- ceiling(sqrt(length(colNamesToPlot)))
+  
+  # Set the plotting window dimensions
+  par(mfrow=c(nPlots, nPlots))
+  
+  # Set the margins
+  par(mar=c(0, 0, 2, 0))
+  
+  # Plot a trace for each parameter
+  for(col in colNamesToPlot){
+    plot(logTable[, col], type="l", xlab="", xaxt="n", ylab="", yaxt="n", bty="n",
+         main=col, cex.main=0.5)
+  }
+  
+  # Reset the margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  
+  # Reset the plotting window dimensions
+  par(mfrow=c(1,1))
+}
+
+plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, code, 
+                                                   arrowFactor){
   
   # Create empty plot
   createEmptyPlot()
@@ -82,6 +159,10 @@ plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, cod
   demeNames <- c("badgers", "cattle")
   demeColours <- c("red", "blue")
   
+  # Normalise the values between 0 and arrowFactor
+  values <- c(badgerToCow, cowToBadger)
+  values <- (values / max(values)) * arrowFactor
+
   # Add labels
   x <- c(0.1, 0.9)
   y <- c(0.5, 0.5)
@@ -91,14 +172,14 @@ plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, cod
   
   # badger -> cow
   arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.15, y1=y[2]-0.15,
-         code=code, lwd=badgerToCow)
+         code=code, lwd=values[1])
   
   # cow -> badger
   arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.15, y1=y[1]+0.15,
-         code=code, lwd=cowToBadger)
+         code=code, lwd=values[2])
   
   legend("topleft", legend=c("Badgers -> Cattle",
-                       paste("-------------- =", round(badgerToCow /cowToBadger, digits=2)),
+                       paste("-------------- =", round(badgerToCow/cowToBadger, digits=2)),
                              "Cattle -> Badgers"),
          bty="n", cex=1)
   
@@ -113,31 +194,42 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # across BASTA models
     # Weighting is by the AICM score
     #
-    # 1. Create a normalised AICM score varying between 0 and 100
-    # 2. For each analysis calculate the mean transition rates between cattle and badger demes
-    # 3. Add the calculated means for each BASTA model into a growing array X times. Where X 
-    #    is the normalised AICM score
-    # 4. Once examined each of the BASTA model calculate mean of the two arrays for the 
-    #    estimated transition rates between cattle and badger demes
+    # 1. For each analysis calculate the mean transition rates between cattle and badger demes
+    # 2. Store those rates for each model in array
+    # 3. Get the AICM score for each model
+    # 4. Convert AICM scores to weights:
+    #       exp((AIC_min - AIC_i)/2)
+    # 5. Normalise to sum to 1: 
+    #       scores / sum(scores)
+    # 6. Calculate weighted average rates:
+    #       sum(ratesFromModels * modelAICMWeightsNormalised)
     #
+    # Above method taken from Paul Johnson
     # This is known as Ensemble Bayesian Model Averaging
     
     # Get the analysis names
     analyses <- names(migrationRateEstimates)
     
-    # Create two arrays to store the rate estimates between cattle and badgers
-    badgerToCow <- c()
-    cowToBadger <- c()
-    
     # Get the AICM values
     aicmScores <- c()
+    shortenedNames <- c()
     for(i in 1:length(analyses)){
       aicmScores[i] <- migrationRateEstimates[[analyses[i]]][["AICM"]][1]
+      
+      parts <- strsplit(analyses[i], split="_")[[1]]
+      shortenedNames[i] <- paste(parts[1], parts[2], sep="_")
     }
     
-    # Get a normalised vector of the AICM values
-    aicmNormalised <- setRangeOfValues(aicmScores, minToSet=0, maxToSet=99)
+    # Convert the AICM scores into weights
+    modelAICMWeights <- exp((min(aicmScores) - aicmScores)/2)
     
+    # Normalise the AICM weights
+    normalisedModelAICMWeights <- modelAICMWeights / sum(modelAICMWeights)                           
+    
+    # Initialise two arrays to store the mean transmission rates from each model
+    modelMeanBadgerToCowRates <- c()
+    modelMeanCowToBadgerRates <- c()
+
     # Examine each of the different model structures
     for(i in 1:length(analyses)){
       
@@ -180,16 +272,43 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       
       # Calculate mean rates between cattle and badgers
       meanRateBadgerToCow <- mean(ratesBadgerToCow)
+      modelMeanBadgerToCowRates[
+        length(modelMeanBadgerToCowRates) + 1] <- 
+        meanRateBadgerToCow
       meanRateCowToBadger <- mean(ratesCowToBadger)
-      
-      # Store the rates in overall array
-      badgerToCow <- c(badgerToCow, rep(meanRateBadgerToCow, 100 - aicmNormalised[i]))
-      cowToBadger <- c(cowToBadger, rep(meanRateCowToBadger, 100 - aicmNormalised[i]))
+      modelMeanCowToBadgerRates[length(modelMeanCowToBadgerRates) + 1] <- meanRateCowToBadger
     }
     
     # Calculate the weighted means for the rates between badgers and cattle
-    weightedMeanBadgerToCow <- mean(badgerToCow)
-    weightedMeanCowToBadger <- mean(cowToBadger)
+    weightedMeanBadgerToCow <- sum(modelMeanBadgerToCowRates * 
+                                     normalisedModelAICMWeights)
+    weightedMeanCowToBadger <- sum(modelMeanCowToBadgerRates * 
+                                     normalisedModelAICMWeights)
+
+    # Plot the AICM Scores against the rates
+    par(mar=c(1, 7, 0, 0))
+    plot(x=NULL, y=NULL,
+         ylim=range(aicmScores), 
+         xlim=range(c(modelMeanBadgerToCowRates, modelMeanCowToBadgerRates)),
+         las=1, bty="n", yaxt="n", xaxt="n", ylab="", xlab="")
+    axis(side=2, at=aicmScores, labels=shortenedNames, las=1,
+         cex.axis=0.5, tick=FALSE, line=-1.5)
+    for(i in 1:length(analyses)){
+      lines(x=c(0, modelMeanBadgerToCowRates[i]),
+            y=c(aicmScores[i], aicmScores[i]), lty=2)
+    }
+    points(x=modelMeanBadgerToCowRates, y=aicmScores,
+           col=rgb(1,0,0, 0.75), pch=19, cex=2)
+    points(x=modelMeanCowToBadgerRates, y=aicmScores, col=rgb(0,0,1, 0.75), pch=17, cex=2)
+    
+    mtext("AICM Score", side=2, line=5)
+    mtext("Estimated Transition Rates", side=1, line=-0.5)
+    
+    legend("topright", legend=c("badgers-to-cattle", "cattle-to-badgers"),
+           pch=c(19, 17), text.col=c("red", "blue"), bty="n", 
+           col=c("red", "blue"))
+    
+    par(mar=c(5.1, 4.1, 4.1, 2.1))
     
     return(c(weightedMeanBadgerToCow, weightedMeanCowToBadger))
 }
@@ -264,7 +383,8 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
 
-summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBootstraps){
+summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBootstraps,
+                                        genomeSize){
   
   # Get analysis names
   analyses <- names(logTables)
@@ -290,7 +410,7 @@ summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBoo
     
     # Note which parameters to examine posterior support for
     colsToCalculateESS <- colnames(logTable)[
-      grepl(x=colnames(logTable), pattern="Sample|rateMatrixFlag|forward") == FALSE]
+      grepl(x=colnames(logTable), pattern="Sample|rateMatrixFlag|forward|Count") == FALSE]
 
     # Plot the ESS values of each parameter estimated
     plotParameterESSValues(logTable, colsToCalculateESS)
@@ -298,14 +418,24 @@ summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBoo
     # Plot the posterior support for each deme as source
     plotPosteriorSupportForEachDemeAsRoot(logTable, demeStructure)
     
+    # Plot the population size estimates
+    plotPopulationSizes(logTable, demeStructure, alpha=0.5)
+    
+    # Examine the substitution rate estimates
+    examineSubstitutionRateEstimates(logTable, genomeSize)
+    
     # Produce a migration rate estimation figure - weight by rate flags
     # Diagrams designed with code = 2 (FORWARDS) in mind
     migrationRateEstimates[[analysis]] <- 
       plotMigrationRates(logTable, demeStructure, code, arrowFactor)
     
+    # Plot the parameter traces
+    plotParameterTraces(logTable, colsToCalculateESS)
+    
     # Calculate the acim
     migrationRateEstimates[[analysis]][["AICM"]] <- 
       calculateAICM(logTable$treeLikelihood1, nBootstraps)
+    
     
     # Close the pdf file
     dev.off()
@@ -316,6 +446,111 @@ summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBoo
   par(mar=c(5.1, 4.1, 4.1, 2.1))
   
   return(migrationRateEstimates)
+}
+
+examineSubstitutionRateEstimates <- function(logTable, genomeSize){
+  
+  # Get the substitution rate estimates note that stored differently between strict and relaxed
+  rateEstimates <- c()
+  if(length(which(grepl(colnames(logTable), pattern="mutationRate") == TRUE)) == 1){
+    rateEstimates <- logTable$mutationRate
+  }else{
+    rateEstimates <- logTable$ucedMean
+  }
+  
+  # Define a colour palette based upon the likelihood
+  rbPal <- colorRampPalette(c('red','blue'))
+  colours <- rbPal(10)[as.numeric(cut(logTable$posterior,breaks = 10))]
+  colours <- setAlphas(colours, 0.5)
+
+  # Plot the substitution rate distribution versus the root height
+  plot(x=rateEstimates * genomeSize, y=logTable$tree.height, pch=20, 
+       xlab="Substitution Rate (per Genome per Year)", ylab="Root Height (years)",
+       main="Substitution Rate versus Root Height",
+       col=colours, las=1, bty="n")
+  legend("topright", legend=c("High", "Low"), pch=20, col=c("red", "blue"),
+         bty="n")
+}
+
+plotPopulationSizes <- function(logTable, demeStructure, alpha=0.5){
+  
+  # Get the population size distributions
+  popSizeEstimates <- list()
+  for(col in colnames(logTable)){
+    
+    if(grepl(col, pattern="popSize") == FALSE){
+      next
+    }
+    
+    popSizeEstimates[[strsplit(col, split="_")[[1]][2]]] <- logTable[, col]
+  }
+  
+  # Get the deme names
+  demeNames <- getDemeNamesForDemeStructure(demeStructure)
+  
+  # Define the limits of the population sizes and histogram breaks
+  values <- c()
+  for(key in names(popSizeEstimates)){
+    values <- c(values, popSizeEstimates[[key]])
+  }
+  xLim <- range(values)
+  breaks <- seq(from=xLim[1], to=xLim[2] + 5, by=5)
+  
+  # Create a histogram object for each distribution of sizes
+  histograms <- list()
+  for(key in names(popSizeEstimates)){
+    
+    histograms[[key]] <- hist(popSizeEstimates[[key]], plot=FALSE, breaks=breaks)
+  }
+  
+  # Get the y axis limits
+  counts <- c()
+  for(key in names(histograms)){
+    counts <- c(counts, histograms[[key]]$counts)
+  }
+  yLim <- c(0, max(counts))
+  
+  # Create a vector of colours
+  colours <- c("red", "blue", "green", "cyan", "orange", "darkorchid4", "deeppink", "black", "brown", "darkolivegreen")
+  
+  # Plot the histograms
+  keys <- names(histograms)
+  for(i in 1:length(keys)){
+    
+    if(i == 1){
+      plot(histograms[[keys[i]]], 
+           col=setAlpha(colours[i], alpha), las=1, 
+           main="Deme Effective Population Sizes", xlab="Effective Size",
+           ylim=yLim, xlim=xLim)
+    }else{
+      plot(histograms[[keys[i]]], col=setAlpha(colours[i], alpha), add=TRUE)
+    }
+  }
+  
+  # Add legend
+  legend("topright", legend=demeNames, bty="n",
+         text.col=colours)
+  
+}
+
+setAlphas <- function(colours, alpha){
+  output <- c()
+  for(i in 1:length(colours)){
+    output[i] <- setAlpha(colours[i], alpha)
+  }
+  return(output)
+}
+
+setAlpha <- function(colour, alpha){
+  
+  # Convert the input colour into rgb values
+  rgbValues <- col2rgb(colour)
+  
+  # Place rgb values within rgb function and insert alpha value
+  # Note that col2rgb returns rgbvlues from 0 to 255
+  rgbColour <- rgb(rgbValues["red", 1], rgbValues["green", 1], rgbValues["blue", 1],
+                   alpha=alpha*255, maxColorValue=255)
+  return(rgbColour)
 }
 
 calculateAICM <- function(logLikelihoodValues, nBootstraps){
@@ -356,9 +591,27 @@ setRangeOfValues <- function(values, minToSet, maxToSet){
   output <- c()
   range <- range(values)
   for(i in 1:length(values)){
-    output[i] <- ((values[i] - range[1]) / (range[2] - range[1]) * maxToSet) + minToSet
+    output[i] <- ((values[i] - range[1]) / (range[2] - range[1])) * (maxToSet - minToSet)
+    output[i] <- output[i] + minToSet
   }
   
+  return(output)
+}
+
+timesValuesInListByValue <- function(list, value){
+  
+  output <- list()
+  for(key in names(list)){
+    output[[key]] <- list[[key]] * value
+  }
+  
+  return(output)
+}
+
+divideValuesInListByMax <- function(arrowRates){
+    max <- max(getValues(arrowRates))
+    output <- timesValuesInListByValue(arrowRates, 1/max)
+    
   return(output)
 }
 
@@ -402,18 +655,19 @@ getArrowRates <- function(logTable){
 plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
   
   # Get the migration rates
-  migrationRates <- getArrowRates(logTable)
+  output <- getArrowRates(logTable)
   
   # Normalise those rates to vary between 0 and MAX (arrow factor)
-  migrationRates <- setRangeOfValuesInList(migrationRates, minToSet=0, maxToSet=arrowFactor)
+  migrationRates <- divideValuesInListByMax(output)
+  migrationRates <- timesValuesInListByValue(migrationRates, arrowFactor)
   
   # Plot the demes and associated rates
   if(demeStructure == "2Deme"){
     plot2Deme(migrationRates, code)
   }else if(demeStructure == "3Deme-outerIsBoth"){
-    plot3Deme(migrationRates, code)
+    plot3Deme(migrationRates, code, demeStructure)
   }else if(demeStructure == "3Deme-outerIsCattle"){
-    plot3Deme(migrationRates, code)
+    plot3Deme(migrationRates, code, demeStructure)
   }else if(demeStructure == "4Deme"){
     plot4Deme(migrationRates, code)
   }else if(demeStructure == "6Deme-EastWest"){
@@ -428,7 +682,7 @@ plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
     cat(paste("Input deme structure not recognised:", demeStructure, "\n"))
   }
   
-  return(migrationRates)
+  return(output)
 }
 
 plot2Deme <- function(arrowWeights, code){
@@ -464,9 +718,7 @@ plot2Deme <- function(arrowWeights, code){
 }
 
 plot3Deme <- function(arrowWeights, code, demeStructure){
-  
-  demeStructure <- "3Deme-outerIsBoth"
-  
+
   # Create empty plot
   createEmptyPlot()
   
@@ -1286,7 +1538,7 @@ getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
     "8Deme-NorthSouth"=c("badger-inner-north", "badger-inner-south", "cow-inner-north", "cow-inner-south",
                          "cow-outer-north", "cow-outer-south", "badger-outer-north", "badger-outer-south")
   )
-  
+
   output = demeNames[[demeStructure]]
   if(is.null(number) == FALSE){
     output = demeNames[[demeStructure]][number + 1]
