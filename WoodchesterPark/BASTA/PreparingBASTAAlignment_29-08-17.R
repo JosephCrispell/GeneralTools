@@ -66,15 +66,28 @@ isolateInfo <- getIsolateVariantPositionCoverage(file, isolateInfo)
 selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCoverage(isolateInfo,
                                                                                     isolateSequences)
 
-################################
-# Assign the isolates to Demes #
-################################
+##########################################################
+# Build XML files according to different deme structures #
+##########################################################
+
+## Options
 
 # Note deme structure to use
 demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme",
                     "6Deme-EastWest", "6Deme-NorthSouth", "8Deme-EastWest",
                     "8Deme-NorthSouth")
-demeStructure <- demeStructures[1]
+
+# Set options for population size estimate
+popSizeEstimation <- c("equal", "varying")
+
+# Set options for the clock model
+clockModels <- c("relaxed") # could include strict here
+
+# Options
+chainLength <- 300000000
+
+# Note the constant site counts file name
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt", sep="")
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -85,25 +98,28 @@ selectedIsolateInfo <- calculateDistanceToBadgerCentre(badgerCentre, selectedIso
 # Define inner circle radius
 innerDistance <- 3500
 
-# Select Deme structure 
-selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, selectedIsolateInfo,
-                                             innerDistance, badgerCentre)
+## Building XMLs
 
-##################
-# Build XML file # 
-##################
+# Deme structure loop
+for(demeStructure in demeStructures){
+  
+  # Assign the isolates to Demes
+  selectedIsolateInfo <- assignIsolatesToDemes(demeStructure=demeStructure, selectedIsolateInfo,
+                                               innerDistance, badgerCentre)
+  
+  # Population size estimation loop
+  for(equalOrVaryingPopSizes in popSizeEstimation){
+    
+    # Clock model estimation loop
+    for(relaxedOrStrict in clockModels){
+      
+      # Build the XML file
+      buildXMLFile(demeStructure, equalOrVaryingPopSizes, paste(path, "BASTA/", sep=""), date,
+                   constantSiteCountsFile, selectedIsolateInfo, chainLength, relaxedOrStrict)
+    }
+  }
+}
 
-# Options
-equalOrVaryingPopSizes <- "varying" # "equal" or "varying"
-relaxedOrStrict <- "relaxed" # "strict" or "relaxed"
-chainLength <- 200000000
-
-# Note the constant site counts file name
-constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt", sep="")
-
-# Build the XML file
-buildXMLFile(demeStructure, equalOrVaryingPopSizes, paste(path, "BASTA/", sep=""), date,
-             constantSiteCountsFile, selectedIsolateInfo, chainLength, relaxedOrStrict)
 
 #############
 # FUNCTIONS #
@@ -274,17 +290,17 @@ addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, out
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"IntRandomWalkOperator\" id=\"ExpCategoriesRandomWalk\""
     fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\twindowSize=\"1\" weight=\"1\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\twindowSize=\"1\" weight=\"5\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"SwapOperator\" id=\"ExpCategoriesSwapOperator\""
     fileLines[length(fileLines) + 1] <- "\t\t\tintparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"1\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"5\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
     fileLines[length(fileLines) + 1] <- ""  
     fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"UniformOperator\" id=\"ExpCategoriesUniform\""
     fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@expRateCategories\""
-    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"1\">"
+    fileLines[length(fileLines) + 1] <- "\t\t\tweight=\"5\">"
     fileLines[length(fileLines) + 1] <- "\t\t</operator>"
   }
   fileLines[length(fileLines) + 1] <- ""
@@ -295,7 +311,7 @@ addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, out
   fileLines[length(fileLines) + 1] <- ""                                        
   fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"DeltaExchangeOperator\" id=\"freqExchanger\""
   fileLines[length(fileLines) + 1] <- "\t\t\tparameter=\"@hky.freq\""
-  fileLines[length(fileLines) + 1] <- "\t\t\tdelta=\"0.01\" weight=\"0.05\">"
+  fileLines[length(fileLines) + 1] <- "\t\t\tdelta=\"0.01\" weight=\"0.1\">"
   fileLines[length(fileLines) + 1] <- "\t\t</operator>"
   fileLines[length(fileLines) + 1] <- ""
   fileLines[length(fileLines) + 1] <- "\t\t<!-- BSVS -->"
@@ -305,10 +321,10 @@ addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, out
   fileLines[length(fileLines) + 1] <- ""
   
   fileLines[length(fileLines) + 1] <- "\t\t<!-- Multi-type tree operators -->"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='TypedSubtreeExchangeVolz' id='STX' weight=\"1\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"TypedWilsonBaldingVolz\" id=\"TWB\" weight=\"1\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\" alpha=\"0.2\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeUniformVolz\" id=\"MTU\" weight=\"1\" multiTypeTree=\"@tree\" includeRoot=\"true\" rootScaleFactor=\"0.9\"/>"
-  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeTreeScaleVolz\" id=\"MTTS2\" weight=\"1\" multiTypeTree=\"@tree\" scaleFactor=\"0.98\" useOldTreeScaler=\"true\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec='TypedSubtreeExchangeVolz' id='STX' weight=\"5\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"TypedWilsonBaldingVolz\" id=\"TWB\" weight=\"5\" multiTypeTree=\"@tree\" migrationModel=\"@migModel\" alpha=\"0.2\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeUniformVolz\" id=\"MTU\" weight=\"5\" multiTypeTree=\"@tree\" includeRoot=\"true\" rootScaleFactor=\"0.9\"/>"
+  fileLines[length(fileLines) + 1] <- "\t\t<operator spec=\"MultiTypeTreeScaleVolz\" id=\"MTTS2\" weight=\"5\" multiTypeTree=\"@tree\" scaleFactor=\"0.98\" useOldTreeScaler=\"true\"/>"
   fileLines[length(fileLines) + 1] <- ""                                       
   fileLines[length(fileLines) + 1] <- "\t\t<!-- Posterior Log to File -->"
   fileLines[length(fileLines) + 1] <- paste("\t\t<logger logEvery=\"",

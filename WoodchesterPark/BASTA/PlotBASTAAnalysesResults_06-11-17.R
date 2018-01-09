@@ -19,22 +19,22 @@ genomeSize <- sum(constantSiteCounts) + 8893
 #####################
 
 # Move the path
-path <- paste(path, "BASTA/Replicate1/", sep="")
+path <- paste(path, "BASTA/", sep="")
 
 # Note deme structure to use
 demeStructureDates <- list(
-  "2Deme"="09-10-17",
-  "3Deme-outerIsBoth"="09-10-17",
-  "3Deme-outerIsCattle"="09-10-17",
-  "4Deme"="09-10-17",
-  "6Deme-EastWest"="13-10-17",
-  "6Deme-NorthSouth"="13-10-17",
-  "8Deme-EastWest"="13-10-17",
-  "8Deme-NorthSouth"="13-10-17"
+  "2Deme"="15-12-17"#,
+#  "3Deme-outerIsBoth"="09-10-17",
+#  "3Deme-outerIsCattle"="09-10-17",
+#  "4Deme"="09-10-17",
+#  "6Deme-EastWest"="13-10-17",
+#  "6Deme-NorthSouth"="13-10-17",
+#  "8Deme-EastWest"="13-10-17",
+#  "8Deme-NorthSouth"="13-10-17"
 )
 
 # Note the population size estimation options
-popEstimationTypes <- c("varying", "equal")
+popEstimationTypes <- c("varying")#, "equal")
 
 # Note the clock model options
 clockEstimateTypes <- c("relaxed") # strict not used
