@@ -30,22 +30,23 @@ nHomoplasies <- 10
 maxPropIsolateForHomoplasy <- 1
 
 # Prepare to run multiple simulations
-nTimes <- 10000
-results <- data.frame(PropFound=rep(NA, nTimes), NIncorrect=rep(NA, nTimes))
+nTimes <- 1000
+results <- data.frame(PropFound=rep(NA, nTimes), NIncorrect=rep(NA, nTimes),
+                      Seed=rep(NA, nTimes))
 
 # Run simulations
 cat("Running simulations...")
 for(i in 1:nTimes){
   cat(paste("\rRunning simulation ", i, " of ", nTimes))
   
+  # Set the seed
+  results[i, 3] <- sample(1:100000000, 1)
+  set.seed(results[i, 3])
+  
   # Run simulation and homoplasyFinder on output from model - store the results 
-  results[i, ] <- run(path, date, n, mutationRate, infectiousness,
+  results[i, c(1,2)] <- run(path, date, n, mutationRate, infectiousness,
                       samplingProb, nToSample, nHomoplasies, verbose=FALSE,
                       maxPropIsolateForHomoplasy)
-  
-  if(results[i, 2] < 0){
-    break
-  }
 }
 cat("\rSimulations complete...\t\t\n")
 
@@ -59,12 +60,35 @@ file <- paste(path, "TestingHomoplasyFinder_", n, "-", mutationRate,
               "_", date, ".pdf", sep="")
 pdf(file)
 
+# Plot the results from the HomoplasyFinder tool
 plot(x=results$NIncorrect, y=results$PropFound, ylim=c(0,1), 
-     col=rgb(0,0,0, 0.01), bg=rgb(0,0,0, 0.01), cex=3, las=1, pch=21, bty="n",
+     col=rgb(0,0,0, 0.1), bg=rgb(0,0,0, 0.1), cex=3, las=1, pch=21, bty="n",
      ylab=paste("Proportion of homoplasies (n=", nHomoplasies, ") found", sep=""),
      xlab="Number of homoplasies incorrectly identified")
 
 dev.off()
+
+########################
+# Create example plots #
+########################
+
+file <- paste(path, "SimulatedDataExample_", date, ".pdf", sep="")
+pdf(file, width=7, height=14)
+
+par(mfrow=c(2, 1))
+
+# Run simulation
+set.seed(sample(1:100000000, 1))
+
+# Run simulation and homoplasyFinder on output from model - store the results 
+results[i, c(1,2)] <- run(path, date, n=50, mutationRate, infectiousness,
+                          samplingProb, nToSample=45, nHomoplasies=3, verbose=TRUE,
+                          maxPropIsolateForHomoplasy)
+
+dev.off()
+
+
+
 
 #############
 # FUNCTIONS #
@@ -115,8 +139,8 @@ run <- function(path, date, n, mutationRate, infectiousness,
   if(verbose == FALSE){
     verboseValue <- 0
   }
-  system(paste("java -jar HomoplasyFinder_08-01-18.jar", verboseValue, threshold,
-      0         fastaFile, treeFile, "REF", sep=" "), ignore.stdout=verbose==FALSE)
+  system(paste("java -jar HomoplasyFinder_08-01-18.jar", verboseValue, threshold, 
+               fastaFile, treeFile, "REF", sep=" "), ignore.stdout=verbose==FALSE)
   
   ###########################################
   # Read in the HomoplasyFinder output tool #
@@ -360,9 +384,9 @@ buildPhylogeny <- function(sequences, file, output, rootOnREF, verbose){
     
     # Plot the tree
     plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
-               edge.color="grey", edge.width=3,
+               edge.color="grey", edge.width=2,
                show.node.label=TRUE, label.offset=0.15,
-               tip.color=tipColours, cex=1.5)
+               tip.color=tipColours, cex=1)
     
     # Get the axis limits
     axisLimits <- par("usr")
@@ -625,7 +649,8 @@ simulateSequences3 <- function(n, mutationRate, infectiousness, samplingProb,
     par(mar=c(5.1, 4.1, 4.1, 2.1))
     plot(x=counts$Timestep, y=counts$Susceptibles, type="o", col="blue",
          ylab="N. Individuals", xlab="Timestep", main="Simulation Dynamics", bty="n",
-         ylim=c(0, n), xlim=c(0, max(counts$Timestep)), las=1)
+         ylim=c(0, n), xlim=c(0, max(counts$Timestep)), las=1, cex.lab=1.5,
+         cex.main=1.5)
     points(x=counts$Timestep, y=counts$Infecteds, type="o", col="red")
     points(x=counts$Timestep, y=counts$Sampled, type="o", col="black")
     legend("right", legend=c("Susceptible", "Infected", "Sampled"),

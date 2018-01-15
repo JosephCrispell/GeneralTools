@@ -88,18 +88,15 @@ getConsensus <- function(sequences){
       alleles[i] <- sequences[[sequenceNames[i]]][position]
     }
     
-    # Call the consensus allele
-    consensus[position] <- "N"
-    if(length(unique(alleles)) == 1){
-      consensus[position] <- alleles[1]
+    # Get the number of each allele present
+    alleleCounts <- table(alleles)
       
-    # If dash present at current position - return allele present as lower case
-    }else if(length(unique(alleles)) == 2 && "-" %in% alleles){
-      consensus[position] <- tolower(alleles[alleles != "-"])
-    
-    # If N present at current position - return other allele as lower case
-    }else if(length(unique(alleles)) == 2 && "N" %in% alleles){
-      consensus[position] <- tolower(alleles[alleles != "N"])
+    # Note the consensus
+    maxAllele <- names(which(alleleCounts == max(alleleCounts)))
+    if(length(maxAllele) == 1){
+      consensus[position] <- maxAllele
+    }else{
+      consensus[position] <- "N"
     }
   }
   

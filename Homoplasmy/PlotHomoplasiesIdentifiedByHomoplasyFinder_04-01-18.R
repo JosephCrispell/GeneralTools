@@ -7,7 +7,8 @@ library(phangorn)
 library(gplots)
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasmy/"
+#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/MLTree/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/vcfFiles/";
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -18,27 +19,32 @@ date <- format(Sys.Date(), "%d-%m-%y")
 
 file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
 homoplasyInfo <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
-                            check.names=FALSE)
+                            check.names=FALSE, comment.char = "@")
 
 #########################
 # Read in the phylogeny #
 #########################
 
-file <- paste(path, "example_", date, ".tree", sep="")
+# "#" in isolate IDs messes up read.tree - replace in tree and FASTA file for New Zealand
+#file <- paste(path, "mlTree_withRef_ReplacedHashes_14-06-16.tree", sep="")
+file <- paste(path, "mlTree_29-09-2017.tree", sep="")
 tree <- read.tree(file)
 
 ##############################################################
 # Plot the phylogeny and annotate the homoplasies identified #
 ##############################################################
 
-plotPhylogenyAndAnnotateHomoplasyEvents(tree, homoplasyInfo)
+pdf(paste(path, "test.pdf", sep=""))
+plotPhylogenyAndAnnotateHomoplasyEvents(tree, homoplasyInfo, nNodesBack=0)
+dev.off()
 
+hist(homoplasyInfo$NNodesBackToRootAlleleFound)
 
 #############
 # FUNCTIONS #
 #############
 
-plotPhylogenyAndAnnotateHomoplasyEvents <- function(tree, homoplasyInfo){
+plotPhylogenyAndAnnotateHomoplasyEvents <- function(tree, homoplasyInfo, nNodesBack=0){
   
   par(mar=c(0, 0, 0, 0))
   
@@ -48,8 +54,13 @@ plotPhylogenyAndAnnotateHomoplasyEvents <- function(tree, homoplasyInfo){
   # Examine each homoplasy event identified
   for(row in 1:nrow(homoplasyInfo)){
     
+    # Skip homoplasies that are found only 1 node back
+    if(homoplasyInfo[row, "NNodesBackToRootAlleleFound"] <= nNodesBack){
+      next
+    }
+    
     # Define the tip colors based upon the homoplasies identified
-    tipColours <- rep("black", length(tree$tip.label))
+    tipColours <- rep(rgb(0,0,0, 1), length(tree$tip.label))
     
     # Create a key for the homoplasy
     idFoundIn <- homoplasyInfo[row, "Node/IsolateID"]
@@ -67,26 +78,26 @@ plotPhylogenyAndAnnotateHomoplasyEvents <- function(tree, homoplasyInfo){
     # Colour the isolates according to the current homoplasy event
     for(i in 1:length(tree$tip.label)){
       
-      if(tree$tip.label[i] %in% isolates == FALSE || tipColours[i] != "black"){
+      if(tree$tip.label[i] %in% isolates == FALSE){
         next
       }
       tipColours[i] <- "red"
     }
 
     # Plot the tree
-    plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
+    plot.phylo(tree, show.tip.label=TRUE, type="fan",
                edge.color="grey", edge.width=3,
-               show.node.label=TRUE, label.offset=0.15,
-               tip.color=tipColours, cex=1.5)
+               show.node.label=TRUE, label.offset=0,
+               tip.color=tipColours, cex=0.25)
     
     # Get the axis limits
     axisLimits <- par("usr")
     
-    # Add scale
-    xPos <- axisLimits[2] - (0.1 * (axisLimits[2] - axisLimits[1]))
-    yPos <- axisLimits[3] + (0.075 * (axisLimits[4] - axisLimits[3]))
-    lines(x=c(xPos,xPos+1), y=c(yPos, yPos), lwd=4)
-    text(x=xPos+0.5, y=axisLimits[3], labels="1 SNP", pos=3)
+    # Add a scale
+    xPos <- axisLimits[2] - (0.5 * (axisLimits[2] - axisLimits[1]))
+    text(x=xPos, y=axisLimits[4], 
+         labels=paste("Pos: ", homoplasyInfo[row, "Position"],
+                      "    Allele: ", homoplasyInfo[row, "Allele"], sep=""), pos=1)
     
     # Note that finished with homoplasy event
     done[[paste(idFoundIn, alsoFoundIn, sep=":")]] <- 1
