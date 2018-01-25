@@ -25,17 +25,18 @@ genomeSize <- genomeSize + nSites
 #####################
 
 # Move the path
-path <- paste(path, "BASTA/", sep="")
+path <- paste(path, "BASTA/Replicate3_20-12-17/", sep="")
 
 # Note deme structure to use
 demeStructures <- list(
-  "2Deme"=1,
-  "3Deme-outerIsBoth"=2,
-  "3Deme-outerIsCattle"=3,
+  "2Deme"=2,
+  "3Deme-outerIsBoth"=3,
+  "3Deme-outerIsBadger"=3,
+  #"3Deme-outerIsCattle"=3,
   "4Deme"=4,
-  "6Deme-EastWest"=5,
+  "6Deme-EastWest"=6,
   "6Deme-NorthSouth"=6,
-  "8Deme-EastWest"=7,
+  "8Deme-EastWest"=8,
   "8Deme-NorthSouth"=8
 )
 
@@ -50,7 +51,7 @@ clockEstimateTypes <- c("relaxed") # strict not used
 
 # Store each of the log tables in a list
 logTables <- readInBASTALogTables(date, demeStructures, popEstimationTypes,
-                                  clockEstimateTypes, path, nReplicates=3)
+                                  clockEstimateTypes, path, nReplicates=NULL)
 
 ####################
 # Examine each run #
@@ -88,6 +89,20 @@ plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
                                        cowToBadger=weightedMeanEstimates[2],
                                        code=2, arrowFactor=20)
 
+# Calculate the weighted mean estimated transition rates between cattle and badger demes
+# weighted by the AICM model scores
+weightedMeanEstimates <- 
+  calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
+    migrationRateEstimates, useUnSampled=FALSE)
+
+# Plot the rates
+plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
+                                       cowToBadger=weightedMeanEstimates[2],
+                                       code=2, arrowFactor=20, useUnSampled=FALSE)
+
+# Close the pdf
+dev.off()
+
 ##############################################################################
 #                                                                            #
 # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! #
@@ -101,8 +116,7 @@ plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
 ##############################################################################
 
 
-# Close the pdf
-dev.off()
+
 
 #############
 # FUNCTIONS #
@@ -176,10 +190,11 @@ plotParameterTraces <- function(logTable, colNamesToPlot){
 }
 
 plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, code, 
-                                                   arrowFactor){
+                                                   arrowFactor, useUnSampled=TRUE){
   
   # Create empty plot
   createEmptyPlot()
+  legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
   
   # Get deme names and assign colours
   demeNames <- c("badgers", "cattle")
@@ -214,7 +229,7 @@ plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, cod
 }
 
 calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM <-
-  function(migrationRateEstimates){
+  function(migrationRateEstimates, useUnSampled=TRUE){
     
     # Calculating the weighted mean rates of transitions between badger and cattle demes
     # across BASTA models
@@ -250,6 +265,8 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     }
     
     # Convert the AICM scores into weights
+    # Exponential penalises those that are bad
+    # Flips the score
     modelAICMWeights <- exp((min(aicmScores) - aicmScores)/2)
     
     # Normalise the AICM weights
@@ -269,7 +286,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       # Get the demeStructure
       parts <- strsplit(analyses[i], "_")[[1]]
       demeStructure <- parts[1]
-      names[i] <- paste(parts[c(1,2,3)], collapse="_")
+      names[i] <- paste(parts[c(1,2)], collapse="_")
       
       # Examine each rate
       for(key in names(migrationRateEstimates[[analyses[i]]])){
@@ -282,8 +299,14 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
         # Split the key into its deme numbers
         demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
         
+        
+        
         # Check if current rate is between badger and cattle populations
-        if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+        if(useUnSampled == FALSE && 
+           (checkDemeSamplingForDemeStructure(demeStructure, demeNumbers[1]) == FALSE ||
+           checkDemeSamplingForDemeStructure(demeStructure, demeNumbers[1]) == FALSE)){
+          next
+        }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
                  pattern="badger") == TRUE &&
            grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                  pattern="cow") == TRUE){
@@ -314,12 +337,22 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     par(mar=c(4, 10, 0.5, 0.5))
     barplot(modelSumBadgerToCowRates + modelSumCowToBadgerRates, las=1, 
             names=names, horiz=TRUE, cex.names=0.5,
-            xlab="Total Interspecies Rate")
-    par(mar=c(5.1, 4.1, 4.1, 2.1))
+            xlab="Badger <-> cattle per lineage transition rate per year")
+    legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
     
     # Plot badger -> cattle versus cattle -> badger
-    plot(modelSumBadgerToCowRates, modelSumCowToBadgerRates, las=1)
-    text(x=)
+    ######## Colour by AICM ...
+    par(mar=c(5.1, 4.1, 0.5, 2.1))
+    max <- max(c(modelSumBadgerToCowRates, modelSumCowToBadgerRates))
+    plot(x=modelSumBadgerToCowRates, y=modelSumCowToBadgerRates, las=1,
+         ylim=c(0, max), xlim=c(0, max), pch=19, bty="n",
+         col=rgb(1,0,0, 0.75), cex=normalisedModelAICMWeights * 10,
+         xlab="Badger -> Cattle lineage transition rate per year",
+         ylab="Cattle -> Badger lineage transition rate per year")
+    points(x=c(0, max), y=c(0, max), type="l", lty=2, col="blue")
+    overlayText(x=modelSumBadgerToCowRates, y=modelSumCowToBadgerRates,
+                labels=names, xThresholdProp=0.05, yThresholdProp=0.05, cex=0.5)
+    legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
     
     # Calculate the weighted means for the rate sums between badgers and cattle
     weightedMeanBadgerToCow <- sum(modelSumBadgerToCowRates * 
@@ -347,14 +380,19 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     mtext("AICM Score", side=2, line=5)
     mtext("Sum of Estimated Transition Rates", side=1, line=-0.5)
     
-    legend("topright", legend=c("badgers-to-cattle", "cattle-to-badgers"),
-           pch=c(19, 17), text.col=c("red", "blue"), bty="n", 
-           col=c("red", "blue"))
-    
+    legend("topright", legend=c("badgers-to-cattle", "cattle-to-badgers",
+                                paste("unsampled =", useUnSampled)),
+           pch=c(19, 17), text.col=c("red", "blue", "black"), bty="n", 
+           col=c("red", "blue", "white"))
+
     par(mar=c(5.1, 4.1, 4.1, 2.1))
     
     return(c(weightedMeanBadgerToCow, weightedMeanCowToBadger))
   }
+
+euclideanDistance <- function(x1, y1, x2, y2){
+  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+}
 
 plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   
@@ -711,9 +749,7 @@ plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
   # Plot the demes and associated rates
   if(demeStructure == "2Deme"){
     plot2Deme(migrationRates, code)
-  }else if(demeStructure == "3Deme-outerIsBoth"){
-    plot3Deme(migrationRates, code, demeStructure)
-  }else if(demeStructure == "3Deme-outerIsCattle"){
+  }else if(grepl(pattern="3Deme", x=demeStructure) == TRUE){
     plot3Deme(migrationRates, code, demeStructure)
   }else if(demeStructure == "4Deme"){
     plot4Deme(migrationRates, code)
@@ -781,34 +817,36 @@ plot3Deme <- function(arrowWeights, code, demeStructure){
   text(x=x, y=y, 
        labels=demeNames, col=demeColours)
   
-  # badger -> cow/cow-inner
+  # badger/badger-inner -> cow/cow-inner
   if(arrowWeights[["0_1"]] != 0){
     arrows(x0=x[1]+0.15, x1=x[2]-0.15, y0=y[1]-0.05, y1=y[2]-0.05,
            code=code, lwd=arrowWeights[["0_1"]])
   }
-  # cow/cow-inner -> badger
+  # cow/cow-inner -> badger/badger-inner
   if(arrowWeights[["1_0"]] != 0){
     arrows(x0=x[2]-0.15, x1=x[1]+0.15, y0=y[2]+0.05, y1=y[1]+0.05,
            code=code, lwd=arrowWeights[["1_0"]])
   }
   
-  # badger -> outer/cow-outer
-  if(arrowWeights[["0_2"]] != 0){
-    arrows(x0=x[1]-0.05, x1=x[3]-0.15, y0=y[1]+0.1, y1=y[3]-0.1,
-           code=code, lwd=arrowWeights[["0_2"]])
-  }
-  # outer/cow-outer -> badger
-  if(arrowWeights[["2_0"]] != 0){
-    arrows(x0=x[3]-0.05, x1=x[1]+0.05, y0=y[3]-0.1, y1=y[1]+0.1,
-           code=code, lwd=arrowWeights[["2_0"]])
+  if(demeStructure != "outerIsCattle"){
+    # badger/badger-inner -> outer/badger-outer
+    if(arrowWeights[["0_2"]] != 0){
+      arrows(x0=x[1]-0.05, x1=x[3]-0.15, y0=y[1]+0.1, y1=y[3]-0.1,
+             code=code, lwd=arrowWeights[["0_2"]])
+    }
+    # outer/badger-outer -> badger/badger-inner
+    if(arrowWeights[["2_0"]] != 0){
+      arrows(x0=x[3]-0.05, x1=x[1]+0.05, y0=y[3]-0.1, y1=y[1]+0.1,
+             code=code, lwd=arrowWeights[["2_0"]])
+    }
   }
   
-  # cow/cow-inner -> outer/cow-outer
+  # cow/cow-inner -> outer/cow-outer/badger-outer
   if(arrowWeights[["1_2"]] != 0){
     arrows(x0=x[2]+0.05, x1=x[3]+0.15, y0=y[2]+0.1, y1=y[3]-0.1,
            code=code, lwd=arrowWeights[["1_2"]])
   }
-  # outer/cow-outer -> cow/cow-inner
+  # outer/cow-outer/badger-outer -> cow/cow-inner
   if(arrowWeights[["2_1"]] != 0){
     arrows(x0=x[3]+0.05, x1=x[2]-0.05, y0=y[3]-0.1, y1=y[2]+0.1,
            code=code, lwd=arrowWeights[["2_1"]])
@@ -1559,6 +1597,54 @@ calculateEffectiveSampleSize <- function(posteriorSample){
   return(ess);
 }
 
+checkDemeSamplingForDemeStructure <- function(demeStructure, number=NULL){
+  
+  # Species-InOrOut-Location
+  # badger  inner   east
+  # cow     outer   west
+  #                 north
+  #                 south
+  demeNames <- list(
+    # badger cow
+    "2Deme"=c(TRUE, TRUE),
+    
+    # badger-inner cow-inner outer
+    "3Deme-outerIsBoth"=c(TRUE, TRUE, TRUE),
+    
+    # badger-inner cow badger-outer
+    "3Deme-outerIsBadger"=c(TRUE, TRUE, FALSE),
+    
+    # badger cow-inner cow-outer
+    "3Deme-outerIsCattle"=c(TRUE, TRUE, TRUE),
+    
+    # badger-inner cow-inner cow-outer badger-outer
+    "4Deme"=c(TRUE, TRUE, TRUE, FALSE),
+    
+    # badger-inner cow-inner cow-outer-east cow-outer-west badger-outer-east
+    # badger-outer-west"),
+    "6Deme-EastWest"=c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE),
+    
+    # badger-inner cow-inner cow-outer-north cow-outer-south badger-outer-north
+    # badger-outer-south"),
+    "6Deme-NorthSouth"=c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE),
+    
+    # badger-inner-east badger-inner-west cow-inner-east cow-inner-west cow-outer-east
+    # cow-outer-west badger-outer-east badger-outer-west"),
+    "8Deme-EastWest"=c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE),
+    
+    # badger-inner-north badger-inner-south cow-inner-north cow-inner-south 
+    # cow-outer-north cow-outer-south badger-outer-north badger-outer-south")
+    "8Deme-NorthSouth"=c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE)
+  )
+  
+  output = demeNames[[demeStructure]]
+  if(is.null(number) == FALSE){
+    output = demeNames[[demeStructure]][number + 1]
+  }
+  
+  return(output)
+}
+
 getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
 
   # Species-InOrOut-Location
@@ -1571,7 +1657,9 @@ getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
     
     "3Deme-outerIsBoth"=c("badger-inner", "cow-inner", "outer"),
     
-    "3Deme-outerIsCattle"=c("badger-inner", "cow-inner", "cow"),
+    "3Deme-outerIsBadger"=c("badger-inner", "cow", "badger-outer"),
+    
+    "3Deme-outerIsCattle"=c("badger", "cow-inner", "cow-outer"),
     
     "4Deme"=c("badger-inner", "cow-inner", "cow-outer", "badger-outer"),
     
@@ -1691,3 +1779,143 @@ combineLogTables <- function(logTablesForReplicates){
   
   return(output)
 }
+
+# Text overlay functions
+overlayText <- function(x, y, labels, xThresholdProp=0.05, yThresholdProp=0.05,
+                        pos=NULL, cex=1){
+  
+  # Define your thresholds for closeness
+  axisLimits <- par("usr")
+  xThreshold <- xThresholdProp * (axisLimits[2] - axisLimits[1])
+  yThreshold <- yThresholdProp * (axisLimits[4] - axisLimits[3])
+  
+  # Put coordinates and labels into dataframe
+  coords <- data.frame(X=x, Y=y, Name=labels)
+  
+  # Get alternative points for when labels overlap
+  alternatives <- getAlternativeLabelLocations(n=1000, xThreshold, yThreshold, coords,
+                                               axisLimits)
+  
+  # Assign new locations where necessary
+  newLocations <- getNewLocations(coords, alternatives, xThreshold, yThreshold)
+  
+  # Plot labels
+  plotTextLabels(newLocations, coords, pos, cex)
+}
+
+plotTextLabels <- function(newLocations, oldLocations, pos, cex){
+  
+  for(i in 1:nrow(newLocations)){
+    
+    if(newLocations[i, "X"] != oldLocations[i, "X"] || 
+       newLocations[i, "Y"] != oldLocations[i, "Y"]){
+      
+      text(x=newLocations[i, "X"], y=newLocations[i, "Y"],
+           labels=newLocations[i, "Name"], xpd=TRUE, pos=pos, cex=cex)
+      points(x=c(newLocations[i, "X"], oldLocations[i, "X"]),
+             y=c(newLocations[i, "Y"], oldLocations[i, "Y"]),
+             type="l", col=rgb(0,0,0, 0.5))
+    }else{
+      text(x=newLocations[i, "X"], y=newLocations[i, "Y"],
+           labels=newLocations[i, "Name"], xpd=TRUE, pos=pos, cex=cex)
+    }
+  }
+}
+
+getNewLocations <- function(coords, alternatives, xThreshold, yThreshold){
+  
+  # Assign new locations to labels if necessary
+  newLocations <- coords
+  skip <- c()
+  for(i in 1:nrow(coords)){
+    
+    # Check if current point too close to others
+    for(j in 1:nrow(coords)){
+      
+      # Skip if same location
+      if(i == j || j %in% skip){
+        next
+      }
+      
+      # Check if current locations are too close
+      if(abs(coords[i, "X"] - coords[j, "X"]) < xThreshold &&
+         abs(coords[i, "Y"] - coords[j, "Y"]) < yThreshold){
+        
+        newLocationIndex <- getNewLocation(coords[i, "X"], coords[i, "Y"], alternatives)
+        newLocations[i, c(1, 2)] <- alternatives[newLocationIndex, ]
+        alternatives <- alternatives[-newLocationIndex, ]
+        skip[length(skip) + 1] <- i
+        
+        break
+      }
+    }
+    
+    # Check if ran out of new locations
+    if(is.na(alternatives[1, 1]) == TRUE){
+      break
+    }
+  }
+  
+  return(newLocations)
+}
+
+getNewLocation <- function(x, y, alternatives){
+  
+  # Calculate the distance to all alternative locations
+  distances <- c()
+  for(i in 1:nrow(alternatives)){
+    distances[i] <- euclideanDistance(x, y, alternatives[i, "X"], alternatives[i, "Y"])
+  }
+  
+  # Select the closest
+  chosen <- which(distances == min(distances))[1]
+  
+  return(chosen)
+}
+
+getAlternativeLabelLocations <- function(n, xThreshold, yThreshold, coords, axisLimits){
+  
+  # Get a set of random points
+  randomX <- runif(n, min=axisLimits[1], max=axisLimits[2])
+  randomY <- runif(n, min=axisLimits[3], max=axisLimits[4])
+  
+  # Remove points that are too close to actual values
+  remove <- c()
+  for(i in 1:n){
+    
+    for(j in 1:nrow(coords)){
+      
+      if(abs(randomX[i] - coords[j, "X"]) < xThreshold &&
+         abs(randomY[i] - coords[j, "Y"]) < yThreshold){
+        remove[length(remove) + 1] <- i
+        break
+      }
+    }
+  }
+  randomX <- randomX[-remove]
+  randomY <- randomY[-remove]
+  
+  # Remove points that are too close to each other
+  skip <- c()
+  for(i in 1:length(randomX)){
+    
+    for(j in 1:length(randomX)){
+      
+      if(j %in% skip || i == j){
+        next
+      }
+      
+      if(abs(randomX[i] - randomX[j]) < xThreshold &&
+         abs(randomY[i] - randomY[j]) < yThreshold){
+        skip[length(skip) + 1] <- i
+        break
+      }
+    }
+  }
+  randomX <- randomX[-skip]
+  randomY <- randomY[-skip]
+  
+  alternatives <- data.frame(X=randomX, Y=randomY)
+  return(alternatives)
+}
+

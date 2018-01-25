@@ -73,9 +73,9 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 ## Options
 
 # Note deme structure to use
-demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsCattle", "4Deme",
-                    "6Deme-EastWest", "6Deme-NorthSouth", "8Deme-EastWest",
-                    "8Deme-NorthSouth")
+demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsBadger",
+                    "3Deme-outerIsCattle", "4Deme", "6Deme-EastWest", 
+                    "6Deme-NorthSouth", "8Deme-EastWest", "8Deme-NorthSouth")
 
 # Set options for population size estimate
 popSizeEstimation <- c("equal", "varying")
@@ -503,10 +503,15 @@ getDemeInfo <- function(deme, infoWanted){
                                                               1, NA, 1,
                                                               1, 1, NA), 
                                                             byrow=TRUE, nrow=3)),
-    "3Deme-outerIsCattle" = list("Name"="3Deme-outerIsCattle", "NumberDemes"=3, 
+    "3Deme-outerIsBadger" = list("Name"="3Deme-outerIsBadger", "NumberDemes"=3, 
                                  "MigrationRateMatrix"=matrix(c(NA, 1, 1,
                                                                 1, NA, 1,
                                                                 1, 1, NA), 
+                                                              byrow=TRUE, nrow=3)),
+    "3Deme-outerIsCattle" = list("Name"="3Deme-outerIsCattle", "NumberDemes"=3, 
+                                 "MigrationRateMatrix"=matrix(c(NA, 1, 0,
+                                                                1, NA, 1,
+                                                                0, 1, NA), 
                                                               byrow=TRUE, nrow=3)),
     "4Deme" = list("Name"="4Deme", "NumberDemes"=4, 
                    "MigrationRateMatrix"=matrix(c(NA, 1, 0, 1,
@@ -755,7 +760,8 @@ startBuildingOutputFileLines <- function(){
   return(fileLines)
 }
 
-assignIsolatesToDemes <- function(demeStructure, isolateInfo, innerThreshold, badgerCentre){
+assignIsolatesToDemes <- function(demeStructure, isolateInfo, innerThreshold,
+                                  badgerCentre, verbose=FALSE){
   
   # Initialise a column to store each isolate's deme assignment
   isolateInfo$Deme <- rep("NA", nrow(isolateInfo))
@@ -771,7 +777,7 @@ assignIsolatesToDemes <- function(demeStructure, isolateInfo, innerThreshold, ba
       inOrOut <- checkIfInner(isolateInfo[row, "Distance"], innerThreshold)
       eastOrWest <- checkIfEast(isolateInfo[row, "X"], badgerCentre[1])
       northOrSouth <- checkIfNorth(isolateInfo[row, "Y"], badgerCentre[2])
-    }else{
+    }else if(verbose == TRUE){
       
       cat(paste("Location data not available for isolate:", isolateInfo[row, "IsolateID"], "\n"))
     }
@@ -805,7 +811,7 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, northOrSouth, badgerOrCow, 
       output <- "outer"
     }
     
-  }else if(demeStructure == "3Deme-outerIsCattle"){
+  }else if(demeStructure == "3Deme-outerIsBadger"){
     
     if(badgerOrCow == "badger"){
       output <- paste(badgerOrCow, inOrOut, sep="-")
@@ -813,6 +819,14 @@ buildDemeAssignment <- function(inOrOut, eastOrWest, northOrSouth, badgerOrCow, 
       output <- badgerOrCow
     }
 
+  }else if(demeStructure == "3Deme-outerIsCattle"){
+    
+    if(badgerOrCow == "badger"){
+      output <- badgerOrCow
+    }else{
+      output <- paste(badgerOrCow, inOrOut, sep="-")
+    }
+    
   }else if(demeStructure == "4Deme"){
     
     output <- paste(badgerOrCow, inOrOut, sep="-")

@@ -12,7 +12,7 @@ import re # pattern matching
 # Created: 31-08-17
 
 # Command line structure:
-# python CopyElementsIntoEMBL.py from.embl to.embl output.embl
+# python CopyMobileElementsAndRepeatRegionsIntoEMBL.py from.embl to.embl output.embl
 
 #############
 # FUNCTIONS #
@@ -297,6 +297,39 @@ def checkIfFeaturesNotInserted(features, featuresAdded):
 				print "\n-----------------------------------------------------------------------------"
 				print features[key]
 
+def checkFeaturesAdded(featuresAdded):
+	
+	# Initialise a count variable
+	count = 0
+	
+	# Initialise a hashtable to store the unique locus_tags
+	locusTags = {}
+	
+	# Examine each feature
+	for key in features.keys():
+		
+		# Check if locus tag present and skip
+		if(re.search(r"(.*)/locus_tag(.*)", features[key])):
+			
+			# Split the info into lines
+			lines = re.split("\n", features[key])
+			for line in lines:
+				
+				if(re.search(r"(.*)/locus_tag(.*)", line)):
+					tag = re.split("=", features[key])[2]
+					locusTags[tag] = 1
+					break
+					
+			continue
+		
+		count = count + 1
+		#print "\n-----------------------------------------------------------------------------"
+		#print features[key]
+	
+	print "Found " + str(count) + " features without /locus_tag."
+	print "Found " + str(len(locusTags)) + " unique locus tags."
+	
+				
 #################################
 # Check command line arguements	#
 #################################			
@@ -334,3 +367,6 @@ featuresAdded = readAndPrintEMBLInsertingFeatures(EMBL, output, features, ordere
 
 # Check that all features were inserted
 checkIfFeaturesNotInserted(features, featuresAdded)
+
+# Have another look at the features added
+checkFeaturesAdded(featuresAdded)

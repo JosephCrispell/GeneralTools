@@ -2,6 +2,7 @@
 # Load libraries #
 ##################
 
+# Install biostrings using bioclite() - Installs biostrings and all associated packages
 library(Biostrings)
 
 ##########################
@@ -12,16 +13,24 @@ library(Biostrings)
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Reference/"
 
 # Original
-file <- paste(path, "TransferAnnotations/embl/", "AF2122-97_Garnier2003.embl", sep="")
+#file <- paste(path, "TransferAnnotations_19-01-18/RATT_output/embl/",
+#              "GarnierAnnotations.embl", sep="")
+#original <- readEMBLFile(file)
+file <- paste(path, "UpdatedReference_Malone2017/",
+              "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
 original <- readEMBLFile(file)
-# file <- paste(path, "UpdatedReference_Malone2017/",
-#               "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
-# original <- readEMBLFile(file)
 
 # Transferred
-file <- paste(path, "TransferAnnotations/",
-              "Garnier-MaloneTransfer_24-08-17.LT708304.1.final.embl", sep="")
+file <- paste(path, "TransferAnnotations_19-01-18/",
+              "TransferAnnotations_GarnierToMalone_19-01-18.LT708304.1.final.embl", sep="")
 transferred <- readEMBLFile(file)
+
+# Open a pdf
+file <- paste(path, "TransferAnnotations_19-01-18/",
+              "MaloneVersusTransferred_19-01-18.pdf", sep="")
+#file <- paste(path, "TransferAnnotations_19-01-18/",
+#              "GarnierVersusTransferred_19-01-18.pdf", sep="")
+pdf(file)
 
 ########################
 # Compare the features #
@@ -37,7 +46,6 @@ transferred <- readEMBLFile(file)
 #   global-local = align whole strings in pattern with consecutive subsequence of subject  #
 #   local-global = align consecutive subsequence of pattern with whole strings in subject. #
 ############################################################################################
-
 
 # Get common features
 commonFeatures <- getCommonFeatures(original, transferred)
@@ -64,8 +72,23 @@ threshold <- 0.95
 poorFeatureAlignments <- alignmentScores[alignmentScores$Score < threshold, "Feature"]
 length(poorFeatureAlignments)
 
+# Plot the alignment scores
+hist(alignmentScores$Score, las=1, main="Alignment scores between features",
+     xlab="Score")
+abline(v=threshold, lty=2, col="red", lwd=2)
+
+# Note the poorly aligned loci
+par(mar=c(0,0,2,0))
+plot(x=NULL, y=NULL, xlim=c(0,1), ylim=c(0,1), bty="n", yaxt="n", xaxt="n",
+     ylab="", xlab="", main="Tags for poorly aligned features:")
+text(x=0.5, y=seq(1, 0, -1/length(poorFeatureAlignments))[-1],
+     labels=poorFeatureAlignments)
+par(mar=c(5.1, 4.1, 4.1, 2.1))
+
 # Examine each of the poorly aligned features
 examineFeaturesWithPoorAlignments(poorFeatureAlignments, alignmentInfo)
+
+dev.off()
 
 #############
 # FUNCTIONS #
@@ -110,6 +133,8 @@ calculateAlignmentScores <- function(commonFeatures, featureSequences,
   
   alignments <- list()
   
+  cat(paste("Starting aligning feature sequences...\t\t\t\t\t\t\t\t\t\t"))
+  
   # Compare the sequences avalable for each feature
   for(i in 1:length(commonFeatures)){
     
@@ -142,11 +167,11 @@ calculateAlignmentScores <- function(commonFeatures, featureSequences,
     alignmentScores[i, "Score"] <- score(alignment) / nchar(alignment)
     
     # Progress
-    if(i %% 1000 == 0){
-      cat(paste("Finished alignment for", i, "of", length(commonFeatures), 
-                "features.\n"))
-    }
+    cat(paste("\rFinished alignment for", i, "of", length(commonFeatures), 
+              "features."))
+    
   }
+  cat("Finished aligning feature sequences.\t\t\t\t\t\t\t\t\t\t\n")
   
   output <- list(
     "Scores"=alignmentScores,
@@ -227,6 +252,7 @@ getCommonFeatures <- function(original, transferred){
   if(length(featuresUniqueToTransferred) != 0){
     plotFeatureTypes(featuresUniqueToTransferred, transferred$Features, 
                      main="Types of Features Unique to Transferred")
+    
   }
   
   return(commonFeatures)
