@@ -1,0 +1,48 @@
+---
+title: "Simple SIR Model"
+author: "Joseph Crispell"
+date: "26 January 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Initial parameter settings
+
+The model is a deterministic infection model with three categories: Susceptible ($S$), Infected ($I$), and Recovered ($R$). This SIR model requires two parameters:
+
+* Infectiousness $\beta$
+* Recovery $r$
+
+The SIR model can be described with the following equations:
+\[
+\frac{dS}{dt} = -\frac{\beta * I * S}{N}\\
+\frac{dI}{dt} = \frac{\beta * I * S}{N} - r*I\\
+\frac{dR}{dt} = r*I\\
+\]
+
+Each of the above equations describe the change in the size of a category through time. We'll use the following parameter settings for these equations:
+```{r}
+# Initial parameter settings
+infectiousness <- 0.01
+recovery <- 0.1
+
+```
+
+## Building the model
+
+Using the equations described above, an SIR model approximation can be created using the following code:
+
+```{r}
+
+# Set the initial population status
+
+# Initialise a table to store the model output
+popStatus <- data.frame(Time=0, S=NA, I=NA, R=NA)
+
+# Run the SIR model
+
+
+```

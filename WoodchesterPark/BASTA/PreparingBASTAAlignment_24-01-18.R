@@ -72,6 +72,11 @@ selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCover
 
 ## Options
 
+# Note whether sampling from prior
+sampleFromPrior <- TRUE
+selectedIsolateInfo <- removeSequencesIfSamplingFromPrior(selectedIsolateInfo, 
+                                                          sampleFromPrior)
+
 # Note deme structure to use
 demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsBadger",
                     "3Deme-outerIsCattle", "4Deme", "6Deme-EastWest", 
@@ -114,8 +119,10 @@ for(demeStructure in demeStructures){
     for(relaxedOrStrict in clockModels){
       
       # Build the XML file
-      buildXMLFile(demeStructure, equalOrVaryingPopSizes, paste(path, "BASTA/", sep=""), date,
-                   constantSiteCountsFile, selectedIsolateInfo, chainLength, relaxedOrStrict)
+      buildXMLFile(demeStructure, equalOrVaryingPopSizes,
+                   paste(path, "BASTA/", sep=""), date,
+                   constantSiteCountsFile, selectedIsolateInfo, chainLength,
+                   relaxedOrStrict, sampleFromPrior)
     }
   }
 }
@@ -125,13 +132,31 @@ for(demeStructure in demeStructures){
 # FUNCTIONS #
 #############
 
+removeSequencesIfSamplingFromPrior <- function(isolateInfo, sampleFromPrior){
+  
+  if(sampleFromPrior == TRUE){
+    
+    for(row in 1:nrow(isolateInfo)){
+      isolateInfo[row, "Sequence"] <- "N"
+    }
+  }
+  
+  return(isolateInfo)
+}
+
 buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes, path, date, 
-                         constantSiteCountsFile, isolateInfo, chainLength, relaxedOrStrict){
+                         constantSiteCountsFile, isolateInfo, chainLength,
+                         relaxedOrStrict, sampleFromPrior){
   
   # Note the output XML name
   outputFileName <- paste(getDemeInfo(demeStructure, "Name"), "_",
                           equalOrVaryingPopSizes, "_", relaxedOrStrict,
                           "_", date, sep="")
+  if(sampleFromPrior == TRUE){
+    outputFileName <- paste(getDemeInfo(demeStructure, "Name"), "_",
+                            equalOrVaryingPopSizes, "_", relaxedOrStrict,
+                            "_PRIOR_", date, sep="")
+  }
   
   # Create a directory for the output file
   dir.create(paste(path, "/", outputFileName, sep=""))
@@ -140,7 +165,7 @@ buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes, path, date,
   fileLines <- startBuildingOutputFileLines()
   
   # Add Sequenced block
-  fileLines <- addSequenceBlock(fileLines, selectedIsolateInfo)
+  fileLines <- addSequenceBlock(fileLines, selectedIsolateInfo, sampleFromPrior)
   
   # Add distribution block - if relaxed
   if(relaxedOrStrict == "relaxed"){
@@ -148,7 +173,9 @@ buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes, path, date,
   }
   
   # Add constant site counts block
-  fileLines <- addConstantSiteCountsBlock(fileLines, constantSiteCountsFile)
+  if(sampleFromPrior == FALSE){
+    fileLines <- addConstantSiteCountsBlock(fileLines, constantSiteCountsFile)
+  }
   
   # Add sampling dates block
   fileLines <- addTipDateBlock(fileLines, selectedIsolateInfo)
@@ -157,7 +184,8 @@ buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes, path, date,
   fileLines <- addDemeAssignmentBlock(fileLines, selectedIsolateInfo)
   
   # Add substitution model block
-  fileLines <- addSubstitutionModelBlock(fileLines, isolateInfo, relaxedOrStrict)
+  fileLines <- addSubstitutionModelBlock(fileLines, isolateInfo, relaxedOrStrict,
+                                         sampleFromPrior)
   
   # Add branch rates model - if relaxed
   if(relaxedOrStrict == "relaxed"){
@@ -574,12 +602,16 @@ addBranchRateModelBlock <- function(fileLines){
   return(fileLines)
 }
 
-addSubstitutionModelBlock <- function(fileLines, isolateInfo, relaxedOrStrict){
+addSubstitutionModelBlock <- function(fileLines, isolateInfo, relaxedOrStrict,
+                                      sampleFromPrior){
   
   # Calculate the average site frequencies
-  baseFrequencies <- calculateAverageBaseFrequencies(isolateInfo$Sequence)
-  baseFrequencies <- baseFrequencies / sum(baseFrequencies) # Sum to 1
-  baseFrequencies <- paste(baseFrequencies, collapse=" ")
+  baseFrequencies <- paste(c(0.25, 0.25, 0.25, 0.25), collapse=" ")
+  if(sampleFromPrior == FALSE){
+    baseFrequencies <- calculateAverageBaseFrequencies(isolateInfo$Sequence)
+    baseFrequencies <- baseFrequencies / sum(baseFrequencies) # Sum to 1
+    baseFrequencies <- paste(baseFrequencies, collapse=" ")
+  }
   
   # Add the file lines for the block
   fileLines[length(fileLines) + 1] <- ""
@@ -730,10 +762,15 @@ addDistributionBlock <- function(fileLines){
   return(fileLines)
 }
 
-addSequenceBlock <- function(fileLines, isolateInfo){
+addSequenceBlock <- function(fileLines, isolateInfo, sampleFromPrior){
   
   fileLines[length(fileLines) + 1] <- "\t<!-- Sequence Alignment -->"
-  fileLines[length(fileLines) + 1] <- "\t<data id=\"alignmentVar\" dataType=\"nucleotide\">"
+  if(sampleFromPrior == FALSE){
+    fileLines[length(fileLines) + 1] <- "\t<data id=\"alignmentVar\" dataType=\"nucleotide\">"
+  }else{
+    fileLines[length(fileLines) + 1] <- "\t<data id=\"alignment\" dataType=\"nucleotide\">"
+  }
+  
   
   for(row in 1:nrow(isolateInfo)){
     

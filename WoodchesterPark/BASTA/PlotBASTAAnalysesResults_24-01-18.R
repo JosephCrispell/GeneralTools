@@ -25,7 +25,7 @@ genomeSize <- genomeSize + nSites
 #####################
 
 # Move the path
-path <- paste(path, "BASTA/Replicate3_20-12-17/", sep="")
+path <- paste(path, "BASTA/", sep="")
 
 # Note deme structure to use
 demeStructures <- list(
@@ -51,7 +51,7 @@ clockEstimateTypes <- c("relaxed") # strict not used
 
 # Store each of the log tables in a list
 logTables <- readInBASTALogTables(date, demeStructures, popEstimationTypes,
-                                  clockEstimateTypes, path, nReplicates=NULL)
+                                  clockEstimateTypes, path, nReplicates=3)
 
 ####################
 # Examine each run #
@@ -235,17 +235,19 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # across BASTA models
     # Weighting is by the AICM score
     #
-    # 1. For each analysis calculate the sum transition rates between cattle and badger demes
-    #     sum of cattle -> badger
-    #     sum of badger -> cattle
-    # 2. Store those values for each model in two arrays (one for c->b and one for b->c)
-    # 3. Get the AICM score for each model
-    # 4. Convert AICM scores to weights:
+    # 1. Each model: Calculate the median of each migration rate estimated
+    # 2. Each model: Calculate sum of median rates between cattle and badger demes
+    #                   sum of cattle -> badger
+    #                   sum of badger -> cattle
+    # 2. Store sums for each model in two arrays (one for c->b and one for b->c)
+    # 3. Each Model: Calculate AICM
+    # 4. Convert model AICM scores to weights:
     #       exp((AIC_min - AIC_i)/2)
-    # 5. Normalise to sum to 1: 
+    # 5. Normalise weights to sum to 1: 
     #       scores / sum(scores)
     # 6. Calculate weighted average rates:
-    #       sum(ratesFromModels * modelAICMWeightsNormalised)
+    #       c->b = sum(sumOfCBRatesFromEachModel * modelAICMWeightsNormalised)
+    #       b->c = sum(sumOfBCRatesFromEachModel * modelAICMWeightsNormalised)
     #
     # Above method for weighting AICM suggested by Paul Johnson
     # This is known as Ensemble Bayesian Model Averaging
@@ -353,6 +355,9 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     overlayText(x=modelSumBadgerToCowRates, y=modelSumCowToBadgerRates,
                 labels=names, xThresholdProp=0.05, yThresholdProp=0.05, cex=0.5)
     legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
+    legend("topleft", legend=c("High", "", "", "Low"), pch=19,
+           title="AICM Weight", bty="n",
+           pt.cex=c(3, 2, 1, 0.1))
     
     # Calculate the weighted means for the rate sums between badgers and cattle
     weightedMeanBadgerToCow <- sum(modelSumBadgerToCowRates * 

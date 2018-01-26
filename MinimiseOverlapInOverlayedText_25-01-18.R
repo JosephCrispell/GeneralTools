@@ -6,8 +6,21 @@ coords <- data.frame(X=runif(n), Y=runif(n), Name="Test Label")
 # Plot them
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red")
 
+# Get the axis limits
+axisLimits <- par("usr") 
+
+# Get the window size in inches
+windowSize <- dev.size("in")
+
+# Set cex
+cex = 0.5
+
+# Calculate text height
+defaultHeight <- 1/75 # in inches
+yTextHeight <- (axisLimits[4] - axisLimits[3]) / windowSize[2] * defaultHeight
+
 # Plot text labels
-overlayText(coords$X, coords$Y, coords$Name, cex=0.5)
+overlayText(coords$X, coords$Y, coords$Name, cex=1)
 
 #############
 # FUNCTIONS #
@@ -27,6 +40,7 @@ overlayText <- function(x, y, labels, xThresholdProp=0.05, yThresholdProp=0.05,
   # Get alternative points for when labels overlap
   alternatives <- getAlternativeLabelLocations(n=1000, xThreshold, yThreshold, coords,
                                                axisLimits)
+  #points(alternatives$X, alternatives$Y, col=rgb(0,0,0, 0.5), pch=20)
   
   # Assign new locations where necessary
   newLocations <- getNewLocations(coords, alternatives, xThreshold, yThreshold)
@@ -151,6 +165,8 @@ getAlternativeLabelLocations <- function(n, xThreshold, yThreshold, coords, axis
   return(alternatives)
 }
 
-
+euclideanDistance <- function(x1, y1, x2, y2){
+  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+}
 
 
