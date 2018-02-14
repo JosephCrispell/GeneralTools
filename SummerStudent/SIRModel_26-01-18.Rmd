@@ -1,9 +1,13 @@
 ---
-title: "Simple SIR Model"
+title: "SIR Model"
 author: "Joseph Crispell"
 date: "26 January 2018"
 output: html_document
 ---
+
+-----
+
+# A deterministic model
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -26,8 +30,8 @@ The SIR model can be described with the following equations:
 Each of the above equations describe the change in the size of a category through time. We'll use the following parameter settings for these equations:
 ```{r}
 # Initial parameter settings
-infectiousness <- 0.01
-recovery <- 0.1
+infectiousness <- 0.1
+recovery <- 0.01
 
 ```
 
@@ -37,12 +41,123 @@ Using the equations described above, an SIR model approximation can be created u
 
 ```{r}
 
-# Set the initial population status
+# Write a function that will represent an SIR infection model
+sirModel <- function(popSize, initialNInfected, infectiousness, recovery, nTimeSteps){
+  
+  # Set the initial population status within a table that will record the population status
+  popStatus <- data.frame(
+    Time=0,
+    S=popSize - initialNInfected,
+    I=initialNInfected,
+    R=0
+  )
 
-# Initialise a table to store the model output
-popStatus <- data.frame(Time=0, S=NA, I=NA, R=NA)
+  # Run the SIR model
+  for(timestep in 1:nTimeSteps){
+  
+    # Calculate how the susceptible and infected populations change as a result of infection
+    infectionChange <- (infectiousness * popStatus[timestep, "I"] * popStatus[timestep, "S"]) /
+      sum(popStatus[timestep, c("S", "I", "R")])
+  
+    # Calculate the change in the infected population
+    recoveryChange <- recovery * popStatus[timestep, "I"]
+  
+    # Store the current population status - noting the flow of individuals through the population
+    popStatus[timestep + 1, ] <- c(
+      timestep,
+      popStatus[timestep, "S"] - infectionChange,
+      popStatus[timestep, "I"] + infectionChange - recoveryChange,
+      popStatus[timestep, "R"] + recoveryChange
+    )
+  }
 
-# Run the SIR model
+  return(popStatus)
+}
 
 
 ```
+
+## Run the model
+
+Using the function written above an SIR model can be ran using the following code:
+
+```{r}
+
+# Set the model parameters
+popSize <- 100
+initialNInfected <- 1
+nTimeSteps <- 100
+
+# Run the SIR model - note using the infectiousness and recovery parameters defined above
+modelOutput <- sirModel(popSize=popSize, initialNInfected=initialNInfected,
+                        infectiousness=infectiousness,
+                        recovery=recovery, nTimeSteps=nTimeSteps)
+
+```
+
+## Have a look at the model output
+
+Running the function with the code above generates some output information stored in a variable modelOutput. We can have a quick look at the output table using:
+```{r}
+head(n=5, modelOutput)
+```
+
+## Plot the model output
+
+We can plot these data using the following code:
+```{r}
+
+# Plot the number of susceptibles in the population against time
+plot(x=modelOutput$Time, y=modelOutput$S, # Coordinates to plot
+     ylim=c(0, popSize), # Set minimum and maximum limits of the Y axis
+     xlab="Time", # Define X axis label
+     ylab="Number", # Define the Y axis label,
+     main="SIR model infection dynamics", # Define the plot title
+     type="l", # Plot a line through the coordinates
+     col="blue", # Colour the plot blue
+     las=1, # Make the tick labels on X and Y axes horizontal
+     bty="n") # Remove the box around the plot
+
+# Add a line for the number of infected individuals against time
+points(x=modelOutput$Time, y=modelOutput$I, # Coordinates to ADD to current plot
+       type="l",
+       col="green")
+
+# Add a line for the number of recovered individuals against time
+points(x=modelOutput$Time, y=modelOutput$R, # Coordinates to ADD to current plot
+       type="l",
+       col="black")
+
+# Add a legend to the plot
+legend("left", # Position the legend at the left hand side of the current plot
+       legend=c("S", "I", "R"), # Define the labels to present in plot
+       lty=c(1,1,1), # Set the legend to associate a line with each label,
+       col=c("blue", "green", "black"), # Set the colour of the lines,
+       text.col=c("blue", "green", "black"), # Set the colour of the labels,
+       bty="n")
+
+```
+
+## Exercises
+
+1. How would you change the colours of the lines in the output plot?
+2. What happens when you change the number of timesteps (```nTimesteps```) to 1000?
+3. How does changing the ```infectiousness``` or ```recovery``` change the infection dynamics?
+4. Change the model to include an exposed infection category, in which individuals have been exposed to infection but aren't yet infectiousness, based on the following equations:
+\[
+\frac{dS}{dt} = -\frac{\beta * I * S}{N}\\
+\frac{dE}{dt} = \frac{\beta * I * S}{N} - p * E\\
+\frac{dI}{dt} = p * E - r*I\\
+\frac{dR}{dt} = r*I\\
+\]
+
+-----
+
+# A stochastic model
+
+## The Gillespie algorithm
+
+A stochastic model is a model that incorporates stochasticity - randomness. The incoporation of randomness into a model makes it more realistic. In life, things aren't all the same and events don't always occur in the same way. Randomness can, to some extent, be used to capture this variation.
+
+The Gillespie algorithm provides a means by which randomness can be introduced into the SIR model described above. It has four steps
+

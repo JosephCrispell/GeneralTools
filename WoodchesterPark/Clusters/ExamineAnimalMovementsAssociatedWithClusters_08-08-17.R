@@ -6,7 +6,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_02-10-2017.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_13-02-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -36,7 +36,7 @@ badgerCentre <- c(381761.7, 200964.3)
 expand <- c(15000, 5000)
 
 # Open a pdf
-file <- paste(path, "sampledAnimalMovementsInClusters_02-10-17.pdf", sep="")
+file <- paste(path, "sampledAnimalMovementsInClusters_13-02-18.pdf", sep="")
 pdf(file, height=7, width=14)
 
 # Set plotting window dimensions

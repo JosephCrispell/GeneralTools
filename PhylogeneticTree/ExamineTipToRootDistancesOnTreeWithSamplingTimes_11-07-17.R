@@ -17,7 +17,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 ################
 
 file <- paste(path, "vcfFiles/",
-              "mlTree-rescued_BASTAClade_DatedTips_TempEstRooted_02-10-17.tree", sep="")
+              "mlTree_BASTAClade_DatedTips_TempEstRooted_12-02-18.tree", sep="")
 tree <- readTree(file)
 
 ###################################
@@ -46,7 +46,7 @@ cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Open a pdf
 file <- paste(path, "vcfFiles/",
-              "RootedBastaCladeTree_tipToRootDistances_02-10-17.pdf", sep="")
+              "RootedBastaCladeTree_tipToRootDistances_12-02-18.pdf", sep="")
 pdf(file)
 
 

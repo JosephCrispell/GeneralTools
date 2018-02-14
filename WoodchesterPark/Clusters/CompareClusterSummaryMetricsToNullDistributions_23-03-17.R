@@ -2,7 +2,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
 
 # Open the Cluster Summary table
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_02-10-2017.txt", sep="")
+file <- paste(path, "ClusterSummaryWithRandomNullDistributions_13-02-2018.txt", sep="")
 summaryTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Define the order of the plots
@@ -83,7 +83,7 @@ outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
 rownames(outputTable) <- replaceFromList(rownames(outputTable), fullNames)
 
 # Save the output table as csv
-file <- paste(path, "ClusterSummaryWithBoundsOfNulls_02-10-2017.txt", sep="")
+file <- paste(path, "ClusterSummaryWithBoundsOfNulls_13-02-2018.txt", sep="")
 write.table(file, x=outputTable, quote=FALSE, row.names=TRUE, sep="\t")
 
 

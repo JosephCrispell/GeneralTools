@@ -6,7 +6,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_02-10-2017.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_13-02-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -21,7 +21,7 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 xLim <- as.Date(c("1990-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
-file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_02-10-17.pdf", sep="")
+file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_13-02-18.pdf", sep="")
 pdf(file)
 
 # Get an array of all the clusters
@@ -456,20 +456,20 @@ addPointsForAnimals <- function(table, cluster){
         # Inconclusive
         if(testResults[i] == "IR"){
           colour <- "orange"
+          points(x=testDates[i], y=row, pch=16, col=colour)
           # Test Positive
         }else if(testResults[i] == "R" || testResults[i] == "SL"){
           colour <- "red"
+          points(x=testDates[i], y=row, pch=16, col=colour)
         }
-        
-        # Add point for test
-        points(x=testDates[i], y=row, pch=16, col=colour)
       }
     }
     
     ## Infection Detection
     if(is.na(table[row, "DetectionDate"]) == FALSE){
       
-      points(x=as.Date(table[row, "DetectionDate"], "%d-%m-%Y"), y=row, pch=16, col="green")
+      points(x=as.Date(table[row, "DetectionDate"], "%d-%m-%Y"), y=row, pch=16,
+             col="green")
     }
     
     ## Sampling Events - note those from different clusters

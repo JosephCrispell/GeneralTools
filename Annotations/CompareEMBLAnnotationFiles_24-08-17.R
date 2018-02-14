@@ -13,23 +13,23 @@ library(Biostrings)
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Reference/"
 
 # Original
-#file <- paste(path, "TransferAnnotations_19-01-18/RATT_output/embl/",
-#              "GarnierAnnotations.embl", sep="")
-#original <- readEMBLFile(file)
-file <- paste(path, "UpdatedReference_Malone2017/",
-              "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
+file <- paste(path, "TransferAnnotations_09-02-18/RATT_output/embl/",
+              "GarnierAnnotations.embl", sep="")
 original <- readEMBLFile(file)
+#file <- paste(path, "UpdatedReference_Malone2017/",
+#              "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
+#original <- readEMBLFile(file)
 
 # Transferred
-file <- paste(path, "TransferAnnotations_19-01-18/",
-              "TransferAnnotations_GarnierToMalone_19-01-18.LT708304.1.final.embl", sep="")
+file <- paste(path, "TransferAnnotations_09-02-18/RATT_output/",
+              "TransferAnnotations_GarnierToMalone_09-02-18.LT708304.1.final.embl", sep="")
 transferred <- readEMBLFile(file)
 
 # Open a pdf
-file <- paste(path, "TransferAnnotations_19-01-18/",
-              "MaloneVersusTransferred_19-01-18.pdf", sep="")
-#file <- paste(path, "TransferAnnotations_19-01-18/",
-#              "GarnierVersusTransferred_19-01-18.pdf", sep="")
+#file <- paste(path, "TransferAnnotations_09-02-18/",
+#              "MaloneVersusTransferred_09-02-18.pdf", sep="")
+file <- paste(path, "TransferAnnotations_09-02-18/",
+              "GarnierVersusTransferred_09-02-18.pdf", sep="")
 pdf(file)
 
 ########################

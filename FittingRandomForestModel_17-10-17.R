@@ -2,29 +2,17 @@
 # Load Packages #
 #################
 
-suppressMessages(library(randomForest))
+library(randomForest)
 
-###########################################################
-# Read table - genetic distances versus predictor metrics #
-###########################################################
+##################################################
+# Read table - response versus predictor metrics #
+##################################################
 
-# Note a general path where most files can be found
-path <- "C:/Users/ClareBenton/Desktop/"
-
-# Read Genetic V.s predictor metrics table
-file <- paste(path, "geneticVsPredictors_17-10-2017.txt", sep="") # Builds full path to file of interest
+# Read in response vs predictor table
+file <- "geneticVsPredictors_17-10-2017.txt"
 table <- read.table(file, 
                     header=TRUE, # Input file has header
                     sep="\t") # coloumn separator in file is TAB
-
-####################################
-# Have a look at genetic distances #
-####################################
-
-hist(table$GeneticDistance, # Note that I know the distance column is entitled "GeneticDistance"
-     las=1, # Change angle of axis labels
-     xlab="Genetic Distance (SNPs)", # label fo X axis
-     main="Inter-Isolate Genetic Distance Distribution")
 
 ###########################
 # Fit Random Forest model #
@@ -41,7 +29,7 @@ nTrees <- 1000
 # select from to build each node of each decision tree
 # Random Forest has a built in tuning program to help you choose the
 # right value for your data
-tuneOutput <- tuneRF(table, table$GeneticDistance,
+tuneOutput <- tuneRF(table, table$Response,
                      mtryStart=3, # Which Mtry to start with
                      ntreeTry=nTrees, # How many decision trees to build to test each Mtry
                      stepFactor=1.5, # Used to move to next Mtry to test (current + 1.5*current)
@@ -61,7 +49,7 @@ points(x=mTry, y=tuneOutput[which(tuneOutput[, 1] == mTry), 2], col="red",
        pch=20)
 
 # Run Random Forest Algorithm on FULL dataset
-infoRF <- randomForest(table$GeneticDistance~.,
+infoRF <- randomForest(table$Response~.,
                        data=table[, ],
                        proximity=FALSE, # Turn off similarity comparison between rows - MIGHT BE USEFUL TO CHANGE THIS?
                        mtry=mTry, # Set Mtry - taken from tuning

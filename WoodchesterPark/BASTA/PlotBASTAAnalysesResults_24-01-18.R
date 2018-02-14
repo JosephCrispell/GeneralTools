@@ -32,7 +32,7 @@ demeStructures <- list(
   "2Deme"=2,
   "3Deme-outerIsBoth"=3,
   "3Deme-outerIsBadger"=3,
-  #"3Deme-outerIsCattle"=3,
+  "3Deme-outerIsCattle"=3,
   "4Deme"=4,
   "6Deme-EastWest"=6,
   "6Deme-NorthSouth"=6,
@@ -88,17 +88,6 @@ weightedMeanEstimates <-
 plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
                                        cowToBadger=weightedMeanEstimates[2],
                                        code=2, arrowFactor=20)
-
-# Calculate the weighted mean estimated transition rates between cattle and badger demes
-# weighted by the AICM model scores
-weightedMeanEstimates <- 
-  calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
-    migrationRateEstimates, useUnSampled=FALSE)
-
-# Plot the rates
-plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
-                                       cowToBadger=weightedMeanEstimates[2],
-                                       code=2, arrowFactor=20, useUnSampled=FALSE)
 
 # Close the pdf
 dev.off()
@@ -190,12 +179,11 @@ plotParameterTraces <- function(logTable, colNamesToPlot){
 }
 
 plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, code, 
-                                                   arrowFactor, useUnSampled=TRUE){
+                                                   arrowFactor){
   
   # Create empty plot
   createEmptyPlot()
-  legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
-  
+
   # Get deme names and assign colours
   demeNames <- c("badgers", "cattle")
   demeColours <- c("red", "blue")
@@ -229,7 +217,7 @@ plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, cod
 }
 
 calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM <-
-  function(migrationRateEstimates, useUnSampled=TRUE){
+  function(migrationRateEstimates){
     
     # Calculating the weighted mean rates of transitions between badger and cattle demes
     # across BASTA models
@@ -300,15 +288,9 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
         
         # Split the key into its deme numbers
         demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
-        
-        
-        
+ 
         # Check if current rate is between badger and cattle populations
-        if(useUnSampled == FALSE && 
-           (checkDemeSamplingForDemeStructure(demeStructure, demeNumbers[1]) == FALSE ||
-           checkDemeSamplingForDemeStructure(demeStructure, demeNumbers[1]) == FALSE)){
-          next
-        }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+        if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
                  pattern="badger") == TRUE &&
            grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                  pattern="cow") == TRUE){
@@ -340,8 +322,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     barplot(modelSumBadgerToCowRates + modelSumCowToBadgerRates, las=1, 
             names=names, horiz=TRUE, cex.names=0.5,
             xlab="Badger <-> cattle per lineage transition rate per year")
-    legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
-    
+
     # Plot badger -> cattle versus cattle -> badger
     ######## Colour by AICM ...
     par(mar=c(5.1, 4.1, 0.5, 2.1))
@@ -354,7 +335,6 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     points(x=c(0, max), y=c(0, max), type="l", lty=2, col="blue")
     overlayText(x=modelSumBadgerToCowRates, y=modelSumCowToBadgerRates,
                 labels=names, xThresholdProp=0.05, yThresholdProp=0.05, cex=0.5)
-    legend("topright", legend=paste("unsampled =", useUnSampled), bty="n")
     legend("topleft", legend=c("High", "", "", "Low"), pch=19,
            title="AICM Weight", bty="n",
            pt.cex=c(3, 2, 1, 0.1))
@@ -364,31 +344,61 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
                                      normalisedModelAICMWeights)
     weightedMeanCowToBadger <- sum(modelSumCowToBadgerRates * 
                                      normalisedModelAICMWeights)
+    points(x=weightedMeanBadgerToCow, y=weightedMeanCowToBadger,
+           pch=15, col="black", cex=2)
+    text(x=weightedMeanBadgerToCow, y=weightedMeanCowToBadger, 
+         labels="Weighted Mean", cex=0.75, pos=4, offset=0.6)
     
+    
+    # # Normalise the values between 0 and arrowFactor
+    # values <- c(weightedMeanBadgerToCow, weightedMeanCowToBadger)
+    # values <- (values / sum(values)) * 5
+    # 
+    # # Add labels
+    # axisLimits <- par("usr")
+    # xLength <- axisLimits[2] - axisLimits[1]
+    # yLength <- axisLimits[4] - axisLimits[3]
+    # x <- c(axisLimits[1] + 0.2*xLength , axisLimits + 0.4*xLength)
+    # y <- c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength)
+    # text(x=x, y=y, 
+    #      labels=c("B", "C"),
+    #      cex=2)
+    # 
+    # # badger -> cow
+    # xSpacer <- 0.05 * xLength
+    # ySpacer <- 0.025 * yLength
+    # arrows(x0=x[1]+xSpacer, x1=x[2]-xSpacer,
+    #        y0=y[1]-ySpacer, y1=y[2]-ySpacer,
+    #        code=2, lwd=values[1])
+    # 
+    # # cow -> badger
+    # arrows(x0=x[2]-xSpacer, x1=x[1]+xSpacer,
+    #        y0=y[1]+ySpacer, y1=y[2]+ySpacer,
+    #        code=2, lwd=values[2])
+
     # Plot the AICM Scores against the rates
-    par(mar=c(1, 7, 0, 0))
-    plot(x=NULL, y=NULL,
-         ylim=range(aicmScores), 
-         xlim=range(c(modelSumBadgerToCowRates, modelSumCowToBadgerRates)),
-         las=1, bty="n", yaxt="n", xaxt="n", ylab="", xlab="")
-    axis(side=2, at=aicmScores, labels=shortenedNames, las=1,
-         cex.axis=0.5, tick=FALSE, line=-1.5)
-    for(i in 1:length(analyses)){
-      lines(x=c(0, modelSumBadgerToCowRates[i]),
-            y=c(aicmScores[i], aicmScores[i]), lty=2)
-    }
-    points(x=modelSumBadgerToCowRates, y=aicmScores,
-           col=rgb(1,0,0, 0.75), pch=19, cex=2)
-    points(x=modelSumCowToBadgerRates, y=aicmScores,
-           col=rgb(0,0,1, 0.75), pch=17, cex=2)
-    
-    mtext("AICM Score", side=2, line=5)
-    mtext("Sum of Estimated Transition Rates", side=1, line=-0.5)
-    
-    legend("topright", legend=c("badgers-to-cattle", "cattle-to-badgers",
-                                paste("unsampled =", useUnSampled)),
-           pch=c(19, 17), text.col=c("red", "blue", "black"), bty="n", 
-           col=c("red", "blue", "white"))
+    # par(mar=c(1, 7, 0, 0))
+    # plot(x=NULL, y=NULL,
+    #      ylim=range(aicmScores), 
+    #      xlim=range(c(modelSumBadgerToCowRates, modelSumCowToBadgerRates)),
+    #      las=1, bty="n", yaxt="n", xaxt="n", ylab="", xlab="")
+    # axis(side=2, at=aicmScores, labels=shortenedNames, las=1,
+    #      cex.axis=0.5, tick=FALSE, line=-1.5)
+    # for(i in 1:length(analyses)){
+    #   lines(x=c(0, modelSumBadgerToCowRates[i]),
+    #         y=c(aicmScores[i], aicmScores[i]), lty=2)
+    # }
+    # points(x=modelSumBadgerToCowRates, y=aicmScores,
+    #        col=rgb(1,0,0, 0.75), pch=19, cex=2)
+    # points(x=modelSumCowToBadgerRates, y=aicmScores,
+    #        col=rgb(0,0,1, 0.75), pch=17, cex=2)
+    # 
+    # mtext("AICM Score", side=2, line=5)
+    # mtext("Sum of Estimated Transition Rates", side=1, line=-0.5)
+    # 
+    # legend("topright", legend=c("badgers-to-cattle", "cattle-to-badgers"),
+    #        pch=c(19, 17), text.col=c("red", "blue"), bty="n", 
+    #        col=c("red", "blue"))
 
     par(mar=c(5.1, 4.1, 4.1, 2.1))
     
@@ -833,7 +843,7 @@ plot3Deme <- function(arrowWeights, code, demeStructure){
            code=code, lwd=arrowWeights[["1_0"]])
   }
   
-  if(demeStructure != "outerIsCattle"){
+  if(demeStructure != "3Deme-outerIsCattle"){
     # badger/badger-inner -> outer/badger-outer
     if(arrowWeights[["0_2"]] != 0){
       arrows(x0=x[1]-0.05, x1=x[3]-0.15, y0=y[1]+0.1, y1=y[3]-0.1,
@@ -1478,7 +1488,7 @@ calculateForwardMigrationRates <- function(logTable){
   
   # Get the names of the backward in time migration rate estimates
   migrationRateCols <- colnames(logTable)[
-    grepl(colnames(logTable), pattern = "migModel.rateMatrix")]
+    grepl(colnames(logTable), pattern = "migModel.rateMatrix_")]
   
   # For each backward in time migration rate caculate the forward migration rate
   # FMR_ab = BMR_ba * (Nb / Na)
@@ -1662,21 +1672,21 @@ getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
     
     "3Deme-outerIsBoth"=c("badger-inner", "cow-inner", "outer"),
     
-    "3Deme-outerIsBadger"=c("badger-inner", "cow", "badger-outer"),
+    "3Deme-outerIsBadger"=c("badger-inner", "cow", "unsampled"),
     
     "3Deme-outerIsCattle"=c("badger", "cow-inner", "cow-outer"),
     
-    "4Deme"=c("badger-inner", "cow-inner", "cow-outer", "badger-outer"),
+    "4Deme"=c("badger-inner", "cow-inner", "cow-outer", "unsampled"),
     
-    "6Deme-EastWest"=c("badger-inner", "cow-inner", "cow-outer-east", "cow-outer-west", "badger-outer-east", "badger-outer-west"),
+    "6Deme-EastWest"=c("badger-inner", "cow-inner", "cow-outer-east", "cow-outer-west", "unsampled-1", "unsampled-2"),
     
-    "6Deme-NorthSouth"=c("badger-inner", "cow-inner", "cow-outer-north", "cow-outer-south", "badger-outer-north", "badger-outer-south"),
+    "6Deme-NorthSouth"=c("badger-inner", "cow-inner", "cow-outer-north", "cow-outer-south", "unsampled-1", "unsampled-2"),
     
     "8Deme-EastWest"=c("badger-inner-east", "badger-inner-west", "cow-inner-east", "cow-inner-west",
-                       "cow-outer-east", "cow-outer-west", "badger-outer-east", "badger-outer-west"),
+                       "cow-outer-east", "cow-outer-west", "unsampled-1", "unsampled-2"),
     
     "8Deme-NorthSouth"=c("badger-inner-north", "badger-inner-south", "cow-inner-north", "cow-inner-south",
-                         "cow-outer-north", "cow-outer-south", "badger-outer-north", "badger-outer-south")
+                         "cow-outer-north", "cow-outer-south", "unsampled-1", "unsampled-2")
   )
 
   output = demeNames[[demeStructure]]

@@ -25,7 +25,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 
 # Read in the newick tree
 file <- paste(path, "vcfFiles/",  "mlTree_29-09-2017.tree", sep="")
-isolatesInClade <- getIsolatesInClade(file, node=301)
+isolatesInClade <- getIsolatesInClade(file, node=433)
 
 #############################
 # Read in Isolate Sequences #
