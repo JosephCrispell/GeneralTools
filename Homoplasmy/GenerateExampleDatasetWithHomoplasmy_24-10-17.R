@@ -12,80 +12,112 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasmy/"
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
 
-###########################################
-# Run simulations to test HomoplasyFinder #
-###########################################
+###########
+# TESTING #
+###########
 
-# Simulation settings
-n <- 200
-mutationRate <- 0.5
-infectiousness <- 0.01
-samplingProb <- 0.1
-nToSample <- 150
+simulationOutput <- runSimulation(n=5, mutationRate=0.5, infectiousness=0.02,
+                                  samplingProb=0.2, nToSample=5, verbose=TRUE)
 
-# Set the number of homoplasies to insert
-nHomoplasies <- 10
+# Build the sequences based upon the mutation events
+sequences <- buildSequences(simulationOutput)
 
-# Set the max proportion isolate can be found in
-maxPropIsolateForHomoplasy <- 1
+####################
+# Insert homoplasy #
+####################
 
-# Prepare to run multiple simulations
-nTimes <- 1000
-results <- data.frame(PropFound=rep(NA, nTimes), NIncorrect=rep(NA, nTimes),
-                      Seed=rep(NA, nTimes))
+homoplasyInsertionInfo <- insertHomoplasies(sequences, n=2, verbose=TRUE)
+sequences <- homoplasyInsertionInfo[["sequences"]]
 
-# Run simulations
-cat("Running simulations...")
-for(i in 1:nTimes){
-  cat(paste("\rRunning simulation ", i, " of ", nTimes))
-  
-  # Set the seed
-  results[i, 3] <- sample(1:100000000, 1)
-  set.seed(results[i, 3])
-  
-  # Run simulation and homoplasyFinder on output from model - store the results 
-  results[i, c(1,2)] <- run(path, date, n, mutationRate, infectiousness,
-                      samplingProb, nToSample, nHomoplasies, verbose=FALSE,
-                      maxPropIsolateForHomoplasy)
-}
-cat("\rSimulations complete...\t\t\n")
+###############
+# Build FASTA #
+###############
 
-################
-# Plot results #
-################
+sequences[["REF"]] <- null
 
-file <- paste(path, "TestingHomoplasyFinder_", n, "-", mutationRate,
-              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
-              nHomoplasies, "_", maxPropIsolateForHomoplasy, "_", nTimes,
-              "_", date, ".pdf", sep="")
-pdf(file)
+writeFasta(sequences, paste(path, "example_", date, ".fasta", sep=""))
 
-# Plot the results from the HomoplasyFinder tool
-plot(x=results$NIncorrect, y=results$PropFound, ylim=c(0,1), 
-     col=rgb(0,0,0, 0.1), bg=rgb(0,0,0, 0.1), cex=3, las=1, pch=21, bty="n",
-     ylab=paste("Proportion of homoplasies (n=", nHomoplasies, ") found", sep=""),
-     xlab="Number of homoplasies incorrectly identified")
+###################
+# Build phylogeny #
+###################
 
-dev.off()
+buildPhylogeny(sequences, paste(path, "example_", date, ".tree", sep=""),
+               homoplasyInsertionInfo, rootOnREF=TRUE, verbose=TRUE)
 
-########################
-# Create example plots #
-########################
-
-file <- paste(path, "SimulatedDataExample_", date, ".pdf", sep="")
-pdf(file, width=7, height=14)
-
-par(mfrow=c(2, 1))
-
-# Run simulation
-set.seed(sample(1:100000000, 1))
-
-# Run simulation and homoplasyFinder on output from model - store the results 
-results[i, c(1,2)] <- run(path, date, n=50, mutationRate, infectiousness,
-                          samplingProb, nToSample=45, nHomoplasies=3, verbose=TRUE,
-                          maxPropIsolateForHomoplasy)
-
-dev.off()
+# ###########################################
+# # Run simulations to test HomoplasyFinder #
+# ###########################################
+# 
+# # Simulation settings
+# n <- 200
+# mutationRate <- 0.5
+# infectiousness <- 0.01
+# samplingProb <- 0.1
+# nToSample <- 150
+# 
+# # Set the number of homoplasies to insert
+# nHomoplasies <- 10
+# 
+# # Set the max proportion isolate can be found in
+# maxPropIsolateForHomoplasy <- 1
+# 
+# # Prepare to run multiple simulations
+# nTimes <- 1000
+# results <- data.frame(PropFound=rep(NA, nTimes), NIncorrect=rep(NA, nTimes),
+#                       Seed=rep(NA, nTimes))
+# 
+# # Run simulations
+# cat("Running simulations...")
+# for(i in 1:nTimes){
+#   cat(paste("\rRunning simulation ", i, " of ", nTimes))
+#   
+#   # Set the seed
+#   results[i, 3] <- sample(1:100000000, 1)
+#   set.seed(results[i, 3])
+#   
+#   # Run simulation and homoplasyFinder on output from model - store the results 
+#   results[i, c(1,2)] <- run(path, date, n, mutationRate, infectiousness,
+#                       samplingProb, nToSample, nHomoplasies, verbose=FALSE,
+#                       maxPropIsolateForHomoplasy)
+# }
+# cat("\rSimulations complete...\t\t\n")
+# 
+# ################
+# # Plot results #
+# ################
+# 
+# file <- paste(path, "TestingHomoplasyFinder_", n, "-", mutationRate,
+#               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+#               nHomoplasies, "_", maxPropIsolateForHomoplasy, "_", nTimes,
+#               "_", date, ".pdf", sep="")
+# pdf(file)
+# 
+# # Plot the results from the HomoplasyFinder tool
+# plot(x=results$NIncorrect, y=results$PropFound, ylim=c(0,1), 
+#      col=rgb(0,0,0, 0.1), bg=rgb(0,0,0, 0.1), cex=3, las=1, pch=21, bty="n",
+#      ylab=paste("Proportion of homoplasies (n=", nHomoplasies, ") found", sep=""),
+#      xlab="Number of homoplasies incorrectly identified")
+# 
+# dev.off()
+# 
+# ########################
+# # Create example plots #
+# ########################
+# 
+# file <- paste(path, "SimulatedDataExample_", date, ".pdf", sep="")
+# pdf(file, width=7, height=14)
+# 
+# par(mfrow=c(2, 1))
+# 
+# # Run simulation
+# set.seed(sample(1:100000000, 1))
+# 
+# # Run simulation and homoplasyFinder on output from model - store the results 
+# results[i, c(1,2)] <- run(path, date, n=50, mutationRate, infectiousness,
+#                           samplingProb, nToSample=45, nHomoplasies=3, verbose=TRUE,
+#                           maxPropIsolateForHomoplasy)
+# 
+# dev.off()
 
 
 

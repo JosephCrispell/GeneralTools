@@ -101,6 +101,13 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
     
     # Plot the lifespans of the sampled animals
     plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
+    
+    if(cluster == "3" || cluster == "1"){
+      
+      par(mfrow=c(1,1))
+      # Plot the lifespans of the sampled animals
+      plotSampledAnimalLifespans(sampled, datesInRange, cluster, TRUE)
+    }
 
   }else if(unSampledBadgersPresent == TRUE && unSampledCattlePresent == FALSE){
     
@@ -135,6 +142,9 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
   
   # Set the plotting margins
   par(mar = c(4.1,4.1,1.1,4.1)) # bottom left top right
+  if(addCluster == TRUE){
+    par(mar = c(4.1,4.1,3.1,4.1)) # bottom left top right
+  }
   
   # Note number of sampled animals
   nAnimals <- nrow(sampled)
@@ -235,7 +245,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
                                       addCluster){
   
   # Set the plot margins
-  par(mar = c(0.1,4.1,3.1,4.1)) # bottom left top right
+  par(mar = c(0.1,4.1,1.1,4.1)) # bottom left top right
   
   # Get the counts
   negativeCounts <- cattleCounts[["Negative"]]
@@ -676,6 +686,11 @@ orderTableByStartDate <- function(table){
         
         # Store the start date
         startDates[row] <- movementDates[1]
+      }else if(is.na(table[row , "DetectionDate"]) == FALSE){
+        
+        # Store detection date if no life history information available
+        startDates[row] <- as.Date(as.character(table[row, "DetectionDate"]),
+                                   "%d-%m-%Y")
       }else{
         startDates[row] <- NA
       }

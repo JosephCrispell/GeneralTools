@@ -30,6 +30,12 @@ selection <- "BB"
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 
+# Drop out genetic relatedness variable
+if(selection == "BB"){
+  col <- which(colnames(geneticVsEpi) == "HostRelatedness")
+  geneticVsEpi <- geneticVsEpi[, -col]
+}
+
 # Note the full names of metrics and assign them a colour
 fullNames <- noteFullNames()
 temporalCol="darkgoldenrod4"
@@ -159,7 +165,14 @@ runRandomForestAnalysesIncrementallyRemovingMetricsWithMissingData(
 
 plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
                        nameColours=nameColours,
-                       temporalCol=temporalCol, spatialCol=spatialCol, networkCol=networkCol)
+                       temporalCol=temporalCol, spatialCol=spatialCol,
+                       networkCol=networkCol, showY=FALSE)
+
+plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
+                       nameColours=nameColours,
+                       temporalCol=temporalCol, spatialCol=spatialCol,
+                       networkCol=networkCol, showY=TRUE)
+
 
 ###### Close PDF
 dev.off()
@@ -402,7 +415,7 @@ removeLeastInformativeMetric <- function(geneticVsEpi, importance){
 }
 
 plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
-                                   temporalCol, spatialCol, networkCol){
+                                   temporalCol, spatialCol, networkCol, showY){
   
   # Get the variable importance from the RF model
   variableImportance <- as.data.frame(infoRF$importance)
@@ -437,8 +450,13 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   
   par(mar=c(0,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
   
+  if(showY == TRUE){
+    par(mar=c(2,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
+    
+  }
+  
   plot <- barplot(transpose[-2,], horiz=TRUE, beside=TRUE,
-                  xaxt='n',
+                  xaxt="n",
                   col=variableColours,
                   main="Variable Importance",
                   col.axis="white")
@@ -451,6 +469,11 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
        x=rep(xLabPosition,length(variableImportance)),
        y=at,
        srt = 0, pos = 2, xpd = TRUE, cex=0.75)
+  
+  if(showY == TRUE){
+    axis(side=1, line=-0.5, cex.axis=0.75, mgp=c(3, .25, 0))
+    mtext("% Increase MSE", side=1, line=0.75)
+  }
   
   
   # Add Legend

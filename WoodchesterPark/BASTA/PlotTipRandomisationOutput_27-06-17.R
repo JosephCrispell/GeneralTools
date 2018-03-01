@@ -3,21 +3,36 @@
 ####################
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/BASTA/TemporalSignal/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
 
 # Note FASTA alignment size
-seqLength <- 9464 # Taken from: sequences_Prox-10_plusRef_rmResequenced_SNPCov-0.1_28-10-16.fasta
+fastaFile <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
+nSites <- getNSitesInFASTA(fastaFile)
 
 # Note the burn in proportion
 burnIn <- 0.1
+
+####################################################
+# Calculate number of sites across genome examined #
+####################################################
+
+# Get the constant site counts
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt",
+                                sep="")
+constantSiteCounts <- getConstantSiteCounts(constantSiteCountsFile)
+
+# Get number of sites used in FASTA file
+fastaFile <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
+nSites <- getNSitesInFASTA(fastaFile)
+genomeSize <- sum(constantSiteCounts) + nSites
 
 #############################################
 # Get the actual substitution rate estimate #
 #############################################
 
 # Read in the log table
-file <- paste(path, "RateEstimation_HKY_StrictClock_ConstantSize_16-06-17/",
-              "RateEstimation_HKY_StrictClock_ConstantSize_16-06-17.log",
+file <- paste(path, "BASTA/StrictVersusRelaxed/", "2Deme_equal_relaxed_03-10-17/",
+              "2Deme_equal_relaxed_03-10-17.log",
               sep="")
 logTable <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
@@ -25,22 +40,23 @@ logTable <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 logTable <- logTable[(burnIn*nrow(logTable)):nrow(logTable), ]
 
 # Store the substitution rate estimate
-actualRate <- logTable$clockRate * seqLength
+actualRate <- logTable$ucedMean * genomeSize
 
 ################################################################
 # Get the substution rate estimates from date randomisaed data #
 ################################################################
 
 # Note date and number of replicates
-path <- paste(path, "old/", sep="")
-date <- "19-06-17"
+path <- paste(path, "BASTA/TipDateRandomisation_13-02-18/", sep="")
+date <- "03-10-17"
 nReplicates <- 10
+filePrefix <- "2Deme_equal_relaxed_03-10-17"
 
 # Read in the substitution rate estimates based on the randomised tip dates and store
 rateEstimatesFromRandomised <- getRateEstimatesFromDateRandomisationRuns(burnIn, 
-                                                                         path, date,
+                                                                         path, filePrefix,
                                                                          nReplicates,
-                                                                         seqLength,
+                                                                         genomeSize,
                                                                          10001)
 
 #################################################################
@@ -48,7 +64,7 @@ rateEstimatesFromRandomised <- getRateEstimatesFromDateRandomisationRuns(burnIn,
 #################################################################
 
 # Open a PDF
-file <- paste(path, "TipRandomisationResults_27-06-17.pdf", sep="")
+file <- paste(path, "TipRandomisationResults_19-02-18.pdf", sep="")
 pdf(file)
 
 # Create a table with all the rate estimates
@@ -60,7 +76,8 @@ boxplot(rateEstimates, las=1, border=c("red", rep("black", nReplicates)),
         main="Substitution rate estimates based\n upon actual and randomised dates", pch=20, 
         outcol=setAlphaOfColours(c("red", rep("black", nReplicates)), alpha=0.5),
         names=c("Actual", 1:nReplicates),
-        ylab="Substitution Rate Estimate (per genome per year)")
+        ylab="Substitution Rate Estimate (per genome per year)",
+        cex.axis=0.75)
 quantiles <- quantile(actualRate, probs=c(0.025, 0.975))
 points(x=c(0.5, nReplicates+1.5), y=c(quantiles[1], quantiles[1]), type="l", lty=2, 
        col=2, lwd=2)
@@ -76,9 +93,6 @@ for(i in 1:ncol(rateEstimates)){
   # Add points to figure
   points(x=c(i,i), y=quantiles, pch=16, col="blue")
 }
-
-
-
 
 # Quantify the difference between the rates estimated on actual and randomised data
 nSamples <- 10000
@@ -108,6 +122,49 @@ dev.off()
 #############
 # Functions #
 #############
+
+getConstantSiteCounts <- function(constantSiteCountsFile){
+  
+  # Open the file and store the file lines
+  connection <- file(constantSiteCountsFile, "r")
+  lines <- readLines(connection)
+  close(connection)
+  
+  # Calculate the constant site counts
+  counts <- c(0,0,0,0)
+  for(line in lines){
+    
+    # Skip lines without counts
+    if(grepl(line, pattern="Counts|A") == TRUE || line == ""){
+      next
+    }
+    
+    # Split the line into its parts
+    parts <- strsplit(line, "\t")[[1]]
+    
+    # Add the counts to the tally
+    counts <- counts + as.numeric(parts)
+  }
+  
+  return(counts)
+}
+
+getNSitesInFASTA <- function(fastaFile){
+  
+  # Open a connection to a file to read (open="r")
+  connection <- file(fastaFile, open="r")
+  
+  # Get first line of file
+  firstLine <- readLines(connection, n=1)
+  
+  # Close file connection
+  close(connection)
+  
+  # Get the number of sites used in the FASTA file from first line
+  nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
+  
+  return(nSites)
+}
 
 sampleRateEstimateDistributionsAndCalculateDifferences <- function(nSamples,
                                                                    rateEstimatesFromRandomised,
@@ -148,7 +205,7 @@ setAlpha <- function(colour, alpha){
   return(output)
 }
 
-getRateEstimatesFromDateRandomisationRuns <- function(burnIn, path, date, nReplicates,
+getRateEstimatesFromDateRandomisationRuns <- function(burnIn, path, prefix, nReplicates,
                                                       seqLength, nSamples){
  
   # Initialise a table to the substitution rate estimates from each date randomisation
@@ -157,18 +214,18 @@ getRateEstimatesFromDateRandomisationRuns <- function(burnIn, path, date, nRepli
                                      ncol=nReplicates), stringsAsFactors=FALSE)
   
   # Get the substitution rate estimates
-  for(i in 1:nReplicates){
+  for(i in 0:(nReplicates-1)){
     
     # Read in the log table
-    file <- paste(path, "TipRandomisation_", date, "_", i, "/",
-                  "TipRandomisation_", date, "_", i, ".log",
+    file <- paste(path, prefix, "_randomTipDates-", i, "/",
+                  prefix, "_randomTipDates-", i, ".log",
                   sep="")
     logTable <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
     
     # Remove the burn in
     logTable <- logTable[(burnIn*nrow(logTable)):nrow(logTable), ]
     
-    rateEstimates[, i] <- logTable$clockRate * seqLength
+    rateEstimates[, (i + 1)] <- logTable$ucedMean * seqLength
   }
   
   return(rateEstimates)
