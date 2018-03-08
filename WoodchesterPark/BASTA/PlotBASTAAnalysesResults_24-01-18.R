@@ -479,7 +479,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
 
-summarisePosteriorLogTables <- function(path, logTables, code, arrowFactor, nBootstraps,
+summarisePosteriorLogTables <- function(path, logTables, code=2, arrowFactor, nBootstraps,
                                         genomeSize, date){
   
   # Get analysis names
@@ -760,6 +760,13 @@ plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
   # Normalise those rates to vary between 0 and MAX (arrow factor)
   migrationRates <- divideValuesInListByMax(output)
   migrationRates <- timesValuesInListByValue(migrationRates, arrowFactor)
+  
+  # Check for "NaN" values
+  for(key in names(migrationRates)){
+    if(is.nan(migrationRates[[key]]) == TRUE){
+      migrationRates[[key]] <- 0
+    }
+  }
   
   # Plot the demes and associated rates
   if(demeStructure == "2Deme"){
@@ -1508,12 +1515,16 @@ calculateForwardMigrationRates <- function(logTable){
     a <- parts[2]
     b <- parts[3]
     
+    #### Multiply the backward rates by the rate flag column ####
+    backwardRate <- logTable[, backwardMigrationRateCol] * logTable[, paste("migModel.rateMatrixFlag_", a, "_", b, sep="")]
+    
+    # Get the estimate population sizes for a and b
+    popASizes <- logTable[, paste("migModel.popSize_", a, sep="")]
+    popBSizes <- logTable[, paste("migModel.popSize_", b, sep="")]
+    
     # Calculate forward rate
     forwardMigrationRateCol <- paste("migModel.forwardRateMatrix_", b, "_", a, sep="")
-    logTable[, forwardMigrationRateCol] <-
-      logTable[, backwardMigrationRateCol] *
-      (logTable[, paste("migModel.popSize_", a, sep="")] / 
-         logTable[, paste("migModel.popSize_", b, sep="")])
+    logTable[, forwardMigrationRateCol] <- backwardRate * (popASizes/popBSizes)
   }
   
   return(logTable)
@@ -1541,11 +1552,28 @@ plotPosteriorSupportForEachDemeAsRoot <- function(logTable, demeStructure){
 plotParameterESSValues <- function(logTable, colNamesToPlot){
   
   essValues <- rep(NA, length(colNamesToPlot))
-
+  
   for(i in 1:length(colNamesToPlot)){
-
-    # Remove NAs, if present
+    
+    # Get the posterior values from the current column
     values <- as.numeric(logTable[, colNamesToPlot[i]])
+    
+    # Remove transition rate values when rate flag is set to zero
+    if(grepl(colNamesToPlot[i], pattern="migModel.rateMatrix") == TRUE){
+      
+      # Get the deme numbers
+      parts = strsplit(colNamesToPlot[i], split="_")[[1]]
+      a <- parts[2]
+      b <- parts[3]
+      
+      # Build the rate Flag column name
+      flagCol <- paste("migModel.rateMatrixFlag_", a, "_", b, sep="")
+      
+      # Remove values where rate flag == 0
+      values <- values[logTable[, flagCol] != 0]
+    }
+    
+    # Remove NAs, if present
     values <- values[is.na(values) == FALSE]
     
     # Note and skip those where the value is always the same
@@ -1556,9 +1584,13 @@ plotParameterESSValues <- function(logTable, colNamesToPlot){
       next
     }
     
-    essValues[i] <- calculateEffectiveSampleSize(values)
+    if(length(essValues) > 1){
+      essValues[i] <- calculateEffectiveSampleSize(values)
+    }else{
+      essValues[i] <- length(essValues[i])
+    }
   }
-
+  
   # Set the margins
   par(mar=c(0,11,2,0.5)) # bottom, left, top, right
   
