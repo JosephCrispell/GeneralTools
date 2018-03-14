@@ -21,71 +21,108 @@ date <- format(Sys.Date(), "%d-%m-%y")
 # Run simulations #
 ###################
 
-n <- 1000
-results <- data.frame(PropFound=rep(NA, n), NIncorrect=rep(NA, n),
-                      Seed=rep(NA, n))
+# Simulation settings
+popSize <- 300
+mutationRate <- 0.5
+infectiousness <- 0.001
+samplingProb <- 0.05
+nToSample <- 150
+nHomoplasieValues <- 1:10
+nSimulations <- 1000
 
-for(i in 1:n){
+# Initialise a table to store the results of HomoplasyFinder on simulated data
+results <- data.frame(NFound=rep(NA, nSimulations*length(nHomoplasieValues)), 
+                      NIncorrect=rep(NA, nSimulations*length(nHomoplasieValues)),
+                      Seed=rep(NA, nSimulations*length(nHomoplasieValues)), 
+                      NHomoplasies=rep(NA, nSimulations*length(nHomoplasieValues)))
 
-  cat(paste("\rRunning simulation", i, "of", n))
+# Run the simulations
+seeds <- sample(1:100000000, size=nSimulations*length(nHomoplasieValues), replace=FALSE)
+row <- 0
+for(nHomoplasies in nHomoplasieValues){
+  for(i in 1:nSimulations){
+    row <- row + 1
+    
+    # Progress
+    if(nHomoplasies == 1){
+      cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasy"))
+    }else{
+      cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasies"))
+    }
+    
+    # Get the current seed
+    results[row, "Seed"] <- seeds[row]
+    set.seed(results[row, "Seed"])
 
-  results[i, 3] <- sample(1:100000000, 1)
-  set.seed(results[i, 3])
-
-  # Generate the sequences
-  simulationOutput <- runSimulation(n=300, mutationRate=0.5, infectiousness=0.001,
-                                    samplingProb=0.05, nToSample=150, FALSE)
-
-  # Build the sequences based upon the mutation events
-  sequences <- buildSequences(simulationOutput)
-
-  # Insert homoplasies
-  homoplasyInsertionInfo <- insertHomoplasies(sequences, n=10, FALSE)
-  sequences <- homoplasyInsertionInfo[["sequences"]]
-
-  # Build FASTA
-  sequences[["REF"]] <- NULL
-  writeFasta(sequences, paste(path, "example_", date, ".fasta", sep=""))
-
-  # Build phylogeny
-  buildPhylogeny(sequences, paste(path, "example_", date, ".tree", sep=""),
-                 homoplasyInsertionInfo, FALSE)
-
-  # Run HomoplasyFinder
-  setwd(path)
-  fastaFile <- paste("example_", date, ".fasta", sep="")
-  treeFile <- paste("example_", date, ".tree", sep="")
-  system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
-         ignore.stdout=FALSE)
-
-  # Get and Check HomoplasyFinder output
-  file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
-  homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
-                                      check.names=FALSE)
-  results[i, c(1,2)] <- reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
-
-  propFound <- results[i, 1]
+    # Note the number of homoplasies being inserted
+    results[row, "NHomoplasies"] <- nHomoplasies
+    
+    # Generate the sequences
+    simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                      samplingProb, nToSample, FALSE)
+    
+    # Build the sequences based upon the mutation events
+    sequences <- buildSequences(simulationOutput)
+    
+    # Insert homoplasies
+    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, FALSE)
+    sequences <- homoplasyInsertionInfo[["sequences"]]
+    
+    # Build FASTA
+    sequences[["REF"]] <- NULL
+    writeFasta(sequences, paste(path, "example_", date, ".fasta", sep=""))
+    
+    # Build phylogeny
+    buildPhylogeny(sequences, paste(path, "example_", date, ".tree", sep=""),
+                   homoplasyInsertionInfo, FALSE)
+    
+    # Run HomoplasyFinder
+    setwd(path)
+    fastaFile <- paste("example_", date, ".fasta", sep="")
+    treeFile <- paste("example_", date, ".tree", sep="")
+    system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
+           ignore.stdout=FALSE)
+    
+    # Get and Check HomoplasyFinder output
+    file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
+    homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
+                                        check.names=FALSE)
+    results[row, c("NFound","NIncorrect")] <- reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
+  }
 }
 
-file <- paste(path, "TestingHomoplasyFinder_", n, "-", mutationRate,
+file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
-              nHomoplasies, "_", nrow(results), "_", date, ".pdf", sep="")
+              min(nHomoplasieValues), "-", max(nHomoplasieValues), "_", nSimulations, "_", date, ".pdf", sep="")
 pdf(file)
 
-plot(x=results$NIncorrect, y=results$PropFound, ylim=c(0,1),
-     col=rgb(0,0,0, 0.01), bg=rgb(0,0,0, 0.01), cex=4, las=1, pch=21, bty="n",
-     ylab=paste("Proportion of homoplasies (n=", 10, ") found", sep=""),
-     xlab="Number of homoplasies incorrectly identified", xpd=TRUE,
-     main="Testing HomoplasyFinder")
-legend("topright", legend=c(
-  "Mean values:",
-  paste("Proportion found =", round(mean(results$PropFound), digits=1)),
-  paste("Number incorrect =", round(mean(results$NIncorrect), digits=1))), bty="n")
+plot(x=NULL, y=NULL, xlim=range(results$NHomoplasies), ylim=c(0,1), las=1, bty="n",  
+     xlab="Number Inserted", ylab="Proportion Present", main="Identifying Homoplasies using HomoplasyFinder")
+for(i in unique(results$NHomoplasies)){
+  
+  subset <- results[results$NHomoplasies == i, ]
+  counts <- table(subset$NFound / subset$NHomoplasies)
+  
+  points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
+  text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
+       labels=round(counts/nrow(subset), digits=2),
+       col=rgb(1,0,0, 1), cex=1)
+}
 
-# par(mar=c(0.1, 0.1, 4, 0.1))
-# plot(results$Seed, xaxt="n", yaxt="n", bty="n", xlab="", ylab="", main="Seeds used in simulations",
-#      pch=19, col=rgb(0,0,0, 0.5))
-# par(mar=c(5.1, 4.1, 4.1, 2.1))
+plot(x=NULL, y=NULL, 
+     xlim=range(results$NHomoplasies),
+     ylim=range(c(results$NHomoplasies, results$NIncorrect)), las=1, bty="n",  
+     xlab="Number Inserted", ylab="Number New Homoplasies Present", main="Identifying Homoplasies using HomoplasyFinder")
+for(i in unique(results$NHomoplasies)){
+  
+  subset <- results[results$NHomoplasies == i, ]
+  counts <- table(subset$NIncorrect)
+  
+  points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
+  text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
+       labels=round(counts/nrow(subset), digits=2),
+       col=rgb(1,0,0, 1), cex=1)
+}
 
 dev.off()
 
@@ -137,7 +174,7 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
   }
   
   # Calculate proportion found and number of false positives (sequences also present in insertion info)
-  propFound <- nFound / (length(homoplasyInsertionInfo) - 1)
+  #propFound <- nFound / (length(homoplasyInsertionInfo) - 1)
   
   # Calculate proportion found that weren't inserted
   nWronglyFound <- nrow(homoplasyFinderOutput) - nFound
@@ -145,7 +182,7 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
     nWronglyFound <- 0 # If a homoplasy is inserted at the same site then this number could be negative
   }
   
-  return(c(propFound, nWronglyFound))
+  return(c(nFound, nWronglyFound))
 }
 
 buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo, verbose){
@@ -989,7 +1026,7 @@ simulateSequences3 <- function(n, mutationRate, infectiousness, samplingProb,
          cex.main=1.5)
     points(x=counts$Timestep, y=counts$Infecteds, type="o", col="red")
     points(x=counts$Timestep, y=counts$Sampled, type="o", col="black")
-    legend("right", legend=c("Susceptible", "Infected", "Sampled"),
+    legend("left", legend=c("Susceptible", "Infected", "Sampled"),
            text.col=c("blue", "red", "black"), bty="n")
   }
   
