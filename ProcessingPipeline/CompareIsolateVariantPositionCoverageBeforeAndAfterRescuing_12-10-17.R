@@ -2,21 +2,21 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
 
 ###############################################################
 # Read in variant position coverage - before and after rescue #
 ###############################################################
 
 # Read in the genome coverage file
-file <- paste(path, "isolateCoverageSummary_DP-20_10-09-2017.txt", sep="")
+file <- paste(path, "isolateCoverageSummary_DP-20_23-03-2018.txt", sep="")
 coverage <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Read in the variant coverage file
-file <- paste(path, "IsolateVariantPositionCoverage_10-09-2017.txt", sep="")
+file <- paste(path, "IsolateVariantPositionCoverage_FILTERED_23-03-2018.txt", sep="")
 before <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
-file <- paste(path, "IsolateVariantPositionCoverage_RESCUED_10-09-2017.txt", sep="")
+file <- paste(path, "IsolateVariantPositionCoverage_RESCUED_23-03-2018.txt", sep="")
 after <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #############################

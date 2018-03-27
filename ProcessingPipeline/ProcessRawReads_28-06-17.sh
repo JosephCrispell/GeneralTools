@@ -424,6 +424,8 @@ do
 		echo -e "\e[0;34m Beginning Read Alignment with bwa aln... \e[0m"
 	
 		# Index the FASTQ Files
+		# -I Illumina 1.3+ encoding (NOTE: This encoding covers 1.3+ to 1.8)
+		# REMOVE -I flag if Illumina 1.9
 		FILE1SAI=$FILE1".sai"
 		FILE2SAI=$FILE2".sai"
 		bwa aln -I $REFERENCE $FILE1 > $FILE1SAI
@@ -542,7 +544,6 @@ do
 	rm $BCFFILE
 	
 	echo -e "\e[0;34m Completed Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS. \e[0m"
-	echo
 done
 
 echo -e "\e[0;32m Sequencing Data Processing Complete. \e[0m"

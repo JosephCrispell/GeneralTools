@@ -62,13 +62,16 @@ if($verbose eq "-help" || $verbose eq ""){
 	
 	# Create the name for the output FASTA file
 	my $outputFastaFile = "sequences_Prox-" . $proximityFilt . "_" . $date . ".fasta"; # Open Output File to Print out to
+	my $outputFastaPositionsFile = "fastaPositions_Prox-" . $proximityFilt . "_" . $date . ".txt"; # Open Output File to Print out to
 	
 	# Print a check of the input information
 	print "\nInput Settings:\n" if $verbose == 1;
 	print "Proximity filter = $proximityFilt\n" if $verbose == 1;
 	print "Reference sequence file: $reference\n" if $verbose == 1;
 	print "Filtered VCF file: $filtered\n" if $verbose == 1;
-	print "\nThe following output file is produced: $outputFastaFile\n\n" if $verbose == 1;
+	print "\nThe following output files are produced: \n" if $verbose == 1;
+	print "\t$outputFastaFile\n" if $verbose == 1;
+	print "\t$outputFastaPositionsFile\n" if $verbose == 1;
 	
 	# Open the Reference Sequence file
 	open REF, $reference or die "Couldn't open $reference:$!";
@@ -137,7 +140,6 @@ if($verbose eq "-help" || $verbose eq ""){
 			
 			# Add an identifier for the Reference Sequence
 			$isolateNames[scalar(@isolateNames)] = "Ref-1997";
-			
 			next;
 		}	
 
@@ -209,7 +211,24 @@ if($verbose eq "-help" || $verbose eq ""){
 			}
 		}
 	}
-		
+	
+	##################################
+	# Report the sites used in FASTA #
+	##################################
+	
+	# Open the Output File
+	open POSITIONS, ">$outputFastaPositionsFile" or die "Couldn't open $outputFastaPositionsFile:$!";
+	print "Recording FASTA positions ...\n" if $verbose == 1;
+	
+	# Print the sequence positions used in FASTA
+	print POSITIONS "Position\n";
+	for(my $i = 0; $i < ($sequencePos + 1); $i++){
+			
+		# Print position if not filtered by proximity
+		print POSITIONS "$positions[$i]\n" if $remove[$i] == 0; 
+	}
+	close(POSITIONS);
+	
 	#####################
 	# Create Fasta File #
 	#####################
@@ -224,30 +243,30 @@ if($verbose eq "-help" || $verbose eq ""){
 	#	GCTGATCGTGNGTAGGCT
 
 	# Open the Output File
-	open OUTPUT, ">$outputFastaFile" or die "Couldn't open $outputFastaFile:$!";
+	open FASTA, ">$outputFastaFile" or die "Couldn't open $outputFastaFile:$!";
 	
 	print "Creating Fasta File...\n" if $verbose == 1;
 	
 	# Print the Sequences out to File - note two slightly different formats
 	$noIsolates = $noIsolates + 1; # Remember we have added the reference
 	my $sequenceLength = ($sequencePos + 1) - $nRemovedByProximity;
-	print OUTPUT "$noIsolates $sequenceLength\n";
+	print FASTA "$noIsolates $sequenceLength\n";
 		
 	for(my $pos = 0; $pos < $noIsolates; $pos++){
 	
 		# Print isolates file name
-		print OUTPUT ">$isolateNames[$pos]\n";
+		print FASTA ">$isolateNames[$pos]\n";
 	
 		# Print isolate Sequence - only the informative sites
 		for(my $i = 0; $i < ($sequencePos + 1); $i++){
 			
 			# Print if not filtered by proximity
-			print OUTPUT "$isolateSequences[$pos][$i]" if $remove[$i] == 0; 
+			print FASTA "$isolateSequences[$pos][$i]" if $remove[$i] == 0; 
 		}
 		
-		print OUTPUT "\n";
+		print FASTA "\n";
 	}
-	close(OUTPUT);
+	close(FASTA);
 	
 	print color("green"), "\t$nRemovedByProximity of ", $sequencePos + 1, " were removed by proximity filtering\n" if $verbose == 1;
 	print color("green"), "Finished Creating Sequence Fasta File.\n", color ("reset") if $verbose == 1;

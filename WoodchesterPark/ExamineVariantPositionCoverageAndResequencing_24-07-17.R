@@ -2,17 +2,17 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 ###############################################################
 # Read in variant position coverage - before and after rescue #
 ###############################################################
 
 # Read in the genome coverage file
-file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_27-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_FILTERED_22-03-2018.txt", sep="")
 before <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
-file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_RESCUED_27-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/IsolateVariantPositionCoverage_RESCUED_22-03-2018.txt", sep="")
 after <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Parse the Isolate columns
@@ -108,7 +108,7 @@ if(length(resequencedIsolatesToRemove) > 0){
 ################################################################################
 
 # Create the output file
-file <- paste(path, "vcfFiles/isolatesToRemove_21-09-17.txt", sep="")
+file <- paste(path, "vcfFiles/isolatesToRemove_22-03-18.txt", sep="")
 write.table(isolatesToRemove, file, quote=FALSE, row.names=FALSE, sep="\t")
 
 #############

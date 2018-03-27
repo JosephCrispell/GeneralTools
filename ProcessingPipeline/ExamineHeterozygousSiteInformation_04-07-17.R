@@ -7,14 +7,14 @@
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/vcfFiles/"
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/PoorlyMappedBadgers/"
 #path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/MislabelledBadgers/"
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
 newZealand <- grepl(x=path, pattern="NewZealand")
 
 # Read in the variant site coverage and alternate allele support files
-coverageFile <- paste(path, "PreviousMergings/", "heterozygousSiteInfo_Coverage_26-09-2017.txt", sep="")
+coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_23-03-2018.txt", sep="")
 siteInfoCoverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE,
                                comment.char="~", check.names=FALSE)
-altSupportFile <- paste(path, "PreviousMergings/", "heterozygousSiteInfo_AltSupport_26-09-2017.txt", sep="")
+altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_23-03-2018.txt", sep="")
 siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=FALSE,
                                  comment.char="~", check.names=FALSE)
 
@@ -41,7 +41,7 @@ depthThreshold <- 0
 nHeterozygousSites <- c()
 
 # Open a pdf
-file <- paste(path, "heterozygousSiteInfo_26-09-2017.pdf", sep="")
+file <- paste(path, "heterozygousSiteInfo_23-03-2018.pdf", sep="")
 pdf(file, width=14)
 
 par(mfrow=c(1,2))
@@ -50,6 +50,11 @@ for(i in 1:length(isolateIDs)){
   
   # Note the ID of the current isolate
   isolate <- isolateIDs[i]
+  
+  # ####### Skip all except new cattle #########
+  # if(grepl(pattern="-", isolate) == FALSE){
+  #   next
+  # }
 
   # Note the rows containing Heterozygous site info for the current isolate
   badRows <- c(1:nrow(siteInfoAltSupport))[is.na(siteInfoAltSupport[, isolate]) == FALSE &

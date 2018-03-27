@@ -3,52 +3,54 @@ library(ape)
 library(phangorn)
 library(geiger) # For the tips function
 library(plotrix) # For drawing circles
+library(ips) # Using RAxML
 
 #~~~~~~~~~~~~~~~~~~~~~#
 #### Path and Date ####
 #~~~~~~~~~~~~~~~~~~~~~#
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 date <- format(Sys.Date(), "%d-%m-%y")
 
-#~~~~~~~~~~~~~~~~~~~~~#
-#### Read in FASTA ####
-#~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~#
+#### Run RaXML ####
+#~~~~~~~~~~~~~~~~~#
 
-# Read in the FASTA file
-fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_29-09-2017.fasta", sep="")
-sequencesDNAbin <- read.dna(fastaFile, format = "fasta", skip=1)
+# Note the fasta file
+fastaFile <- paste(path, "vcfFiles/sequences_withoutHomoplasies_27-03-18.fasta", sep="")
 
-# Convert to necessary format
-sequencesPhyDat <- phyDat(sequencesDNAbin, type = "DNA", levels = NULL)
+# Run RAxML to produce a Maximum Likelihood phylogeny with bootstrap support values
+# TAKES AGES!!! - WP data ~5 hours
+treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=2)
 
+# Convert the branch lengths to SNPs
+treeBS$edge.length <- treeBS$edge.length * getNSitesInFASTA(fastaFile)
 
-#~~~~~~~~~~~~~~~~~~~~~#
-#### Tree Building ####
-#~~~~~~~~~~~~~~~~~~~~~#
+# Parse the tip labels
+treeBS$tip.label <- parseIsolateLabels(treeBS$tip.label)
 
-# Check which substitution model is best
-testSubstitutionModels(sequencesPhyDat)
+# Make bootstrap values numeric
+treeBS$node.label <- as.numeric(treeBS$node.label)
+treeBS$node.label[is.na(treeBS$node.label)] <- 0
 
-# Build and boostrap maximum likelihood phylogeny
-treeBS <- buildAndBootStrapMLTree(nBootstraps=100, substitutionModel="GTR")
+# Re-root tree
+treeBS <- root(treeBS, outgroup="Ref-1997")
+
+# Take an initial look at the phylogeny
+viewRAxMLTree(treeBS, path)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~#
 #### Clade definition ####
 #~~~~~~~~~~~~~~~~~~~~~~~~#
-
-# Prepare and have a quick look at tree to define clades
-treeBS <- prepareAndViewTree(treeBS, fastaFileName=fastaFile, plot=TRUE,
-                             filePath=path)
 
 # Open a pdf
 file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_", date, ".pdf", sep="")
 pdf(file, height=10, width=10)
 
 # Define branch colours by clade and plot the tree
-nodesDefiningClades <- c(481, 490, 430, 333)
-cladeColours <- c("cyan", "pink", "green", "darkorchid4")
+nodesDefiningClades <- c(527, 496, 562, 421, 486)
+cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
          colours=cladeColours)
@@ -63,10 +65,20 @@ tipLabelsWithSamplingTimes <-
     badgerIsolateFile=paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
                             sep=""),
     cattleIsolateFile=paste(path, "IsolateData/",
-                            "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
+                            "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
                             sep=""),
     colours=cladeColours, nodes=nodesDefiningClades,
-    badgerCentre=c(381761.7, 200964.3), expand=7000, thresholdDistance=3500)
+    badgerCentre=c(381761.7, 200964.3), expand=75000, thresholdDistance=3500)
+
+tipLabelsWithSamplingTimes <- 
+  plotIsolateLocations(treeBS,
+                       badgerIsolateFile=paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
+                                               sep=""),
+                       cattleIsolateFile=paste(path, "IsolateData/",
+                                               "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
+                                               sep=""),
+                       colours=cladeColours, nodes=nodesDefiningClades,
+                       badgerCentre=c(381761.7, 200964.3), expand=7000, thresholdDistance=3500)
 
 # Close the pdf
 dev.off()
@@ -103,6 +115,74 @@ selectBASTAClade(treeBS, node=433, plot=TRUE)
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+viewRAxMLTree <- function(treeBS, filePath=path){
+
+  # Set the margins
+  par(mfrow=c(1,1))
+  par(mar=c(0,0,0,0)) # Bottom, Left, Top, Right
+    
+  # Plot initial tree to find nodes defining clades
+  pdf(paste(filePath, "test.pdf", sep=""), height=40, width=40)
+    
+  plot.phylo(treeBS, "fan")
+  nodelabels()
+    
+  dev.off()
+    
+  # Reset margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+}
+
+runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
+  
+  # Create a directory for the output file
+  directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
+  dir.create(directory)
+  
+  # Set the Working directory - this will be where the output files are dumped
+  setwd(directory)
+  
+  # Note where RaxML is located
+  raxmlExecutable <- shQuote("C:/Users/Joseph Crisp/Desktop/RAxML_v8.2.10/raxmlHPC-PTHREADS.exe", type="cmd")
+  
+  # Using system command - convert FASTA file path into windows format (deals with spaces in directory/file names)
+  fastaFile <- shQuote(fastaFile, type="cmd")
+  
+  # Build analysis name
+  analysisName <- paste("RaxML-R_", date, sep="")
+  
+  # Build the command
+  model <- "GTRCAT" # No rate heterogenity
+  seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
+  
+  command <- paste(raxmlExecutable, 
+                   " -f a", # Algorithm: Rapid boostrap inference
+                   " -N ", nBootstraps,
+                   " -T ", nThreads,
+                   " -m ", model, " -V", # -V means no rate heterogenity
+                   " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
+                   " -n ", analysisName,
+                   " -s ", fastaFile, sep="")
+  system(command, intern=TRUE)
+  
+  # Get the tree and read it in
+  treeBS <- getTreeFileWithSupportValues()
+  
+  return(treeBS)
+}
+
+getTreeFileWithSupportValues <- function(){
+  
+  # Get files in current working directory
+  files <- list.files()
+  
+  # Select the tree file with BS support values
+  treeBSFile <- files[grepl(files, pattern="RAxML_bipartitions[.]") == TRUE]
+  
+  # Open the file
+  treeBS <- read.tree(treeBSFile)
+}
 
 defineTipShapesForSpecies <- function(tipLabels, cow, badger){
   
@@ -452,14 +532,15 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
   
   # Add Scale bar
   points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3)
-  text(x=5, y=-135, labels="50 SNPs", cex=1)
+  text(x=5, y=-135, labels="50 SNPs", cex=1, xpd=TRUE)
   
   # Add Clade labels
-  text(x=-92.5, y=-82, labels="0", col=colours[1], cex=2)
-  text(x=-70, y=-110, labels="1", col=colours[2], cex=2)
+  text(x=-75, y=95, labels="3", col=colours[4], cex=2)
+  text(x=92, y=-82, labels="4", col=colours[5], cex=2)
+  text(x=-123, y=-30, labels="1", col=colours[2], cex=2)
+  text(x=-92.5, y=-75, labels="0", col=colours[1], cex=2)
   text(x=15, y=-120, labels="2", col=colours[3], cex=2)
-  text(x=-82, y=95, labels="3", col=colours[4], cex=2)
-  
+
   # Reset margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
@@ -514,9 +595,11 @@ buildAndBootStrapMLTree <- function(nBootstraps, substitutionModel){
   
   # Build the distance matrix
   distanceMatrix <- dist.dna(sequencesDNAbin, model="JC69")
+  cat("Built distance matrix")
   
   # Build neighbour joining tree
   initialTree <- nj(distanceMatrix)
+  cat("\rBuilt initial tree")
   
   #~~~~~~~~~~~~~~~~~~~~~~~~~~#
   #### Maximum Likelihood ####
@@ -535,6 +618,7 @@ buildAndBootStrapMLTree <- function(nBootstraps, substitutionModel){
                              model = substitutionModel,       # Substitution model
                              rearrangement="NNI", # Nearest Neighbour Interchanges
                              control=controls)
+  cat("\rRan Maximum Likelihood tree estimation")
   
   #~~~~~~~~~~~~~~~~~~~~~#
   #### Bootstrapping ####
@@ -543,9 +627,11 @@ buildAndBootStrapMLTree <- function(nBootstraps, substitutionModel){
   # Bootstrap the result of maximum likelihood
   bootstrapResults <- bootstrap.pml(fittingOutput, bs = nBootstraps, optNni = TRUE,
                                     jumble=TRUE)
+  cat("\rRan Boostrapping of Maximum Likelihood tree estimation")
   
   # Get phylogenetic tree with bootstrap values
   treeBS <- plotBS(fittingOutput$tree, bootstrapResults, p = 50, type="phylogram")
+  cat("\rBuilt tree. Finished..\t\t\t\t\t\t\t\t\t\t\t\t\t\t\n")
   
   return(treeBS)
 }
@@ -567,7 +653,7 @@ defineTipColourBySpecies <- function(tree, cow, badger, defaultColour, nodesDefi
     for(nodeIndex in 1:length(nodesDefiningClades)){
       
       if(tree$tip.label[tipIndex] %in% tipsInClades[[as.character(nodesDefiningClades[nodeIndex])]] == TRUE){
-        if(grepl(pattern="TB", x=tree$tip.label[tipIndex]) == TRUE){
+        if(grepl(pattern="TB|HI-|AF-", x=tree$tip.label[tipIndex]) == TRUE){
           tipColours[tipIndex] <- cow
         }else if(grepl(pattern="WB", x=tree$tip.label[tipIndex]) == TRUE){
           tipColours[tipIndex] <- badger
@@ -626,6 +712,10 @@ parseIsolateLabels <- function(isolateNames){
       output[i] <- strsplit(isolateNames[i], split="_")[[1]][1]
     }else{
       output[i] <- isolateNames[i]
+    }
+    
+    if(grepl(isolateNames[i], pattern=">") == TRUE){
+      output[i] <- substr(output[i], start=2, stop=nchar(output[i]))
     }
   }
   

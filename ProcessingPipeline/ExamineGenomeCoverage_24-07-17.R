@@ -2,7 +2,7 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
 
 ##########################
 # Read in coverage files #
@@ -13,7 +13,7 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/vcfFiles/"
 # genomeCoverage <- read.table(genomeCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Read in the isolate coverage file
-isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_10-09-2017.txt", sep="")
+isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_23-03-2018.txt", sep="")
 isolateCoverage <- read.table(isolateCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column
@@ -37,9 +37,30 @@ plot(y=isolateCoverage$PercentageCoverage,
 text(y=isolateCoverage$PercentageCoverage,
      x=isolateCoverage$MeanDepth,
      labels = isolateCoverage$IsolateID, cex=1, pos=4,
-     col=ifelse(isolateCoverage$PercentageCoverage < 0.8, rgb(0,0,0, 1), rgb(0,0,0, 0)))
+     col=ifelse(isolateCoverage$PercentageCoverage < 0.8,
+                rgb(0,0,0, 1), rgb(0,0,0, 0)))
 
 legend("bottomright", legend=c("BADGER", "COW"), text.col=c("red", "blue"), bty="n")
+
+
+subset <- isolateCoverage[which(grepl(pattern="-", isolateCoverage$IsolateID)), ]
+
+plot(y=subset$PercentageCoverage,
+     x=subset$MeanDepth,
+     las=1, ylab="Proportion", 
+     main="Proportion of New Cattle with >19 mapped reads",
+     xlab="Mean Read Depth", pch=16, cex=3,
+     col=ifelse(grepl(x=subset$IsolateID, pattern="WB"), rgb(1,0,0, 0.5),
+                rgb(0,0,1, 0.5)))
+
+text(y=subset$PercentageCoverage,
+     x=subset$MeanDepth,
+     labels = subset$IsolateID, cex=1, pos=4,
+     col=ifelse(subset$PercentageCoverage < 0.8,
+                rgb(0,0,0, 1), rgb(0,0,0, 0)))
+
+legend("bottomright", legend=c("BADGER", "COW"), text.col=c("red", "blue"), bty="n")
+
 
 dev.off()
 

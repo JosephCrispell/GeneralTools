@@ -3,11 +3,10 @@
 #########################################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Open the file
-file <- paste(path, "Mislabelling/Spoligotyping/",
-              "SpoligotypeMatches_28-09-2017.txt", sep="")
+file <- paste(path, "Mislabelling/Spoligotyping/", "SpoligotypeMatches_24-03-2018.txt", sep="")
 matchTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 nColToSkip <- 4
 
@@ -21,23 +20,15 @@ isolateMatchingInfo <- getTheMatchingInformationForEachIsolate(matchTable,
                                                                isolates, nColToSkip)
 
 # Note other names available for some spoligotypes
-ahvlaCodes <- list("SB0140"=9, "SB0272"=10, "SB0263"=17, "SB0275"=15)
-
-####################
-# Get Sequence IDs #
-####################
-
-# Cattle Isolates
-file <- paste(path, "IsolateData/", "LinkTable_StrainID-SequenceNo_20-06-16.csv", sep="")
-linkTable <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
-cattleIsolateSequenceIds <- noteSequenceIDsOfCattleIsolates(linkTable)
+file <- paste(path, "Mislabelling/Spoligotyping/", "SpoligotypeCodes_22-03-18.txt", sep="")
+ahvlaCodes <- readSpoligotypeCodes(file)
 
 #####################################
 # Get the Isolates' Genome Coverage #
 #####################################
 
 file <- paste(path, "vcfFiles/",
-              "IsolateVariantPositionCoverage_RESCUED_27-09-2017.txt", sep="")
+              "IsolateVariantPositionCoverage_RESCUED_23-03-2018.txt", sep="")
 coverage <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 isolateCoverage <- getIsolateCoverage(coverage)
 
@@ -52,11 +43,6 @@ summary <- summariseIsolateSpoligotypeMatchingInfo(isolates,
                                                    isolateMatchingInfo,
                                                    averageReadDepthForIsolates,
                                                    proportionNsForIsolates)
-
-
-
-# Add the sequenceIDs of the cattle isolates
-summary <- addCattleIsolateSequenceIDs(summary, cattleIsolateSequenceIds)
 
 # Add AHVLA Spoligotype codes - where available
 summary <- addAHVLACodes(summary, ahvlaCodes)
@@ -77,7 +63,7 @@ misMatches <- misMatches[misMatches$AHVLAType != misMatches$BestMatch, ]
 misMatches <- misMatches[order(misMatches$AHVLAType), ]
 misMatches$Reason <- rep("Unknown", nrow(misMatches))
 rownames(misMatches) <- seq(1, nrow(misMatches), 1)
-misMatches <- addReasonGuesses(misMatches)
+
 # Add some guesses
 #misMatches[misMatches$ProportionNs > 0.5, "Reason"] <- "Low Sequencing Quality"
 #misMatches[which(grepl(x=misMatches$Isolate, 
@@ -93,7 +79,7 @@ misMatches <- addReasonGuesses(misMatches)
 #########################################################################
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/sequences_Prox-10_27-09-2017.fasta", sep="")
+file <- paste(path, "vcfFiles/sequences_Prox-10_23-03-2018.fasta", sep="")
 sequences <- readFasta(file)
 
 # Build genetic distance matrix
@@ -103,7 +89,7 @@ geneticDistances <- buildGeneticDistanceMatrix(sequences)
 isolateSequenceIndices <- getIndicesOfIsolatesInArray(isolates, names(sequences))
 
 # Get info for isolates that matched spoligotypes
-matched <- summary[summary$AHVLAType == summary$BestMatch, ]
+matched <- summary[summary$AHVLAType == summary$BestMatch & is.na(summary$AHVLAType) == FALSE, ]
 matchedTypes <- getIsolateTypes(matched$BestMatch)
 
 # Calculate mean distance of each mismatched isolate between it and 
@@ -112,7 +98,7 @@ matchedTypes <- getIsolateTypes(matched$BestMatch)
 misMatches$AssignedRatio <- rep(NA, nrow(misMatches))
 misMatches$BestRatio <- rep(NA, nrow(misMatches))
 for(row in 1:nrow(misMatches)){
-  
+
   misMatches[row, "AssignedRatio"] <- calculateMeanGeneticDistanceToIsolatesOfType(
     isolate=misMatches[row, "Isolate"],
     type=strsplit(misMatches[row, "AHVLAType"], split=" ")[[1]][1],
@@ -121,7 +107,7 @@ for(row in 1:nrow(misMatches)){
     matchedIsolateTypes=matchedTypes,
     isolatesIndicesInMatrix=isolateSequenceIndices
   )
-  
+
   misMatches[row, "BestRatio"] <- calculateMeanGeneticDistanceToIsolatesOfType(
     isolate=misMatches[row, "Isolate"],
     type=strsplit(misMatches[row, "BestMatch"], split=" ")[[1]][1],
@@ -137,16 +123,28 @@ for(row in 1:nrow(misMatches)){
 # Write out the table #
 #######################
 
-# Re-order the columns
-misMatches <- misMatches[, c(1,2,3,4,5,6,7,8,9,11,12,10)]
+# Add reasonable guesses
+misMatches <- addReasonGuesses(misMatches)
 
 file <- paste(path, "Mislabelling/Spoligotyping/",
-              "SpoligotypeMatches_Summary_28-09-2017.txt", sep="")
+              "SpoligotypeMatches_Summary_24-03-2018.txt", sep="")
 write.table(x=misMatches, file, quote=FALSE, sep="\t", row.names=FALSE)
 
 #############
 # Functions #
 #############
+
+readSpoligotypeCodes <- function(file){
+  
+  typeTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+  
+  ahvlaCodes <- list()
+  for(row in 1:nrow(typeTable)){
+    ahvlaCodes[[typeTable[row, "Genotype"]]] <- typeTable[row, "Spoligotype"]
+  }
+  
+  return(ahvlaCodes)
+}
 
 addReasonGuesses <- function(misMatches){
   
@@ -395,23 +393,6 @@ addAHVLACodes <- function(summary, ahvlaCodes){
                                          ahvlaCodes[[summary[row, "BestMatch"]]], ")",
                                          sep="")
     }
-  }
-  
-  return(summary)
-}
-
-addCattleIsolateSequenceIDs <- function(summary, cattleIsolateSequenceIds){
-  
-  summary$SequenceID <- rep(NA, nrow(summary))
-  
-  for(row in 1:nrow(summary)){
-    
-    # Skip badgers
-    if(grepl(x=summary[row, "Isolate"], pattern="WB") == TRUE){
-      next
-    }
-    
-    summary[row, "SequenceID"] <- cattleIsolateSequenceIds[[summary[row, "Isolate"]]]
   }
   
   return(summary)

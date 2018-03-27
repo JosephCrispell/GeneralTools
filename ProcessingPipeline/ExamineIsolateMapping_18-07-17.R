@@ -2,15 +2,14 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewCattle_16-03-18/fastqs/"
 
 ###################################
 # Read in isolate mapping summary #
 ###################################
 
 # Note the file name
-file <- paste(path, "Cattle_FASTQ_2ndRound/",
-              "isolateMappingSummary_14-07-17.txt", sep="")
+file <- paste(path, "isolateMappingSummary_20-03-18.txt", sep="")
 # file <- paste(path, "Badger_Batch1/",
 #              "isolateMappingSummary_14-07-17.txt", sep="")
 # file <- paste(path, "Cattle_FASTQ_1stRound/",
@@ -39,12 +38,12 @@ pdf(file)
 plot(y=mappingSummary$ProportionMapped,
      x=mappingSummary$NumberMappedReads + mappingSummary$NumberUnmappedReads,
      las=1, ylab="Proportion", main="Proportion Reads Mapped to M. bovis genome",
-     xlab="Total Number of Reads", pch=16, col=rgb(0,0,0, 0.5))
+     xlab="Total Number of Reads", pch=16, col=rgb(0,0,0, 0.5), bty="n")
 
 text(y=mappingSummary$NumberMappedReads / 
        (mappingSummary$NumberMappedReads + mappingSummary$NumberUnmappedReads),
      x=mappingSummary$NumberMappedReads + mappingSummary$NumberUnmappedReads,
-     labels = mappingSummary$Isolate, cex=0.5,
+     labels = mappingSummary$Isolate, cex=0.5, xpd=TRUE,
      col=ifelse(mappingSummary$ProportionMapped < 0.9, rgb(1,0,0, 1), rgb(0,0,0, 0)))
 
 dev.off()

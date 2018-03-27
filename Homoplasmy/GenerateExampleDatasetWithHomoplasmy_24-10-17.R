@@ -475,7 +475,7 @@ assignSiteAndAllele <- function(isolates, sequences, site, allele){
       next
     }
     
-    # Assign the site and and allele to the current isolate
+    # Assign the site and allele to the current isolate
     sequences[[isolate]][site] <- allele
   }
   
@@ -538,100 +538,6 @@ getNodes <- function(tree){
   }
   
   return(nodes)
-}
-
-reportHowManyHomoplasiesWereFoundOld <- function(homoplasyFinderOutput, homoplasyInsertionInfo){
-  
-  # Initialise a variable to record how many of the inserted homoplasies were found
-  nFound <- 0
-  
-  # Examine each of the homoplasies inserted
-  for(key in names(homoplasyInsertionInfo)){
-    
-    # Ignore the sequences
-    if(key == "sequences"){
-      next
-    }
-    
-    # Search for current homoplasy in HomoplasyFinder output
-    row <- which(homoplasyFinderOutput$Position == homoplasyInsertionInfo[[key]]$position)
-    if(length(row) == 0){
-      next
-    }
-    
-    
-    # Find the allele index
-    alleleIndex <- which(strsplit(homoplasyFinderOutput[row, "Alleles"], split=",")[[1]] == 
-                           homoplasyInsertionInfo[[key]]$allele)
-    if(length(alleleIndex) == 0){
-      next
-    }
-    
-    # Check if source and sink are present amongst isolates
-    isolates = strsplit(
-      strsplit(homoplasyFinderOutput[row, "IsolatesForAlleles"], split=",")[[1]][alleleIndex], 
-      split="-")[[1]]
-    if(homoplasyInsertionInfo[[key]]$source %in% isolates && 
-       homoplasyInsertionInfo[[key]]$sink %in% isolates){
-      nFound <- nFound + 1
-    }
-  }
-  
-  # Calculate proportion found and number of false positives
-  propFound <- nFound / (length(homoplasyInsertionInfo) - 1)
-  
-  # Calculate proportion found that weren't inserted
-  nWronglyFound <- nrow(homoplasyFinderOutput) - nFound
-  if(nWronglyFound < 0){
-    nWronglyFound <- 0 # If a homoplasy is inserted at the same site then this number could be negative
-  }
-  
-  return(c(propFound, nWronglyFound))
-}
-
-checkWhichHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyInsertionInfo, verbose){
-  
-  # Get the isolates associated with the homoplasis identified
-  isolatesOfHomoplasiesIdentified <- getIsolatesFromHomoplasyInfo(homoplasyFinderOutput)
-  
-  # Check  if each of the inserted homoplasies were found
-  inserted <- names(homoplasyInsertionInfo)
-  inserted <- inserted[inserted != "sequences"]
-  nFound <- 0
-  for(key in inserted){
-    
-    source <- homoplasyInsertionInfo[[key]]$source
-    sink <- homoplasyInsertionInfo[[key]]$sink
-    position <- homoplasyInsertionInfo[[key]]$position
-    
-    for(i in 1:length(isolatesOfHomoplasiesIdentified)){
-      
-      if(position == isolatesOfHomoplasiesIdentified[[i]]$position &&
-         (source %in% isolatesOfHomoplasiesIdentified[[i]]$foundIn == TRUE ||
-          source %in% isolatesOfHomoplasiesIdentified[[i]]$from == TRUE) && 
-         (sink %in% isolatesOfHomoplasiesIdentified[[i]]$foundIn == TRUE ||
-          sink %in% isolatesOfHomoplasiesIdentified[[i]]$from == TRUE)){
-        nFound <- nFound + 1
-        break
-      }
-    }
-  }
-  
-  # Calculate proportion homoplasies found
-  propFound <- nFound / length(inserted)
-  
-  # Calculate proportion found that weren't inserted
-  nWronglyFound <- length(isolatesOfHomoplasiesIdentified) - nFound
-  if(nWronglyFound < 0){
-    nWronglyFound <- 0
-  }
-  
-  if(verbose){
-    cat(paste("Proportion homoplasies found:", propFound, "\n"))
-    cat(paste("Number homoplasies incorrectly identified:", nWronglyFound, "\n"))
-  }
-  
-  return(c(propFound, nWronglyFound))
 }
 
 getIsolatesFromHomoplasyInfo <- function(homoplasyFinderOutput){
@@ -757,13 +663,14 @@ simulateSequences3 <- function(n, mutationRate, infectiousness, samplingProb,
     # Note the infected susceptibles
     infectedSusceptibles <- susceptibles[which(randomNumbers < probInfected)]
     
-    # Examine each susceptible individual that became infected
+    # Check some individuals became infected
     if(length(infectedSusceptibles) > 0){
       
       # Note the sources for the infected individuals
       sources <- infecteds[sample(size=length(infectedSusceptibles),
                                   x=1:length(infecteds), replace=TRUE)]
       
+      # Examine each susceptible individual that became infected
       for(i in 1:length(infectedSusceptibles)){
         
         # Get the current susceptible individual
@@ -857,7 +764,7 @@ generateMutationEvents <- function(nTimeStepsSinceChecked,
   # Calculate how many mutations occurred
   nMutations <- sum(rpois(n=nTimeStepsSinceChecked, lambda=mutationRate))
   
-  # Create each mutation event, give it and id and store it
+  # Create each mutation event, give it an id and store it
   if(nMutations != 0){
     
     for(i in 1:nMutations){
