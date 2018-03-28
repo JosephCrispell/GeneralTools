@@ -19,13 +19,14 @@ date <- format(Sys.Date(), "%d-%m-%y")
 
 # Note the fasta file
 fastaFile <- paste(path, "vcfFiles/sequences_withoutHomoplasies_27-03-18.fasta", sep="")
+nSites <- getNSitesInFASTA(fastaFile)
 
 # Run RAxML to produce a Maximum Likelihood phylogeny with bootstrap support values
 # TAKES AGES!!! - WP data ~5 hours
-treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=2)
+treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=4)
 
 # Convert the branch lengths to SNPs
-treeBS$edge.length <- treeBS$edge.length * getNSitesInFASTA(fastaFile)
+treeBS$edge.length <- treeBS$edge.length * nSites
 
 # Parse the tip labels
 treeBS$tip.label <- parseIsolateLabels(treeBS$tip.label)
@@ -49,7 +50,7 @@ file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_", date, ".pdf", sep
 pdf(file, height=10, width=10)
 
 # Define branch colours by clade and plot the tree
-nodesDefiningClades <- c(527, 496, 562, 421, 486)
+nodesDefiningClades <- c(528, 539, 638, 497, 630)
 cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
@@ -110,7 +111,7 @@ write.tree(treeBS, append = FALSE, digits = 20, tree.names = FALSE,
                         "mlTree_DatedTips_", date, ".tree", sep=""))
 
 # Select the BASTA clade and print tree to file
-selectBASTAClade(treeBS, node=433, plot=TRUE)
+selectBASTAClade(treeBS, node=591, plot=TRUE)
 
 #-----------------#
 #### FUNCTIONS ####
@@ -138,7 +139,7 @@ runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
   
   # Create a directory for the output file
   directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
-  dir.create(directory)
+  suppressWarnings(dir.create(directory))
   
   # Set the Working directory - this will be where the output files are dumped
   setwd(directory)
@@ -178,10 +179,12 @@ getTreeFileWithSupportValues <- function(){
   files <- list.files()
   
   # Select the tree file with BS support values
-  treeBSFile <- files[grepl(files, pattern="RAxML_bipartitions[.]") == TRUE]
+  treeBSFile <- files[grepl(files, pattern=paste("RAxML_bipartitions[.]", analysisName, sep="")) == TRUE]
   
   # Open the file
   treeBS <- read.tree(treeBSFile)
+  
+  return(treeBS)
 }
 
 defineTipShapesForSpecies <- function(tipLabels, cow, badger){
@@ -531,15 +534,15 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
   text(x=20, y=0, labels="AF2122/97")
   
   # Add Scale bar
-  points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3)
+  points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3, xpd=TRUE)
   text(x=5, y=-135, labels="50 SNPs", cex=1, xpd=TRUE)
   
   # Add Clade labels
-  text(x=-75, y=95, labels="3", col=colours[4], cex=2)
-  text(x=92, y=-82, labels="4", col=colours[5], cex=2)
-  text(x=-123, y=-30, labels="1", col=colours[2], cex=2)
-  text(x=-92.5, y=-75, labels="0", col=colours[1], cex=2)
-  text(x=15, y=-120, labels="2", col=colours[3], cex=2)
+  text(x=-103, y=-55, labels="0", col=colours[1], cex=2)
+  text(x=-80, y=-95, labels="1", col=colours[2], cex=2)
+  text(x=0, y=-120, labels="2", col=colours[3], cex=2)
+  text(x=-65, y=95, labels="3", col=colours[4], cex=2)
+  text(x=90, y=-80, labels="4", col=colours[5], cex=2)
 
   # Reset margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))

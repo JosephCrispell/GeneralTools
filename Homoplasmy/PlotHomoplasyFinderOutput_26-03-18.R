@@ -6,26 +6,29 @@
 library(ape)
 
 # Set the path
-#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/MLTree/"
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/MLTree/"
+#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
 
 #~~~~~~~~~~~~~~~~~~~~#
 #### Read in data ####
 #~~~~~~~~~~~~~~~~~~~~#
 
 # Read in the tree file
-treeFile <- paste(path, "mlTree_27-03-18.tree", sep="")
+treeFile <- paste(path, "mlTree_withRef_14-06-16.tree", sep="")
 tree <- read.tree(file=treeFile)
 
 # Read in the HomoplasyFinder output
-homoplasyFinderOutputFile <- paste(path, "homoplasyReport_27-03-18.txt", sep="")
+homoplasyFinderOutputFile <- paste(path, "homoplasyReport_26-03-18.txt", sep="")
 results <- read.table(homoplasyFinderOutputFile, header=TRUE, sep="\t", comment.char="@")
 
 # Read in the FASTA file - only keep homoplasy site information
-fastaFile <- paste(path, "sequences_Prox-10_24-03-2018.fasta", sep="")
+fastaFile <- paste(path, "sequences_withRef_Prox-10_14-06-16.fasta", sep="")
 sequences <- readFASTA(fastaFile)
 sequences <- keepPositions(sort(results$Position), sequences)
 sequences <- parseNewZealandSequenceNames(sequences)
+
+# Convert the branch lengths to SNPs
+tree$edge.length <- tree$edge.length * getNSitesInFASTA(fastaFile)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~#
 #### Plot the results ####
@@ -43,6 +46,23 @@ dev.off()
 # FUNCTIONS #
 #############
 
+getNSitesInFASTA <- function(fastaFile){
+  
+  # Open a connection to a file to read (open="r")
+  connection <- file(fastaFile, open="r")
+  
+  # Get first line of file
+  firstLine <- readLines(connection, n=1)
+  
+  # Close file connection
+  close(connection)
+  
+  # Get the number of sites used in the FASTA file from first line
+  nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
+  
+  return(nSites)
+}
+
 plotTreeAndHomoplasySites <- function(tree, sequences, cex, positions){
   
   # Set the plotting margins
@@ -50,14 +70,21 @@ plotTreeAndHomoplasySites <- function(tree, sequences, cex, positions){
   
   # Plot the phylogeny
   plot.phylo(tree, show.tip.label=TRUE, type="phylogram", align.tip.label=TRUE, tip.color=rgb(0,0,0,0),
-             main="Homoplasies Identified")
+             main="Homoplasies Identified in New Zealand data")
+  
+  # Get the axisLimits
+  axisLimits <- par("usr")
+  
+  # Add Scale bar
+  points(x=c(axisLimits[1] + 20, axisLimits[1] + 40), y=c(axisLimits[3]+15, axisLimits[3]+15), type="l", lwd=3)
+  text(x=axisLimits[1] + 30, y=axisLimits[3] +10, labels="20 SNPs", cex=1, xpd=TRUE)
   
   # Note the locations of the tips
   tipCoordinates <- getTipCoordinates(tree$tip.label)
   maxCoords <- maxCoordinates(tipCoordinates)
   
   # Calculate width of space for nucleotide
-  axisLimits <- par("usr")
+  
   charWidth <- (axisLimits[2] - maxCoords[1]) / length(sequences[[1]])
   
   # Set nucleotide colours
@@ -96,10 +123,10 @@ plotTreeAndHomoplasySites <- function(tree, sequences, cex, positions){
   }
   
   # Note the positions of each homoplasy
-  charHeight <- strheight("A")
+  height <- 10
   for(i in 1:length(positions)){
     text(x=maxCoords[1] + ((i-1) * charWidth) + (0.5 * charWidth),
-         y=maxCoords[2] + charHeight,
+         y=maxCoords[2] + height,
          labels=positions[i], cex=0.5, srt=90, xpd=TRUE)
   }
   

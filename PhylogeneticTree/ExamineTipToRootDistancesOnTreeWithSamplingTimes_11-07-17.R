@@ -10,14 +10,14 @@ library(adephylo)
 # Path #
 ########
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 ################
 # Read in tree #
 ################
 
 file <- paste(path, "vcfFiles/",
-              "mlTree_BASTAClade_DatedTips_TempEstRooted_12-02-18.tree", sep="")
+              "mlTree_BASTAClade_DatedTips_TempEstRooted_27-03-18.tree", sep="")
 tree <- readTree(file)
 
 ###################################
@@ -36,7 +36,7 @@ badgerInfo <- read.table(fileName, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the cattle isolate metadata
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
+              "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
               sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
@@ -46,7 +46,7 @@ cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Open a pdf
 file <- paste(path, "vcfFiles/",
-              "RootedBastaCladeTree_tipToRootDistances_12-02-18.pdf", sep="")
+              "RootedBastaCladeTree_tipToRootDistances_27-03-18.pdf", sep="")
 pdf(file)
 
 
@@ -60,7 +60,8 @@ plot(as.Date(tipInfo$SamplingDate), tipInfo$DistanceToRoot,
      las=1, ylab="Tip-to-root Distance", xlab="Sampling Date",
      main="", mgp=c(3,0.5,0), col=rgb(0,0,0, 0.5), cex=2,
      pch=ifelse(grepl(x=tipInfo$IsolateID, pattern="WB") == TRUE,
-                19, 17))
+                19, 17),
+     bty="n")
 
 linearModel <- lm(tipInfo$DistanceToRoot ~ as.Date(tipInfo$SamplingDate))
 summary <- summary(linearModel)
@@ -110,7 +111,7 @@ combineSamplingInformationAndTipToRootDistances <- function(tipToRootDistances,
       tipInfo[i, "SamplingDate"] <- as.character(
         as.Date(badgerInfo[row, "date"], dateFormat))
       
-    }else if(grepl(x=isolateID, pattern="TB") == TRUE){
+    }else if(grepl(x=isolateID, pattern="TB|HI-|AF-") == TRUE){
       
       # Find the isolate's row
       row <- which(cattleInfo$StrainId == isolateID)
