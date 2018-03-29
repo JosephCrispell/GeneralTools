@@ -24,14 +24,19 @@ mutationRate <- 0.5
 infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
-nHomoplasieValues <- 1:10
+nHomoplasieValues <- 0:10
 nSimulations <- 1000
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
-results <- data.frame(NFound=rep(NA, nSimulations*length(nHomoplasieValues)), 
-                      NIncorrect=rep(NA, nSimulations*length(nHomoplasieValues)),
-                      Seed=rep(NA, nSimulations*length(nHomoplasieValues)), 
-                      NHomoplasies=rep(NA, nSimulations*length(nHomoplasieValues)))
+results <- data.frame("NFoundTrue"=rep(NA, nSimulations*length(nHomoplasieValues)), 
+                      "NIncorrectTrue"=rep(NA, nSimulations*length(nHomoplasieValues)),
+                      "NFoundAfter"=rep(NA, nSimulations*length(nHomoplasieValues)), 
+                      "NIncorrectAfter"=rep(NA, nSimulations*length(nHomoplasieValues)),
+                      "Seed"=rep(NA, nSimulations*length(nHomoplasieValues)), 
+                      "NHomoplasies"=rep(NA, nSimulations*length(nHomoplasieValues)))
+
+# Set the working directory
+setwd(path)
 
 # Run the simulations
 seeds <- sample(1:100000000, size=nSimulations*length(nHomoplasieValues), replace=FALSE)
@@ -56,27 +61,42 @@ for(nHomoplasies in nHomoplasieValues){
     
     # Generate the sequences
     simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
-                                      samplingProb, nToSample, FALSE)
+                                      samplingProb, nToSample)
 
     # Build the sequences based upon the mutation events
     sequences <- buildSequences(simulationOutput)
+    sequences[["REF"]] <- NULL
+    
+    # Build phylogeny
+    trueTreeFile <- paste("example-TRUE_", date, ".tree", sep="")
+    buildPhylogeny(sequences, trueTreeFile)
     
     # Insert homoplasies
-    sequences[["REF"]] <- NULL
-    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, FALSE)
+    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies)
     sequences <- homoplasyInsertionInfo[["sequences"]]
     
     # Build FASTA
-    writeFasta(sequences, paste(path, "example_", date, ".fasta", sep=""))
+    fastaFile <- paste("example_", date, ".fasta", sep="")
+    writeFasta(sequences, fastaFile)
     
     # Build phylogeny
-    buildPhylogeny(sequences, paste(path, "example_", date, ".tree", sep=""),
-                   homoplasyInsertionInfo, FALSE)
+    treeFile <- paste("example-AFTER_", date, ".tree", sep="")
+    buildPhylogeny(sequences, treeFile)
     
-    # Run HomoplasyFinder
-    setwd(path)
-    fastaFile <- paste("example_", date, ".fasta", sep="")
-    treeFile <- paste("example_", date, ".tree", sep="")
+    #######
+    ## Run HomoplasyFinder using the TRUE tree
+    system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, trueTreeFile, sep=" "),
+           ignore.stdout=FALSE)
+    
+    # Get and Check HomoplasyFinder output
+    file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
+    homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
+                                        check.names=FALSE)
+    results[row, c("NFoundTrue","NIncorrectTrue")] <- 
+      reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
+    
+    #######
+    ## Run HomoplasyFinder using the TRUE tree
     system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
            ignore.stdout=FALSE)
     
@@ -84,7 +104,8 @@ for(nHomoplasies in nHomoplasieValues){
     file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
     homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
                                         check.names=FALSE)
-    results[row, c("NFound","NIncorrect")] <- reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
+    results[row, c("NFoundAfter","NIncorrectAfter")] <- 
+      reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
   }
 }
 
@@ -259,7 +280,7 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
   return(c(nFound, nWronglyFound))
 }
 
-buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo, verbose,
+buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo=NULL, verbose=FALSE,
                            treeType="phylogram", tipCex=1, showTips=TRUE,
                            margins=TRUE, showScale=TRUE, direction="rightwards",
                            labelOffset=0.15){
@@ -329,7 +350,7 @@ buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo, verbose,
   return(tree)
 }
 
-insertHomoplasies <- function(n, sequences, verbose, treeType="phylogram", tipCex=1, showTips=TRUE,
+insertHomoplasies <- function(n, sequences, verbose=FALSE, treeType="phylogram", tipCex=1, showTips=TRUE,
                               margins=TRUE, showScale=TRUE,
                               labelOffset=0.15){
   
@@ -601,7 +622,7 @@ buildSequences <- function(simulationOutput){
 }
 
 runSimulation <- function(n, mutationRate, infectiousness, samplingProb,
-                          nToSample, verbose){
+                          nToSample, verbose=FALSE){
   
   nSampled <- 0
   simulationOutput <- NULL

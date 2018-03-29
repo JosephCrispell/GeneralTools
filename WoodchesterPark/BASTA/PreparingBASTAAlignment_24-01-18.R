@@ -21,18 +21,18 @@ library(lubridate)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read in the newick tree
-file <- paste(path, "vcfFiles/",  "mlTree_29-09-2017.tree", sep="")
-isolatesInClade <- getIsolatesInClade(file, node=433)
+file <- paste(path, "vcfFiles/",  "mlTree_BASTAClade_DatedTips_27-03-18.tree", sep="")
+isolatesInClade <- getIsolatesFromTree(file)
 
 #############################
 # Read in Isolate Sequences #
 #############################
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
+file <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
 isolateSequences <- getIsolateSequences(file, isolatesInClade)
 
 ######################################
@@ -41,7 +41,7 @@ isolateSequences <- getIsolateSequences(file, isolatesInClade)
 
 # Note the sampling infor file names
 cattleInfoFile <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
+              "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
               sep="")
 badgerInfoFile <- paste(path, "IsolateData/",
                         "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
@@ -55,7 +55,7 @@ isolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile,
 ###################################
 
 # Read in genome coverage table
-file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_RESCUED_29-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_RESCUED_24-03-2018.txt", sep="")
 isolateInfo <- getIsolateVariantPositionCoverage(file, isolateInfo)
 
 ####################################################
@@ -92,7 +92,7 @@ clockModels <- c("relaxed") # could include strict here
 chainLength <- 300000000
 
 # Note the constant site counts file name
-constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt", sep="")
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_24-03-2018.txt", sep="")
 
 # Badger centre
 badgerCentre <- c(381761.7, 200964.3)
@@ -1019,7 +1019,7 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
   for(index in 1:length(isolates)){
     
     # Cattle
-    if(grepl(pattern="TB", x=isolates[index]) == TRUE){
+    if(grepl(pattern="TB|AF-|HI-", x=isolates[index]) == TRUE){
       
       # Find index in table
       strainIndex <- which(cattleInfo$StrainId == isolates[index])
@@ -1074,9 +1074,28 @@ getIsolateSequences <- function(fastaFile, isolatesInClade){
   return(isolateSequences)
 }
 
+getIsolatesFromTree <- function(treeFile){
+  
+  # Read in the BASTA clade tree
+  tree <- read.tree(file=treeFile)
+
+  # Get the tip labels - note that they'll have sampling dates attached to them
+  isolates <- tree$tip.label
+  for(i in 1:length(isolates)){
+    isolates[i] = strsplit(isolates[i], split="_")[[1]][1]
+  }
+
+  # Convert this array to list
+  isolatesInClade <- convertVectorToList(isolates)
+  
+  return(isolatesInClade)
+}
+
 getIsolatesInClade <- function(treeFile, node){
   
   tree <- read.tree(file=treeFile)
+  
+  tree <- root
   
   # Get a list of the isolates in the clade
   cladeTips <- tips(tree, node=node)

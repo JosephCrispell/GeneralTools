@@ -49,7 +49,7 @@ for(row in 1:nrow(breakdownInfo)){
 ####################################
 
 file <- paste(path, "IsolateData/",
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv",
+              "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
               sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
@@ -108,7 +108,7 @@ breakdownsTable <- breakdownsTable[breakdownsTable$cbConfFin == "Y", ]
 # Spatial plot - shape by herd type and size by the number of samples
 expand <- 15000
 
-file <- paste(path, "BreakdownSampling_02-10-17.pdf")
+file <- paste(path, "BreakdownSampling_29-03-18.pdf")
 pdf(file, height=14, width=21)
 
 par(mfrow=c(2,3))
@@ -255,7 +255,7 @@ par(mar=c(6.1,6.1,7.1,2.1)) # bottom, left, top and right
 
 breakdownsTable$Year <- format(breakdownsTable$Date, "%Y")
 
-for(year in 1997:2012){
+for(year in 1988:2012){
   
   # Get the data subset for current year
   subset <- breakdownsTable[breakdownsTable$Year == year, ]

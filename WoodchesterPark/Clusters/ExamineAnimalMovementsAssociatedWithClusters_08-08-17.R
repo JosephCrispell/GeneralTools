@@ -3,10 +3,10 @@
 ###################################
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/InterSpeciesClusters/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_13-02-2018.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_28-03-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -29,14 +29,14 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 par(mar=c(2.5,2.5,3,2.1)) # bottom, left, top and right
 
 # Get an array of all the clusters
-clusters <- sort(names(clusterTables))[-5] # Remove last cluster - sampled animals
+clusters <- sort(names(clusterTables))[-length(names(clusterTables))] # Remove last cluster - sampled animals
 
 # Note the centre of the badger territories
 badgerCentre <- c(381761.7, 200964.3)
 expand <- c(15000, 5000)
 
 # Open a pdf
-file <- paste(path, "sampledAnimalMovementsInClusters_13-02-18.pdf", sep="")
+file <- paste(path, "sampledAnimalMovementsInClusters_28-03-18.pdf", sep="")
 pdf(file, height=7, width=14)
 
 # Set plotting window dimensions
@@ -95,7 +95,7 @@ plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, ex
   par(mar=c(2.5,2.5,3,2.1)) # bottom, left, top and right
   
   # Set year
-  for(year in 1990:2015){
+  for(year in 1988:2015){
     
     # Create empty plot
     createEmptyPlot(badgerCentre, expand[1], cluster)
@@ -116,7 +116,7 @@ plotMovementsOfAnimalsInClusterInEachYear <- function(cluster, clusterTables, ex
   dev.off()
   
   # Bind the PNG files into a Giff
-  dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_13-07-17\\InterSpeciesClusters\\"
+  dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_22-03-18\\InterSpeciesClusters\\"
   system(paste("magick -delay 80 ", '\"', dosPath, "MovementGiff\\Movements_cluster-",
                cluster, "_*.png\" \"", dosPath, "MovementGiff\\Movements_cluster-", cluster,
                ".gif\"", sep=""))

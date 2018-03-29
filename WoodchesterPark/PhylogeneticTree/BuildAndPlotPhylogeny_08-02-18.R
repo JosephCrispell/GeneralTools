@@ -111,7 +111,7 @@ write.tree(treeBS, append = FALSE, digits = 20, tree.names = FALSE,
                         "mlTree_DatedTips_", date, ".tree", sep=""))
 
 # Select the BASTA clade and print tree to file
-selectBASTAClade(treeBS, node=591, plot=TRUE)
+selectBASTAClade(treeBS, node=570, plot=TRUE)
 
 #-----------------#
 #### FUNCTIONS ####
@@ -168,12 +168,12 @@ runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
   system(command, intern=TRUE)
   
   # Get the tree and read it in
-  treeBS <- getTreeFileWithSupportValues()
+  treeBS <- getTreeFileWithSupportValues(analysisName)
   
   return(treeBS)
 }
 
-getTreeFileWithSupportValues <- function(){
+getTreeFileWithSupportValues <- function(analysisName){
   
   # Get files in current working directory
   files <- list.files()

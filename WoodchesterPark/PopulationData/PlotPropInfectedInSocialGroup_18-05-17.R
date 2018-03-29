@@ -6,7 +6,7 @@ library(maptools) # Read shape file
 library(rgeos) # Polygon centroids
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 ############################################################
 # Note the centroid of the badger social group territories #
@@ -37,7 +37,7 @@ socialGroupColumns <- noteColumnsOfSocialGroups(colnames(counts[["ProportionInfe
 
 # Get list of isolate IDs from fasta file
 fileName <- paste(path, "vcfFiles/", 
-                  "sequences_Prox-10_29-09-2017.fasta", sep="")
+                  "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
 isolateIDs <- getSequenceIDsFromFastaFile(fileName)
 
 # Read in the isolate metadata
@@ -74,7 +74,7 @@ groupsCentroidsPerYear <- list()
 
 # Open a PDF file
 file <- paste(path, "BadgerCaptureData/", 
-              "PropInfected_SocialGroups_2000-11_13-10-17.pdf", sep="")
+              "PropInfected_SocialGroups_2000-11_29-03-18.pdf", sep="")
 
 # Plot on single figure
 plotPropInfectedInSocialGroupsInSingleFigure(path, file, years, shapeFileNames, badgerGroupCentroid,
@@ -134,7 +134,7 @@ plotPropInfectedInSocialGroupsInGiff <- function(path, years, shapeFileNames,
   dev.off()
   
   # Bind the PNG files into a Giff
-  dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_13-07-17\\BadgerCaptureData\\"
+  dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_22-03-18\\BadgerCaptureData\\"
   system(paste("magick -delay 160 ", '\"', dosPath, "PropInfected_SocialGroups_2000-11_Giff\\SocialGroupSampling_*.png\" \"",
                dosPath, "PropInfected_SocialGroups_2000-11_Giff\\SocialGroupSampling.gif\"", sep=""))
   
