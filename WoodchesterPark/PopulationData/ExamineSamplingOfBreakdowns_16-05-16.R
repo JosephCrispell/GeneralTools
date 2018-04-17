@@ -1,4 +1,4 @@
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 ##############################################
 # Read in Breakdown and Location Information #
@@ -11,7 +11,7 @@ locationInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",", f
 
 # Remove CPHs that aren't within 15km of Woodchester Mansion
 badgerCentre <- c(381761.7, 200964.3)
-threshold <- 15000
+threshold <- NULL
 
 locationInfo <- keepLocationsWithinThresholdDistance(locationInfo=locationInfo, 
                                                      thresholdInMetres=threshold,
@@ -81,6 +81,10 @@ for(row in 1:nrow(samplingInfo)){
     
     # 14101000701-24/02/2006 (SL Case) Couldn't be found
     # Changed to later Breakdown: 14101000701-15/12/2006
+    # 14273001701-20/02/1989 Not Present in breakdowns file
+    # 34417006101-06/03/1989 Present in breakdowns but not in post 2001 locations
+    # 14079000701-16/11/1992 Present in breakdowns but not in post 2001 locations
+    # One blank breakdown ID
     print(paste("Ahhhhhhhhhhhhhhhh! Can't find ", samplingInfo[row, "BreakdownID"], sep=""))
   }
 }
@@ -332,7 +336,7 @@ for(year in 1988:2012){
 dev.off()
 
 # Bind the PNG files into a Giff
-dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_13-07-17\\CattleTestData\\"
+dosPath <- "C:\\Users\\Joseph Crisp\\Desktop\\UbuntuSharedFolder\\Woodchester_CattleAndBadgers\\NewAnalyses_22-03-18\\CattleTestData\\"
 system(paste("magick -delay 120 ", '\"', dosPath, "DynamicGiff/BreakdownSampling_*.png\" \"",
              dosPath, "DynamicGiff/BreakdownSampling.gif\"", sep=""))
 
@@ -512,6 +516,11 @@ getSampledBreakdownDateRange <- function(samplingInfo){
   dateRange <- as.Date(c("2016-11-22", "1800-01-22"))
   for(row in 1:nrow(samplingInfo)){
     
+    # Skip isolates with no breakdown date
+    if(samplingInfo[row, "BreakdownID"] == ""){
+      next
+    }
+    
     # Get the breakdown date
     breakdownDate <- as.Date(strsplit(samplingInfo[row, "BreakdownID"], split="-")[[1]][2],
                              "%d/%m/%Y")
@@ -595,7 +604,10 @@ keepLocationsWithinThresholdDistance <- function(locationInfo, thresholdInMetres
     locationInfo[row, "DistanceToWoodchester"] <- distance
     
     # Keep the row if distance is <=threshold
-    if(distance <= thresholdInMetres){
+    if(is.null(thresholdInMetres) == FALSE && distance <= thresholdInMetres){
+      index <- index + 1
+      rowsToKeep[index] <- row
+    }else if(is.null(thresholdInMetres) == TRUE){
       index <- index + 1
       rowsToKeep[index] <- row
     }

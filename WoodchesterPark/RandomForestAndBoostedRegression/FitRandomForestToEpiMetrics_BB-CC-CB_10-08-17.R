@@ -16,17 +16,17 @@ library(gplots)
 #######################################################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/GeneticVsEpidemiologicalDistances/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
 # Read in the table
-file <- paste(path, "GeneticVsEpidemiologicalDistances_02-10-17.txt", sep="")
+file <- paste(path, "GeneticVsEpidemiologicalDistances_05-04-18.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 ####################
 # General settings #
 ####################
 
-selection <- "BB"
+selection <- "CB" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 
@@ -49,7 +49,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 ###############
 
 ###### Open a PDF
-file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_02-10-17.pdf", sep="")
+file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_05-04-18.pdf", sep="")
 pdf(file, height=10, width=10)
 
 par(mfrow=c(1,1))

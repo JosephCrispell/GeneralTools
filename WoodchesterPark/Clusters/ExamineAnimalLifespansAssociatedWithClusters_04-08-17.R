@@ -6,7 +6,7 @@
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_28-03-2018.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_05-04-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -21,7 +21,7 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 xLim <- as.Date(c("1988-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
-file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_28-03-18.pdf", sep="")
+file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_06-04-18.pdf", sep="")
 pdf(file)
 
 # Get an array of all the clusters

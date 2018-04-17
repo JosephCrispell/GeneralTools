@@ -39,7 +39,7 @@ do
 	cd $DIRECTORY
 	
 	# Run that XML in BEAST and note the PID
-	nohup beast -threads 1 $XML".xml" > $XML"_ScreenOutput.txt" &
+	nohup beast -threads 1 -beagle $XML".xml" > $XML"_ScreenOutput.txt" &
 	
 	# Wait a second to let java initialise
 	sleep 1

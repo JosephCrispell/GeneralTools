@@ -41,6 +41,16 @@ treeBS <- root(treeBS, outgroup="Ref-1997")
 # Take an initial look at the phylogeny
 viewRAxMLTree(treeBS, path)
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### Note the isolate sampling information files ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+cattleInfoFile <- paste(path, "IsolateData/",
+                        "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
+                        sep="")
+badgerInfoFile <- paste(path, "IsolateData/",
+                        "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
+
 #~~~~~~~~~~~~~~~~~~~~~~~~#
 #### Clade definition ####
 #~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -63,11 +73,8 @@ plotTree(treeBS, plotBSValues=FALSE,
 # Plot the isolate locations and colour by clade
 tipLabelsWithSamplingTimes <- 
   plotIsolateLocations(treeBS,
-    badgerIsolateFile=paste(path, "IsolateData/", "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv",
-                            sep=""),
-    cattleIsolateFile=paste(path, "IsolateData/",
-                            "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv",
-                            sep=""),
+    badgerIsolateFile=badgerInfoFile,
+    cattleIsolateFile=cattleInfoFile,
     colours=cladeColours, nodes=nodesDefiningClades,
     badgerCentre=c(381761.7, 200964.3), expand=75000, thresholdDistance=3500)
 
@@ -98,9 +105,9 @@ file <- paste(path, "vcfFiles/", "mlTree_", date, ".tree", sep="")
 write.tree(treeBS, file = file, append = FALSE,
            digits = 20, tree.names = FALSE)
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-#### Prepare for TempEst ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### Add sampling dates for TempEst ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
 # Add dates to tips
 treeBS$tip.label <- tipLabelsWithSamplingTimes
@@ -110,12 +117,274 @@ write.tree(treeBS, append = FALSE, digits = 20, tree.names = FALSE,
            file = paste(path, "vcfFiles/",
                         "mlTree_DatedTips_", date, ".tree", sep=""))
 
-# Select the BASTA clade and print tree to file
-selectBASTAClade(treeBS, node=570, plot=TRUE)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+#### Select isolates for BASTA ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
+# Get the isolates in the BASTA clade
+node <- 591
+isolatesInClade <- getIsolatesInBASTAClade(tips(treeBS, node=node))
+
+# Get the sampling information for these isolates
+isolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile, 
+                                             isolates=names(isolatesInClade))
+
+# Get the variant position coverage for these isolates
+file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_RESCUED_24-03-2018.txt", sep="")
+isolateInfo <- getIsolateVariantPositionCoverage(file, isolateInfo)
+
+# Calculate distance of isolates to badger centre
+isolateInfo <- calculateDistanceToBadgerCentre(badgerCentre=c(381761.7, 200964.3), isolateInfo)
+table(isolateInfo$Species)
+
+# Select a single isolate per sampled animal (only affects badgers)
+selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCoverage(isolateInfo)
+table(selectedIsolateInfo$Species)
+
+# Select isolates from within sampling range and 10km of Woodchester Park
+minSamplingDate <- as.Date("1999-01-01", format="%Y-%m-%d")
+selectedIsolateInfo <- selectedIsolateInfo[selectedIsolateInfo$Species == "BADGER" | 
+                                                   (selectedIsolateInfo$SamplingDate >= minSamplingDate &
+                                                      selectedIsolateInfo$Distance <= 10000), ]
+table(selectedIsolateInfo$Species)
+
+# Write and Plot the BASTA clade - both including and not including selected isolates
+writeBASTATree(treeBS, node=node, plot=TRUE, filePath=path,
+               currentDate=date, selectedIsolates=selectedIsolateInfo$IsolateID)
+  
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+getIsolateIDFromFileNames <- function(fileNames){
+  isolates <- c()
+  for(i in 1:length(fileNames)){
+    isolates[i] <- strsplit(fileNames[i], split="_")[[1]][1]
+  }
+  
+  return(isolates)
+}
+
+getIsolateVariantPositionCoverage <- function(vpCoverageFile, isolateInfo){
+  
+  # Read in variant position coverage table
+  coverageInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
+  
+  # Parse Isolate IDs
+  coverageInfo$Isolate <- getIsolateIDFromFileNames(coverageInfo$Isolate)
+  
+  # Add coverage column to tip info
+  isolateInfo$Coverage <- rep(0, nrow(isolateInfo))
+  
+  for(row in 1:nrow(isolateInfo)){
+    
+    # Is this an isolate we're interested in?
+    if(isolateInfo[row, "IsolateID"] %in% coverageInfo$Isolate){
+      isolateInfo[row, "Coverage"] <- 
+        coverageInfo[which(coverageInfo$Isolate == isolateInfo[row, "IsolateID"]),
+                     "Coverage"]
+    }
+  }
+  
+  return(isolateInfo)
+}
+
+convertVectorToList <- function(vector){
+  output <- list()
+  for(index in 1:length(vector)){
+    output[[vector[index]]] <- index
+  }
+  return(output)
+}
+
+writeBASTATree <- function(treeBS, node, plot=FALSE, filePath=path,
+                             currentDate=date, selectedIsolates){
+  
+  # Plot the selected basta clade
+  if(plot == TRUE){
+    pdf(file=paste(filePath, "vcfFiles/mlTree_BastaClade_",
+                   currentDate, ".pdf", sep=""))
+    
+    branchColours <- defineBranchColoursOfClade(treeBS, node, "black", "lightgrey")
+    
+    plot.phylo(treeBS, "fan", edge.color=branchColours, edge.width=3,
+               show.tip.label=FALSE)
+    
+    tipColours <- rep(rgb(0,0,0, 0.5), length(treeBS$tip.label))
+    for(i in 1:length(tipColours)){
+      
+      id <- strsplit(treeBS$tip.label[i], split="_")[[1]][1]
+      if(id %in% selectedIsolates){
+        
+        tipColours[i] <- rgb(0,0,1, 0.5)
+        if(grepl(id, pattern="WB") == TRUE){
+          tipColours[i] <- rgb(1,0,0, 0.5)
+        }
+      }
+    }
+    tiplabels(pch=ifelse(grepl(treeBS$tip.label, pattern="WB"), 19, 17),
+              col=tipColours, cex=0.5, offset=2)
+    
+    dev.off()
+  }
+  
+  # Select the major BASTA clade
+  bastaClade <- extract.clade(treeBS, node)
+  
+  # Drop unselected tips from basta clade
+  tipsToDrop <- c()
+  for(i in 1:length(bastaClade$tip.label)){
+    
+    id <- strsplit(bastaClade$tip.label[i], split="_")[[1]][1]
+    if(id %in% selectedIsolates == FALSE){
+      
+      tipsToDrop[length(tipsToDrop) + 1] <- bastaClade$tip.label[i]
+    }
+  }
+  bastaClade <- drop.tip(bastaClade, tipsToDrop)
+  
+  # Print out tree
+  write.tree(bastaClade, append=FALSE, digits=20, tree.names=FALSE,
+             file=paste(filePath, "vcfFiles/",
+                        "mlTree_BASTAClade_DatedTips_",
+                        currentDate, ".tree", sep=""))
+}
+
+getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolates){
+  
+  # Read in sampling information
+  cattleInfo <- read.table(cattleInfoFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  badgerInfo <- read.table(badgerInfoFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  
+  # Initialise a table to store the isolate sampling information
+  isolateInfo <- as.data.frame(matrix(nrow=length(isolates), ncol=6))
+  colnames(isolateInfo) <- c("IsolateID", "SamplingDate", "X", "Y", "AnimalID", "Species")
+  isolateInfo[, "IsolateID"] <- isolates
+  
+  # Fill the table with the sampling information
+  for(index in 1:length(isolates)){
+    
+    # Cattle
+    if(grepl(pattern="TB|AF-|HI-", x=isolates[index]) == TRUE){
+      
+      # Find index in table
+      strainIndex <- which(cattleInfo$StrainId == isolates[index])
+      isolateInfo[index, "SamplingDate"] <- strsplit(as.character(cattleInfo[strainIndex, "BreakdownID"]),
+                                                     split="-")[[1]][2] # 14082000501-23/02/1999
+      isolateInfo[index, "X"] <- cattleInfo[strainIndex, "Mapx"]
+      isolateInfo[index, "Y"] <- cattleInfo[strainIndex, "Mapy"]
+      isolateInfo[index, "AnimalID"] <- cattleInfo[strainIndex, "Rawtag"]
+      isolateInfo[index, "Species"] <- "COW"
+      
+      # Badgers
+    }else if(grepl(pattern="WB", x=isolates[index]) == TRUE){
+      
+      # Find index in table
+      strainIndex <- which(badgerInfo$WB_id == isolates[index])
+      isolateInfo[index, "SamplingDate"] <- badgerInfo[strainIndex, "date"] # 12/01/2000
+      if(is.na(badgerInfo[strainIndex, "GroupCentroidX"]) == FALSE){
+        isolateInfo[index, "X"] <- badgerInfo[strainIndex, "GroupCentroidX"]
+        isolateInfo[index, "Y"] <- badgerInfo[strainIndex, "GroupCentroidY"]
+      }else{
+        isolateInfo[index, "X"] <- badgerInfo[strainIndex, "SampledGrpX"]
+        isolateInfo[index, "Y"] <- badgerInfo[strainIndex, "SampledGrpY"]
+      }
+      isolateInfo[index, "AnimalID"] <- badgerInfo[strainIndex, "tattoo"]
+      isolateInfo[index, "Species"] <- "BADGER"
+    }
+  }
+  
+  isolateInfo$SamplingDate <- as.Date(isolateInfo$SamplingDate, format="%d/%m/%Y")
+  
+  return(isolateInfo)
+}
+
+euclideanDistance <- function(x1, y1, x2, y2){
+  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+}
+
+calculateDistanceToBadgerCentre <- function(badgerCentre, isolateInfo){
+  
+  isolateInfo$Distance <- rep(NA, nrow(isolateInfo))
+  for(row in 1:nrow(isolateInfo)){
+    
+    # Skip isolates with an unknown location
+    if(is.na(isolateInfo[row, "X"]) == FALSE){
+      isolateInfo[row, "Distance"] <- euclideanDistance(x1=badgerCentre[1], y1=badgerCentre[2],
+                                                        x2=isolateInfo[row, "X"],
+                                                        y2=isolateInfo[row, "Y"])
+    }  
+  }
+  
+  return(isolateInfo)
+}
+
+selectSingleIsolatePerAnimalBasedUponVariantPositionCoverage <- function(isolateInfo){
+  
+  # Initialise an array to store the indices of rows to keep
+  rowsToKeep <- c()
+  index <- 0
+  
+  # Examine each of the sampled animals
+  for(animal in unique(isolateInfo$AnimalID)){
+    
+    # Get the row indices for sampled animal
+    rowIndices <- which(isolateInfo$AnimalID == animal)
+    
+    # Check if multiple sequences available
+    if(length(rowIndices) > 1){
+      
+      # Choose an isolate from the available
+      chosenIndex <- rowIndices[which.max(isolateInfo[rowIndices, "Coverage"])]
+      index <- index + 1
+      rowsToKeep[index] <- chosenIndex
+      
+      # Keep single isolate for sampled animal
+    }else{
+      index <- index + 1
+      rowsToKeep[index] <- rowIndices[1]
+    }
+  }
+  
+  # Keep isolate info for those selected
+  return(isolateInfo[rowsToKeep, ])
+  
+}
+
+getIsolateSequences <- function(fastaFile, isolates){
+  
+  sequences <- readFASTA(fastaFile, skip=1)
+  
+  # Get the sequences for the isolates
+  isolateSequences <- c()
+  for(i in 1:length(isolates)){
+    
+    # Check if sequence present for isolate
+    if(is.null(sequences[[isolates[i]]]) == FALSE){
+      
+      isolateSequences[i] <- sequences[[isolates[i]]]
+    }else{
+      print(paste("Couldn't find sequence for: ", isolates[i]))
+    }
+  }
+  
+  return(isolateSequences)
+}
+
+getIsolatesInBASTAClade <- function(tipLabels){
+
+  # Get the tip labels - note that they'll have sampling dates attached to them
+  isolates <- tipLabels
+  for(i in 1:length(isolates)){
+    isolates[i] = strsplit(isolates[i], split="_")[[1]][1]
+  }
+  
+  # Convert this array to list
+  isolatesInClade <- convertVectorToList(isolates)
+  
+  return(isolatesInClade)
+}
+
 
 viewRAxMLTree <- function(treeBS, filePath=path){
 

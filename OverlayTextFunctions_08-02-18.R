@@ -2,21 +2,25 @@
 # Generate random points #
 ##########################
 
+# Open a PDF
+pdf(file="C:/Users/Joseph Crisp/Desktop/OverlayTextExample.pdf")
+
 # Create some random points
-n <- 25
-x <- runif(n)
-y <- runif(n)
-labels <- rep("Test Label", n)
+n <- 50
+coords <- data.frame(X=runif(n), Y=runif(n), Name="Test Label")
 
-# Plot them
-plot(x=x, y=y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+# Plot them without labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
 
-###############
-# Plot labels #
-###############
+# With basis labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+text(coords$X, coords$Y, labels=coords$Name, xpd=TRUE)
 
-overlayText(x, y, labels, cex=1)
+# Plot them with non-overlapping labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+overlayText(coords$X, coords$Y, coords$Name, cex=1)
 
+dev.off()
 
 #############
 # FUNCTIONS #

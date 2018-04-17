@@ -27,17 +27,9 @@ path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndB
 file <- paste(path, "vcfFiles/",  "mlTree_BASTAClade_DatedTips_27-03-18.tree", sep="")
 isolatesInClade <- getIsolatesFromTree(file)
 
-#############################
-# Read in Isolate Sequences #
-#############################
-
-# Read in the FASTA file
-file <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
-isolateSequences <- getIsolateSequences(file, isolatesInClade)
-
-######################################
-# Get the Sampling Date and Location #
-######################################
+###############################
+# Get the isolate information #
+###############################
 
 # Note the sampling infor file names
 cattleInfoFile <- paste(path, "IsolateData/",
@@ -47,24 +39,16 @@ badgerInfoFile <- paste(path, "IsolateData/",
                         "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 
 # Get Isolate sampling information
-isolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile, 
+selectedIsolateInfo <- getIsolateSamplingInformation(cattleInfoFile, badgerInfoFile, 
                                              isolates=names(isolatesInClade))
 
-###################################
-# Get the isolate genome coverage #
-###################################
+# Calculate distance of isolates to badger centre
+badgerCentre <- c(381761.7, 200964.3)
+selectedIsolateInfo <- calculateDistanceToBadgerCentre(badgerCentre, selectedIsolateInfo)
 
-# Read in genome coverage table
-file <- paste(path, "vcfFiles/", "IsolateVariantPositionCoverage_RESCUED_24-03-2018.txt", sep="")
-isolateInfo <- getIsolateVariantPositionCoverage(file, isolateInfo)
-
-####################################################
-# Pick Isolates for badgers sampled multiple times #
-####################################################
-
-# Keep isolate info for those selected
-selectedIsolateInfo <- selectSingleIsolatePerAnimalBasedUponVariantPositionCoverage(isolateInfo,
-                                                                                    isolateSequences)
+# Add the isolate sequences
+file <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
+selectedIsolateInfo$Sequence <- getIsolateSequences(file, isolatesInClade)
 
 ##########################################################
 # Build XML files according to different deme structures #
@@ -78,27 +62,28 @@ selectedIsolateInfo <- removeSequencesIfSamplingFromPrior(selectedIsolateInfo,
                                                           sampleFromPrior)
 
 # Note deme structure to use
-demeStructures <- c("2Deme", "3Deme-outerIsBoth", "3Deme-outerIsBadger",
-                    "3Deme-outerIsCattle", "4Deme", "6Deme-EastWest", 
-                    "6Deme-NorthSouth", "8Deme-EastWest", "8Deme-NorthSouth")
+demeStructures <- c(
+  "2Deme",
+  "3Deme-outerIsBoth",
+  "3Deme-outerIsBadger",
+  "3Deme-outerIsCattle",
+  "4Deme",
+  "6Deme-EastWest",
+  "6Deme-NorthSouth",
+  "8Deme-EastWest",
+  "8Deme-NorthSouth")
 
 # Set options for population size estimate
-popSizeEstimation <- c("equal", "varying")
+popSizeEstimation <- c("equal", "varying") # "equal", "varying"
 
 # Set options for the clock model
-clockModels <- c("relaxed") # could include strict here
+clockModels <- c("relaxed") # "strict", "relaxed"
 
 # Options
 chainLength <- 300000000
 
 # Note the constant site counts file name
 constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_24-03-2018.txt", sep="")
-
-# Badger centre
-badgerCentre <- c(381761.7, 200964.3)
-
-# Calculate distance of isolates to badger centre
-selectedIsolateInfo <- calculateDistanceToBadgerCentre(badgerCentre, selectedIsolateInfo)
 
 # Define inner circle radius
 innerDistance <- 3500
@@ -733,7 +718,7 @@ addConstantSiteCountsBlock <- function(fileLines, constantSiteCountFile){
   for(line in lines){
     
     # Skip lines without counts
-    if(grepl(line, pattern="Counts|A") == TRUE || line == ""){
+    if(grepl(line, pattern="Counts|A|Allele|counts") == TRUE || line == ""){
       next
     }
     
@@ -945,65 +930,6 @@ calculateDistanceToBadgerCentre <- function(badgerCentre, isolateInfo){
   return(isolateInfo)
 }
 
-selectSingleIsolatePerAnimalBasedUponVariantPositionCoverage <- function(isolateInfo, isolateSequences){
-  
-  # Add sequences to table
-  isolateInfo$Sequence <- isolateSequences
-  
-  # Initialise an array to store the indices of rows to keep
-  rowsToKeep <- c()
-  index <- 0
-  
-  # Examine each of the sampled animals
-  for(animal in unique(isolateInfo$AnimalID)){
-    
-    # Get the row indices for sampled animal
-    rowIndices <- which(isolateInfo$AnimalID == animal)
-    
-    # Check if multiple sequences available
-    if(length(rowIndices) > 1){
-      
-      # Choose an isolate from the available
-      chosenIndex <- rowIndices[which.max(isolateInfo[rowIndices, "Coverage"])]
-      index <- index + 1
-      rowsToKeep[index] <- chosenIndex
-      
-      # Keep single isolate for sampled animal
-    }else{
-      index <- index + 1
-      rowsToKeep[index] <- rowIndices[1]
-    }
-  }
-  
-  # Keep isolate info for those selected
-  return(isolateInfo[rowsToKeep, ])
-  
-}
-
-getIsolateVariantPositionCoverage <- function(vpCoverageFile, isolateInfo){
-  
-  # Read in variant position coverage table
-  coverageInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
-  
-  # Parse Isolate IDs
-  coverageInfo$Isolate <- getIsolateIDFromFileNames(coverageInfo$Isolate)
-  
-  # Add coverage column to tip info
-  isolateInfo$Coverage <- rep(0, nrow(isolateInfo))
-  
-  for(row in 1:nrow(isolateInfo)){
-    
-    # Is this an isolate we're interested in?
-    if(isolateInfo[row, "IsolateID"] %in% coverageInfo$Isolate){
-      isolateInfo[row, "Coverage"] <- 
-        coverageInfo[which(coverageInfo$Isolate == isolateInfo[row, "IsolateID"]),
-                     "Coverage"]
-    }
-  }
-  
-  return(isolateInfo)
-}
-
 getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolates){
 
   # Read in sampling information
@@ -1048,6 +974,8 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
     }
   }
   
+  isolateInfo$SamplingDate <- as.Date(isolateInfo$SamplingDate, format="%d/%m/%Y")
+  
   return(isolateInfo)
 }
 
@@ -1087,21 +1015,6 @@ getIsolatesFromTree <- function(treeFile){
 
   # Convert this array to list
   isolatesInClade <- convertVectorToList(isolates)
-  
-  return(isolatesInClade)
-}
-
-getIsolatesInClade <- function(treeFile, node){
-  
-  tree <- read.tree(file=treeFile)
-  
-  tree <- root
-  
-  # Get a list of the isolates in the clade
-  cladeTips <- tips(tree, node=node)
-  
-  # Convert this array to list
-  isolatesInClade <- convertVectorToList(cladeTips)
   
   return(isolatesInClade)
 }

@@ -9,7 +9,7 @@ library(geiger) # Phylogenetic tree tools
 library(plotrix) # Draw circle
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 #######################################################################
 # Calculate the Territory Centroids of Each Social Group in Each Year #
@@ -101,14 +101,9 @@ cphs <- noteLandParcelsAssociatedWithCPHs(landParcels@data)
 # Note isolates in clade of interest #
 ######################################
 
-# Read in the newick tree
-file <- paste(path, "vcfFiles/",
-              "mlTree_29-09-2017.tree", sep="")
-tree <- read.tree(file=file)
-
-# Get a list of the isolates in the clade
-node <- 301
-cladeTips <- tips(tree, node=node)
+# Get the isolates from BASTA clade tree
+file <- paste(path, "vcfFiles/",  "mlTree_BASTAClade_DatedTips_27-03-18.tree", sep="")
+cladeTips <- getIsolatesFromTree(file)
 
 ##########################################
 # Get badger isolates sampling locations #
@@ -128,7 +123,7 @@ badgerInfo <- badgerInfo[badgerInfo$WB_id %in% cladeTips, ]
 
 # Cattle Isolates
 file <- paste(path, "IsolateData/", 
-              "CattleIsolateInfo_LatLongs_plusID_outbreakSize_Coverage_AddedStrainIDs.csv", sep="")
+              "CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv", sep="")
 cattleInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Select info only for cattle isolates in clade
@@ -143,15 +138,15 @@ sampledCPHs <- names(cphs)[names(cphs) %in% cattleInfo$CPH]
 
 # Define inner circle radius
 thresholdDistance <- 3500
-outerDistance <- 8100
+outerDistance <- 10000
 
 # Open a PDF
-file <- paste(path, "BASTA/", "DemeAssignmentDiagram_02-10-17.pdf", sep="")
+file <- paste(path, "BASTA/", "DemeAssignmentDiagram_03-04-18.pdf", sep="")
 pdf(file)
 
 # Find centre point of badger locations
 badgerCentre <- findBadgerGroupsCentre(groupsCentroidsPerYear)
-expand <- 8000
+expand <- 10000
 
 ##############################################
 # Plot the badger territories from all years #
@@ -250,8 +245,12 @@ for(cph in sampledCPHs){
 #################################
 alpha <- 0.9
 for(row in 1:nrow(cattleInfo)){
-  points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
-         col=setAlpha(sampledCPHColours[[cattleInfo[row, "CPH"]]], alpha), cex=1.5)
+  if(is.null(sampledCPHColours[[cattleInfo[row, "CPH"]]]) != TRUE){
+    points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+           col=setAlpha(sampledCPHColours[[cattleInfo[row, "CPH"]]], alpha), cex=1.5)
+  }else{
+    cat(paste("No land parcel data available for:", cattleInfo[row, "CPH"], "\n"))
+  }
 }
 
 #########################################
@@ -286,124 +285,62 @@ legend("bottomright", legend=c("Badger", "Cow"), text.col=c("black", "black"),
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5))
 
 
-#####
-#####
-#####
-
-#####################################
-# Add colours to distinguish clades #
-#####################################
-
-# Note the clades
-nodesDefiningClades <- c(521, 305, 332, 382) # use nodelabels() to show node numbers
-cladeColours <- c("cyan", "pink", "green", "darkorchid4")
-isolatesInClades <- findIsolatesInClades(tree, nodesDefiningClades)
-
-# Note which CPHs are associated with which clusters
-groupOrHerdClusters <- getSampledGroupsOrHerdsAssociatedWithClusters(isolatesInClades,
-                                                                     badgerInfo,
-                                                                     cattleInfo)
-
-##############################################
-# Plot the badger territories from all years #
-##############################################
-
-# Plot the badger territories from each year onto a single plot
-cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.2)
-plotTerritoriesWithClusterColours(territoriesForEachYear, badgerCentre, expand,
-                                  rgb(0,0,0, 0.1), cladeColoursRGB, groupOrHerdClusters,
-                                  lwd=1.5)
-
-# Not the clade of each isolate
-isolateClades <- invertIsolatesInClades(isolatesInClades)
-
-##############################################
-# Plot the land parcels of the sampled herds #
-##############################################
-
-# Plot polygons from sampled herds
-cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.5)
-for(cph in sampledCPHs){
-  
-  for(key in cphs[[cph]]){
-
-    if(is.null(groupOrHerdClusters[[cph]]) == FALSE){
-      
-      for(cluster in groupOrHerdClusters[[cph]]){
-        colour <- cladeColoursRGB[as.numeric(cluster)]
-        polygon(landParcelCoords[[key]], border=colour, lty=2, lwd=2)
-      }
-    }else{
-      polygon(landParcelCoords[[key]], border=rgb(0,0,0, 0.5), lty=2, lwd=2)
-    }
-  }
-}
-
-#################################
-# Plot the sampled cattle herds #
-#################################
-cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=1)
-for(row in 1:nrow(cattleInfo)){
-  
-  if(is.null(isolateClades[[cattleInfo[row, "StrainId"]]]) == FALSE){
-    
-    points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
-           col=cladeColoursRGB[as.numeric(isolateClades[[cattleInfo[row, "StrainId"]]])],
-           cex=1.5)
-    
-  }else{
-    points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
-           col=rgb(0,0,0, 1), cex=1.5)
-  }
-}
-
-#########################################
-# Add Badger sampling locations to plot #
-#########################################
-
-# Plot the badger isolate sampling locations
-cladeColoursRGB <- getRGBsOfColours(cladeColours, alpha=0.75)
-addBadgerIsolatesLocationsWithClusterColours(badgerInfo=badgerInfo, 
-                                             groupsRows=groupsRows,
-                                             groupsCentroidsPerYear=groupsCentroidsPerYear, 
-                                             defaultColour=rgb(0,0,0, 0.5),
-                                             cex=2,
-                                             cladeColoursRGB=cladeColoursRGB,
-                                             isolateClades=isolateClades)
-
-###############################################
-# Add circles to define inner and outer demes #
-###############################################
-
-# Add deme defining circles
-draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
-            border="black")
-draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
-            border="black")
-text(x=badgerCentre[1], y=(badgerCentre[2] - thresholdDistance) + 500,
-     labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
-text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
-     labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
-
-##############
-# Add Legend #
-##############
-
-# Add legend
-legend("bottomright", legend=c("Badger", "Cow"), text.col=c("black", "black"),
-       bty="n", pch=c(20, 17), pt.cex=c(2, 1.5),
-       col=c("black", "black"))
-
-legend(x=387150, y=196000, legend=c("Cluster-0", "Cluster-1","Cluster-2","Cluster-3"),
-       text.col=cladeColours, bty="n", cex=0.75)
-
-
 dev.off()
 
 
 #############
 # FUNCTIONS #
 #############
+
+getIsolatesFromTree <- function(treeFile){
+  
+  # Read in the BASTA clade tree
+  tree <- read.tree(file=treeFile)
+  
+  # Get the tip labels - note that they'll have sampling dates attached to them
+  isolates <- tree$tip.label
+  for(i in 1:length(isolates)){
+    isolates[i] = strsplit(isolates[i], split="_")[[1]][1]
+  }
+
+  return(isolates)
+}
+
+parseIsolateLabels <- function(isolateNames){
+  
+  output <- c()
+  for(i in 1:length(isolateNames)){
+    
+    if(isolateNames[i] != "Ref-1997"){
+      output[i] <- strsplit(isolateNames[i], split="_")[[1]][1]
+    }else{
+      output[i] <- isolateNames[i]
+    }
+    
+    if(grepl(isolateNames[i], pattern=">") == TRUE){
+      output[i] <- substr(output[i], start=2, stop=nchar(output[i]))
+    }
+  }
+  
+  return(output)
+}
+
+getNSitesInFASTA <- function(fastaFile){
+  
+  # Open a connection to a file to read (open="r")
+  connection <- file(fastaFile, open="r")
+  
+  # Get first line of file
+  firstLine <- readLines(connection, n=1)
+  
+  # Close file connection
+  close(connection)
+  
+  # Get the number of sites used in the FASTA file from first line
+  nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
+  
+  return(nSites)
+}
 
 invertIsolatesInClades <- function(isolatesInClades){
   

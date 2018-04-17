@@ -3,10 +3,11 @@
 #-------------------#
 
 # Packages
-library(phangorn)
+library(phangorn) # Maximum likelihood phylogeny
 library(gplots)
 library(geiger) # For the tips function
 library(grid) # Used to plot lines between plot panels
+library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasmy/"
@@ -24,34 +25,30 @@ mutationRate <- 0.5
 infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
-nHomoplasieValues <- 0:10
+nHomoplasiesValues <- 0:10
 nSimulations <- 1000
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
-results <- data.frame("NFoundTrue"=rep(NA, nSimulations*length(nHomoplasieValues)), 
-                      "NIncorrectTrue"=rep(NA, nSimulations*length(nHomoplasieValues)),
-                      "NFoundAfter"=rep(NA, nSimulations*length(nHomoplasieValues)), 
-                      "NIncorrectAfter"=rep(NA, nSimulations*length(nHomoplasieValues)),
-                      "Seed"=rep(NA, nSimulations*length(nHomoplasieValues)), 
-                      "NHomoplasies"=rep(NA, nSimulations*length(nHomoplasieValues)))
+results <- data.frame("NFoundTrue"=rep(NA, nSimulations*length(nHomoplasiesValues)), 
+                      "NIncorrectTrue"=rep(NA, nSimulations*length(nHomoplasiesValues)),
+                      "NFoundAfter"=rep(NA, nSimulations*length(nHomoplasiesValues)), 
+                      "NIncorrectAfter"=rep(NA, nSimulations*length(nHomoplasiesValues)),
+                      "Seed"=rep(NA, nSimulations*length(nHomoplasiesValues)), 
+                      "NHomoplasies"=rep(NA, nSimulations*length(nHomoplasiesValues)))
 
 # Set the working directory
 setwd(path)
 
 # Run the simulations
-seeds <- sample(1:100000000, size=nSimulations*length(nHomoplasieValues), replace=FALSE)
+seeds <- sample(1:100000000, size=nSimulations*length(nHomoplasiesValues), replace=FALSE)
 row <- 0
-for(nHomoplasies in nHomoplasieValues){
+for(nHomoplasies in nHomoplasiesValues){
   for(i in 1:nSimulations){
     row <- row + 1
     
     # Progress
-    if(nHomoplasies == 1){
-      cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasy"))
-    }else{
-      cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasies"))
-    }
-    
+    cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasy(ies)     "))
+
     # Get the current seed
     results[row, "Seed"] <- seeds[row]
     set.seed(results[row, "Seed"])
@@ -69,10 +66,10 @@ for(nHomoplasies in nHomoplasieValues){
     
     # Build phylogeny
     trueTreeFile <- paste("example-TRUE_", date, ".tree", sep="")
-    buildPhylogeny(sequences, trueTreeFile)
+    treeBefore <- buildPhylogeny(sequences, trueTreeFile, maximumLikelihood=TRUE)
     
     # Insert homoplasies
-    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies)
+    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
     sequences <- homoplasyInsertionInfo[["sequences"]]
     
     # Build FASTA
@@ -81,7 +78,7 @@ for(nHomoplasies in nHomoplasieValues){
     
     # Build phylogeny
     treeFile <- paste("example-AFTER_", date, ".tree", sep="")
-    buildPhylogeny(sequences, treeFile)
+    buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
     
     #######
     ## Run HomoplasyFinder using the TRUE tree
@@ -113,15 +110,19 @@ for(nHomoplasies in nHomoplasieValues){
 
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
-              min(nHomoplasieValues), "-", max(nHomoplasieValues), "_", nSimulations, "_", date, ".pdf", sep="")
+              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".pdf", sep="")
 pdf(file)
 
 plot(x=NULL, y=NULL, xlim=range(results$NHomoplasies), ylim=c(0,1), las=1, bty="n",  
-     xlab="Number Inserted", ylab="Proportion Present", main="Identifying Homoplasies using HomoplasyFinder")
+     xlab="Number homoplasies inserted", ylab="Proportion present",
+     main="Identifying inserted homoplasies using HomoplasyFinder")
 for(i in unique(results$NHomoplasies)){
   
   subset <- results[results$NHomoplasies == i, ]
-  counts <- table(subset$NFound / subset$NHomoplasies)
+  counts <- table(subset$NFoundAfter / subset$NHomoplasies)
+  if(nrow(counts) == 0){
+    counts <- table(subset$NFoundAfter)
+  }
   
   points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
   text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
@@ -131,12 +132,17 @@ for(i in unique(results$NHomoplasies)){
 
 plot(x=NULL, y=NULL, 
      xlim=range(results$NHomoplasies),
-     ylim=range(c(results$NHomoplasies, results$NIncorrect)), las=1, bty="n",  
-     xlab="Number Inserted", ylab="Number New Homoplasies Present", main="Identifying Homoplasies using HomoplasyFinder")
+     ylim=range(results$NIncorrectAfter), las=1, bty="n",  
+     xlab="Number homoplasies inserted", 
+     ylab="Number non-inserted homoplasies Present", 
+     main="Identifying non-inserted homoplasies using HomoplasyFinder")
 for(i in unique(results$NHomoplasies)){
   
   subset <- results[results$NHomoplasies == i, ]
-  counts <- table(subset$NIncorrect)
+  counts <- table(subset$NIncorrectAfter)
+  if(nrow(counts) == 0){
+    counts <- table(subset$NIncorrectAfter)
+  }
   
   points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
   text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
@@ -144,54 +150,127 @@ for(i in unique(results$NHomoplasies)){
        col=rgb(1,0,0, 1), cex=1)
 }
 
+plot(x=results$NFoundTrue, y=results$NFoundAfter,
+     xlim=range(results$NHomoplasies), ylim=range(results$NHomoplasies), las=1, bty="n",  
+     xlab="Number inserted homoplasies present on tree built without homoplasies", 
+     ylab="Number inserted homoplasies present on tree built with homoplasies",
+     pch=19, cex=6, col=rgb(0,0,0, 0.005), xpd=TRUE,
+     main="Identifying inserted homoplasies on tree\n built with and without them")
+for(i in 0:max(results$NHomoplasies)){
+  
+  for(j in 0:max(results$NHomoplasies)){
+    
+    count <- nrow(results[results$NFoundTrue == i & results$NFoundAfter == j, ])
+    if(count != 0){
+      text(x=i, y=j,
+           labels=round(count/nrow(results), digits=2),
+           col=rgb(0,0,1, 1), cex=1)
+    }
+  }
+}
+
+plot(x=results$NIncorrectTrue, y=results$NIncorrectAfter,
+     xlim=range(results$NHomoplasies), ylim=range(results$NHomoplasies), las=1, bty="n",  
+     xlab="Number non-inserted homoplasies present on tree built without homoplasies", 
+     ylab="Number non-inserted homoplasies present on tree built with homoplasies",
+     pch=19, cex=6, col=rgb(0,0,0, 0.005), xpd=TRUE,
+     main="Identifying non-inserted homoplasies on tree\n built with and without them")
+for(i in 0:max(results$NHomoplasies)){
+  
+  for(j in 0:max(results$NHomoplasies)){
+    
+    count <- nrow(results[results$NIncorrectTrue == i & results$NIncorrectAfter == j, ])
+    if(count != 0){
+      text(x=i, y=j,
+           labels=round(count/nrow(results), digits=2),
+           col=rgb(0,0,1, 1), cex=1)
+    }
+  }
+}
+
+results$Proportion <- results$NFoundAfter / results$NFoundTrue
+results$Proportion[is.nan(results$Proportion)] <- 0
+plot(x=results$NFoundTrue, y=results$Proportion,
+     pch=19, cex=6, col=rgb(0,0,0, 0.01), bty="n", xpd=TRUE, las=1,
+     xlab="Number homoplasies present on tree built without homoplasies",
+     ylab="Proportion present on tree built with homoplasies",
+     main="Number homoplasies present on true tree that were\n identified on tree built using homoplasies")
+
+for(i in unique(results$NFoundTrue)){
+  
+  for(j in unique(results$Proportion)){
+    
+    count <- nrow(results[results$NFoundTrue == i & results$Proportion == j, ])
+    if(count != 0){
+      
+      text(x=i, y=j,
+           labels=round(count/nrow(results), digits=2),
+           col=rgb(0,0,1, 1), cex=1)
+    }
+  }
+}
+
 dev.off()
+
+# Write the results to file
+file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".csv", sep="")
+write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Generation example ####
 
 # Simulation settings
 nHomoplasies <- 2
 
-file <- paste(path, "ManuscriptExample_", popSize, "-", mutationRate,
-              "-", infectiousness, "-", samplingProb, "-", nToSample, "_", nHomoplasies, "_", date, ".pdf", sep="")
-pdf(file)
-
-# Generate the sequences
-par(mfrow=c(1,1))
-simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
-                                  samplingProb, nToSample, TRUE)
-
-# Build the sequences based upon the mutation events
-sequences <- buildSequences(simulationOutput)
-
-par(mfrow=c(1,2))
-par(mar=c(0,0,0,0))
-
-# Insert homoplasies
-sequences[["REF"]] <- NULL
-homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, TRUE,
-                                            tipCex=0.6, margins=FALSE, showScale=TRUE,
-                                            showTips=FALSE)
-sequences <- homoplasyInsertionInfo[["sequences"]]
-
-# Get tip coordinates
-tipsPriorToHomoplasies <- getTipCoordinates(simulationOutput$sampled)
-
-# Build FASTA
-writeFasta(sequences, paste(path, "ManuscriptExample_", date, ".fasta", sep=""))
-
-# Build phylogeny
-buildPhylogeny(sequences, paste(path, "ManuscriptExample_", date, ".tree", sep=""),
-               homoplasyInsertionInfo, TRUE, tipCex=0.6, margins=FALSE, showScale=FALSE,
-               direction="leftwards", showTips=FALSE)
-
-# Get tip coordinates
-tipsPostHomoplasies <- getTipCoordinates(simulationOutput$sampled)
-
-# Plot lines between tips that have changed location
-plotLinesBetweenTips(tipsPriorToHomoplasies, tipsPostHomoplasies, col=rgb(1,0,0, 0.5), lwd=2)
-
-par(mar=c(5.1, 4.1, 4.1, 2.1))
-dev.off()
+for(i in 1:100){
+  file <- paste(path, "Examples/ManuscriptExample_", popSize, "-", mutationRate,
+                "-", infectiousness, "-", samplingProb, "-", nToSample, "_", nHomoplasies, "_", i, "_", date, ".pdf", sep="")
+  pdf(file)
+  
+  # Generate the sequences
+  par(mfrow=c(1,1))
+  simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                    samplingProb, nToSample, TRUE)
+  
+  # Build the sequences based upon the mutation events
+  sequences <- buildSequences(simulationOutput)
+  sequences[["REF"]] <- NULL
+  
+  par(mfrow=c(1,2))
+  par(mar=c(0,0,0,0))
+  
+  # Build phylogeny
+  trueTreeFile <- paste(path, "Examples/ManuscriptExample_TRUE_", date, ".tree", sep="")
+  treeBefore <- buildPhylogeny(sequences, trueTreeFile, maximumLikelihood=TRUE)
+  
+  # Insert homoplasies
+  homoplasyInsertionInfo <- insertHomoplasies(sequences, tree=treeBefore, n=nHomoplasies, verbose=TRUE)
+  sequences <- homoplasyInsertionInfo[["sequences"]]
+  plotPhylogeny(treeBefore, homoplasyInsertionInfo=homoplasyInsertionInfo, verbose=TRUE, tipCex=0.6, margins=FALSE,
+                showScale=TRUE, showTips=FALSE)
+  
+  # Get tip coordinates
+  tipsPriorToHomoplasies <- getTipCoordinates(simulationOutput$sampled)
+  
+  # Build FASTA
+  writeFasta(sequences, paste(path, "Examples/ManuscriptExample_", date, ".fasta", sep=""))
+  
+  # Build phylogeny
+  treeAfter <- buildPhylogeny(sequences, paste(path, "Examples/ManuscriptExample_AFTER_", date, ".tree", sep=""), 
+                              maximumLikelihood=TRUE)
+  plotPhylogeny(treeAfter, homoplasyInsertionInfo=NULL, verbose=TRUE, tipCex=0.6, margins=FALSE, showScale=FALSE,
+                direction="leftwards", showTips=FALSE)
+  
+  # Get tip coordinates
+  tipsPostHomoplasies <- getTipCoordinates(simulationOutput$sampled)
+  
+  # Plot lines between tips that have changed location
+  plotLinesBetweenTips(tipsPriorToHomoplasies, tipsPostHomoplasies, col=rgb(1,0,0, 0.5), lwd=2)
+  
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  dev.off()
+}
 
 #############
 # FUNCTIONS #
@@ -225,45 +304,49 @@ getTipCoordinates <- function(tipLabels){
   return(tips)
 }
 
-reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyInsertionInfo){
+reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyInsertionInfo, nHomoplasiesValues){
   
   # Initialise a variable to record how many of the inserted homoplasies were found
   nFound <- 0
   
   # Examine each of the homoplasies inserted
-  for(key in names(homoplasyInsertionInfo)[names(homoplasyInsertionInfo) != "sequences"]){
+  homoplasies <- 1:(length(homoplasyInsertionInfo) - 2)
+  if(length(homoplasyInsertionInfo) - 2 != 0){
     
-    # Search for current homoplasy in HomoplasyFinder output
-    rows <- which(homoplasyFinderOutput$Position == homoplasyInsertionInfo[[key]]$position)
-    if(length(row) == 0){
-      next
-    }
-    
-    for(row in rows){
+    for(key in as.character(homoplasies)){
       
-      # Find the allele index
-      alleleIndex <- which(strsplit(homoplasyFinderOutput[row, "Alleles"], split=",")[[1]] == 
-                             homoplasyInsertionInfo[[key]]$allele)
-      if(length(alleleIndex) == 0){
+      # Search for current homoplasy in HomoplasyFinder output
+      rows <- which(homoplasyFinderOutput$Position == homoplasyInsertionInfo[[key]]$position)
+      if(length(rows) == 0){
         next
       }
       
-      # Check all the isolates associated with the source an dsink nodes are present
-      present <- TRUE
-      sourceSinkIsolates <- c(homoplasyInsertionInfo[[key]]$sourceIsolates,
-                              homoplasyInsertionInfo[[key]]$sinkIsolates)
-      isolates = strsplit(
-        strsplit(homoplasyFinderOutput[row, "IsolatesForAlleles"], split=",")[[1]][alleleIndex], 
-        split="-")[[1]]
-      for(isolate in sourceSinkIsolates){
+      for(row in rows){
         
-        if(isolate %in% isolates == FALSE){
-          present <- FALSE
-          break
+        # Find the allele index
+        alleleIndex <- which(strsplit(homoplasyFinderOutput[row, "Alleles"], split=",")[[1]] == 
+                               homoplasyInsertionInfo[[key]]$allele)
+        if(length(alleleIndex) == 0){
+          next
         }
-      }
-      if(present == TRUE){
-        nFound <- nFound + 1
+        
+        # Check all the isolates associated with the source an dsink nodes are present
+        present <- TRUE
+        sourceSinkIsolates <- c(homoplasyInsertionInfo[[key]]$sourceIsolates,
+                                homoplasyInsertionInfo[[key]]$sinkIsolates)
+        isolates = strsplit(
+          strsplit(homoplasyFinderOutput[row, "IsolatesForAlleles"], split=",")[[1]][alleleIndex], 
+          split="-")[[1]]
+        for(isolate in sourceSinkIsolates){
+          
+          if(isolate %in% isolates == FALSE){
+            present <- FALSE
+            break
+          }
+        }
+        if(present == TRUE){
+          nFound <- nFound + 1
+        }
       }
     }
   }
@@ -280,32 +363,49 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
   return(c(nFound, nWronglyFound))
 }
 
-buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo=NULL, verbose=FALSE,
-                           treeType="phylogram", tipCex=1, showTips=TRUE,
-                           margins=TRUE, showScale=TRUE, direction="rightwards",
-                           labelOffset=0.15){
+findNode <- function(nodes, isolates, verbose=FALSE){
   
-  # Build genetic distance matrix
-  geneticDistances <- buildGeneticDistanceMatrix(sequences)
+  # Initialise a the id of the node to return
+  id <- NULL
   
-  # Build neighbour joining tree
-  tree <- NJ(geneticDistances)
-
-  # Plot tree if wanting verbose information
-  if(verbose){
+  # Examine each node
+  for(key in names(nodes)){
     
-    if(margins == TRUE){
-      par(mar=c(0,0,0,0))
+    # Check if the current node represents the set of isolates
+    if(length(nodes[[key]]) == length(isolates) && length(which(isolates %in% nodes[[key]])) == length(isolates)){
+      id <- key
+      break
     }
+  }
+  
+  if(verbose == TRUE && is.null(id) == TRUE){
+    cat(paste("Unable to find node associated with isolates:", isolates, "\n"))
+  }
+  
+  return(id)
+}
+
+plotPhylogeny <- function(tree, homoplasyInsertionInfo=NULL, treeType="phylogram", tipCex=1, showTips=TRUE,
+                          showScale=TRUE, direction="rightwards", labelOffset=0.15, verbose=FALSE, margins=FALSE){
+  # Set the margins
+  if(margins == TRUE){
+    par(mar=c(0,0,0,0))
+  }
+  
+  # Order the nodes in the phylogeny by clade
+  tree <- ladderize(tree)
+  
+  # Label nodes associated with homoplasies - if homoplasy information available
+  nodeColours <- rep(rgb(0,0,0, 0), length(tree$edge.length) + 1)
+  if(is.null(homoplasyInsertionInfo) == FALSE){
     
-    # Order the nodes in the phylogeny by clade
-    #tree <- reorder(tree, order = "cladewise")
+    # Get the isolates associated with each node in the phylogeny
+    nodes <- getNodes(tree)
     
     # Define the colour of the nodes based on the inserted homoplasies
     colours <- c("blue", "green", "cyan", "orange", "darkorchid4",
                  "deeppink", "black", "brown", "darkolivegreen")
-    nodeColours <- rep(rgb(0,0,0, 0), length(tree$edge.length) + 1)
-    for(homoplasyId in names(homoplasyInsertionInfo)[names(homoplasyInsertionInfo) %in% c("sequences", "tree") == FALSE]){
+    for(homoplasyId in names(homoplasyInsertionInfo)[1:(length(homoplasyInsertionInfo)-2)]){
       
       # Get the colour for the current homoplasy
       colour <- colours[as.numeric(homoplasyId) %% length(colours)]
@@ -313,34 +413,82 @@ buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo=NULL, verbose
         colour <- colours[length(colours)]
       }
       
-      # Assign that colour to the source and sink nodes for the current homoplasy
-      nodeColours[as.numeric(homoplasyInsertionInfo[[homoplasyId]]$sourceNode)] <- colour
-      nodeColours[as.numeric(homoplasyInsertionInfo[[homoplasyId]]$sinkNode)] <- colour
-    }
-    
-    # Plot the tree
-    plot.phylo(tree, show.tip.label=showTips, type=treeType,
-               edge.color="grey", edge.width=2,
-               show.node.label=FALSE, label.offset=labelOffset,
-               tip.color="black", cex=tipCex, direction=direction)
-    
-    # Add node circles to highlight homoplasies
-    nodelabels(node=1:(length(tree$edge.length) + 1), pch=19, col=nodeColours, cex=1)
-    
-    if(showScale == TRUE){
-      # Get the axis limits
-      axisLimits <- par("usr")
+      # Identify the source and sink nodes on the current phylogeny (note node numbers may have changed)
+      sourceNode <- findNode(nodes, homoplasyInsertionInfo[[homoplasyId]]$sourceIsolates, verbose)
+      sinkNode <- findNode(nodes, homoplasyInsertionInfo[[homoplasyId]]$sinkIsolates, verbose)
       
-      # Add scale
-      xPos <- axisLimits[2] - (0.1 * (axisLimits[2] - axisLimits[1]))
-      yPos <- axisLimits[3] + (0.075 * (axisLimits[4] - axisLimits[3]))
-      lines(x=c(xPos,xPos+1), y=c(yPos, yPos), lwd=4)
-      text(x=xPos+0.5, y=axisLimits[3], labels="1 SNP", pos=3)  
+      # Assign that colour to the source and sink nodes for the current homoplasy
+      nodeColours[as.numeric(sourceNode)] <- colour
+      nodeColours[as.numeric(sinkNode)] <- colour
     }
+  }
+  
+  # Plot the tree
+  plot.phylo(tree, show.tip.label=showTips, type=treeType,
+             edge.color="grey", edge.width=2,
+             show.node.label=FALSE, label.offset=labelOffset,
+             tip.color="black", cex=tipCex, direction=direction)
+  
+  # Add node circles to highlight homoplasies
+  nodelabels(node=1:(length(tree$edge.length) + 1), pch=19, col=nodeColours, cex=1)
+  
+  if(showScale == TRUE){
+    # Get the axis limits
+    axisLimits <- par("usr")
     
-    if(margins == TRUE){
-      par(mar=c(5.1, 4.1, 4.1, 2.1))
-    }
+    # Add scale
+    xPos <- axisLimits[2] - (0.1 * (axisLimits[2] - axisLimits[1]))
+    yPos <- axisLimits[3] + (0.075 * (axisLimits[4] - axisLimits[3]))
+    lines(x=c(xPos,xPos+1), y=c(yPos, yPos), lwd=4, xpd=TRUE)
+    text(x=xPos+0.5, y=axisLimits[3], labels="1 SNP", pos=3, xpd=TRUE)  
+  }
+  
+  # Reset the margins
+  if(margins == TRUE){
+    par(mar=c(5.1, 4.1, 4.1, 2.1))
+  }
+}
+
+buildPhylogeny <- function(sequences, file, maximumLikelihood=FALSE){
+  
+  # Build genetic distance matrix
+  geneticDistances <- dist.dna(as.DNAbin.alignment(as.alignment(sequences)), model="JC69")
+  
+  # Build neighbour joining tree
+  njTree <- NJ(geneticDistances)
+  
+  # Build maximum likelihood tree if requested
+  if(maximumLikelihood == TRUE){
+    
+    # Remove negative branch lengths from NJ tree
+    njTree$edge.length[njTree$edge.length < 0] <- 0
+    
+    # Convert the sequences into a phyDat format
+    sequencesPhyDat <- phyDat(sequences, type="DNA", levels=NULL)
+    
+    # Compute likelihood of tree given sequences
+    likelihoodObject <- pml(njTree, sequencesPhyDat)
+    
+    # Set maximum likelihood controls
+    controls <- pml.control(maxit=100000, trace=0)
+    
+    # Run maximum likelihood
+    fittingOutput <- optim.pml(likelihoodObject, 
+                               optNni = TRUE,       # Optimise topology
+                               optInv = FALSE,       # Optimise proportion of variable sites
+                               model = "JC",       # Substitution model
+                               rearrangement="NNI", # Nearest Neighbour Interchanges
+                               control=controls)
+    
+    # Get the tree
+    tree <- fittingOutput$tree
+    
+    # Convert edge lengths to SNPs
+    tree$edge.length <- tree$edge.length * length(sequences[[1]])
+    
+  }else{
+    tree <- njTree
+    tree$edge.length <- tree$edge.length * length(sequences[[1]])
   }
   
   # Write the tree to file
@@ -350,45 +498,7 @@ buildPhylogeny <- function(sequences, file, homoplasyInsertionInfo=NULL, verbose
   return(tree)
 }
 
-insertHomoplasies <- function(n, sequences, verbose=FALSE, treeType="phylogram", tipCex=1, showTips=TRUE,
-                              margins=TRUE, showScale=TRUE,
-                              labelOffset=0.15){
-  
-  # Build genetic distance matrix
-  geneticDistances <- buildGeneticDistanceMatrix(sequences)
-  
-  # Build neighbour joining tree
-  tree <- NJ(geneticDistances)
-  if(verbose == TRUE){
-    
-    if(margins == TRUE){
-      par(mar=c(0,0,0,0))
-    }
-    
-    # Order the nodes in the phylogeny by clade
-    #tree <- reorder(tree, order = "cladewise")
-    
-    # plot the tree
-    plot.phylo(tree, show.tip.label=showTips, type=treeType,
-               edge.color="grey", edge.width=2,
-               show.node.label=FALSE, label.offset=labelOffset,
-               tip.color="black", cex=tipCex)
-    
-    if(showScale == TRUE){
-      # Get the axis limits
-      axisLimits <- par("usr")
-      
-      # Add scale
-      xPos <- axisLimits[2] - (0.3 * (axisLimits[2] - axisLimits[1]))
-      yPos <- axisLimits[3] + (0.05 * (axisLimits[4] - axisLimits[3]))
-      lines(x=c(xPos,xPos+5), y=c(yPos, yPos), lwd=4)
-      text(x=xPos+2.5, y=axisLimits[3], labels="5 SNPs", pos=3)  
-    }
-    
-    if(margins == TRUE){
-      par(mar=c(5.1, 4.1, 4.1, 2.1))
-    }
-  }
+insertHomoplasies <- function(n, sequences, tree, verbose=FALSE){
   
   # Get the isolates associated with each node in the phylogeny
   nodes <- getNodes(tree)
@@ -401,57 +511,59 @@ insertHomoplasies <- function(n, sequences, verbose=FALSE, treeType="phylogram",
   usedSites <- c()
   
   # Insert the homoplasies
-  for(i in 1:n){
-    
-    # Reset the variables associated with the previous homoplasy
-    source <- NULL
-    sink <- NULL
-    sitesUniqueToIsolatesThatArentUsed <- c()
-    
-    # Ranomly pick source and sink nodes and identify potential positions to create a homoplasy with
-    while(is.null(source) == TRUE || is.null(sink) == TRUE || length(sitesUniqueToIsolatesThatArentUsed) == 0){
+  if(n != 0){
+    for(i in 1:n){
       
-      # Randomly select a node to act as source
-      source <- sample(names(nodes), size=1)
+      # Reset the variables associated with the previous homoplasy
+      source <- NULL
+      sink <- NULL
+      sitesUniqueToIsolatesThatArentUsed <- c()
       
-      # Randomly select a node to act as a sink - as long as it isn't on the path to the root
-      sink <- randomlySelectSinkNode(nodes, source)
-      
-      # Check that haven't already used this node pair
-      if(paste(source, sink, sep=":") %in% usedNodePairs == TRUE){
-        next
-      }else{
-        usedNodePairs[length(usedNodePairs) + 1] <- paste(source, sink, sep=":")
+      # Randomly pick source and sink nodes and identify potential positions to create a homoplasy with
+      while(is.null(source) == TRUE || is.null(sink) == TRUE || length(sitesUniqueToIsolatesThatArentUsed) == 0){
+        
+        # Randomly select a node to act as source
+        source <- sample(names(nodes), size=1)
+        
+        # Randomly select a node to act as a sink - as long as it isn't on the path to the root
+        sink <- randomlySelectSinkNode(nodes, source)
+        
+        # Check that haven't already used this node pair
+        if(paste(source, sink, sep=":") %in% usedNodePairs == TRUE){
+          next
+        }else{
+          usedNodePairs[length(usedNodePairs) + 1] <- paste(source, sink, sep=":")
+        }
+        
+        # Find the sites that are common and unique to all the isolates under the current node
+        sitesUniqueToIsolates <- findConservedSitesThatAreUniqueToClade(nodes[[source]], sequences)
+        sitesUniqueToIsolatesThatArentUsed <- sitesUniqueToIsolates[which(sitesUniqueToIsolates %in% usedSites == FALSE)]
       }
       
-      # Find the sites that are common to all the isolates under the current node
-      sitesUniqueToIsolates <- findConservedSitesThatAreUniqueToClade(nodes[[source]], sequences)
-      sitesUniqueToIsolatesThatArentUsed <- sitesUniqueToIsolates[which(sitesUniqueToIsolates %in% usedSites == FALSE)]
+      # Randomly choose a site
+      site <- sitesUniqueToIsolatesThatArentUsed[sample(1:length(sitesUniqueToIsolatesThatArentUsed), size=1)]
+      allele <- sequences[[nodes[[source]][1]]][site]
+      usedSites[length(usedSites) + 1] <- site
+      
+      # Assign the randomly chosen site and allele to those isolates
+      sequences <- assignSiteAndAllele(nodes[[sink]], sequences, site, allele)
+      
+      # Record homoplasy
+      if(verbose){
+        cat(paste("---------------------------------------------------------------------------\n",
+                  "Introduced homoplasy: From node: ", source, " to ", sink, 
+                  "\tPosition: ", site, "\tAllele: ", allele,
+                  "\nSource Isolate(s): ", paste(nodes[[source]], collapse=", "),
+                  "\nSink Isolate(s): ", paste(nodes[[sink]], collapse=", "), "\n", sep=""))
+      }
+      output[[as.character(i)]] <- list(
+        "sourceNode" = source,
+        "sinkNode" = sink,
+        "position" = site,
+        "allele" = allele,
+        "sourceIsolates"=nodes[[source]],
+        "sinkIsolates"=nodes[[sink]])
     }
-    
-    # Randomly choose a site
-    site <- sample(sitesUniqueToIsolatesThatArentUsed, size=1)
-    allele <- sequences[[nodes[[source]][1]]][site]
-    usedSites[length(usedSites) + 1] <- site
-    
-    # Assign the randomly chosen site and allele to those isolates
-    sequences <- assignSiteAndAllele(nodes[[sink]], sequences, site, allele)
-    
-    # Record homoplasy
-    if(verbose){
-      cat(paste("---------------------------------------------------------------------------\n",
-                "Introduced homoplasy: From node: ", source, " to ", sink, 
-                "\tPosition: ", site, "\tAllele: ", allele,
-                "\nSource Isolate(s): ", paste(nodes[[source]], collapse=", "),
-                "\nSink Isolate(s): ", paste(nodes[[sink]], collapse=", "), "\n", sep=""))
-    }
-    output[[as.character(i)]] <- list(
-      "sourceNode" = source,
-      "sinkNode" = sink,
-      "position" = site,
-      "allele" = allele,
-      "sourceIsolates"=nodes[[source]],
-      "sinkIsolates"=nodes[[sink]])
   }
   
   # Add the sequences to the output
@@ -534,10 +646,13 @@ findConservedSitesThatAreUniqueToClade <- function(isolates, sequences){
     # Check if you can find the isolates allele in any of the other isolates
     allele <- sequences[[isolates[1]]][pos]
     for(id in names(sequences)){
+      
+      # Skip isolates associated with current clade
       if(id %in% isolates){
         next
       }
       
+      # Check if conserved allele in clade found in an isolate outside of clade - skip if found
       if(allele == sequences[[id]][pos]){
         uniqueToIsolates[pos] <- FALSE
         break
