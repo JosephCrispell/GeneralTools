@@ -7,7 +7,7 @@ library(geiger) # For the tips function
 library(ape) # read.dna()
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -20,32 +20,174 @@ date <- format(Sys.Date(), "%d-%m-%y")
 treeFile <- paste(path, "mlTree_27-03-18.tree", sep="")
 tree <- read.tree(treeFile)
 
-# Note the isolates at the tips of each node
-nodes <- getNodes(tree)
-
 # Read in the FASTA file
 fastaFile<- paste(path,"sequences_Prox-10_24-03-2018.fasta", sep="")
-sequences <- as.alignment(read.dna(fastaFile, format="fasta", skip=1))
+sequences <- read.dna(fastaFile, format="fasta", skip=1)
 
-# Record the alleles present in FASTA sequences
-alleles <- recordAllelesInPopulation(sequences, TRUE)
+#--------------------------------#
+#### Run HomoplasyFinder in R ####
+#--------------------------------#
 
-#--------------------------------------------#
-#### Assign alleles to nodes in phylogeny ####
-#--------------------------------------------#
+results <- homoplasyFinder(tree, sequencesDNABin, homoplasyPositionCex=1)
 
-# Assign alelles to nodes in the phylogeny - where possible
-notAssigned <- assignAlellesToNodes(nodes, alleles, sequences$nam, TRUE)
+#-----------------------------------#
+#### Run HomoplasyFinder in Java ####
+#-----------------------------------#
 
-#-----------------------------------------#
-#### Report the homopalsies identified ####
-#-----------------------------------------#
-
-results <- reportHomoplasiesIdentified(notAssigned, alleles)
+### STILL WORKING ON THIS
 
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+## Plotting results methods
+plotTreeAndHomoplasySites <- function(tree, cex=1, results, nSites){
+
+  # Set the plotting margins
+  par(mar=c(0,0,1,0.5))
+  
+  # Plot the phylogeny
+  plot.phylo(tree, show.tip.label=TRUE, type="phylogram", align.tip.label=TRUE, tip.color=rgb(0,0,0,0),
+             main="Homoplasies Identified")
+  
+  # Get the axisLimits
+  axisLimits <- par("usr")
+  
+  # Add Scale bar
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  points(x=c(axisLimits[1] + 0.1*xLength, axisLimits[1] + 0.2*xLength),
+         y=c(axisLimits[3]+0.2*yLength, axisLimits[3]+0.2*yLength), type="l", lwd=3)
+  text(x=axisLimits[1] + 0.15*xLength, y=axisLimits[3] +0.18*yLength, 
+       labels=round(0.1*xLength, digits=3), cex=1, xpd=TRUE)
+  
+  # Note the locations of the tips
+  tipCoordinates <- getTipCoordinates(tree$tip.label)
+  maxCoords <- maxCoordinates(tipCoordinates)
+  
+  # Calculate width of space for nucleotide
+  charWidth <- (axisLimits[2] - maxCoords[1]) / nrow(results)
+  
+  # Set nucleotide colours
+  nucleotideColours <- list("A"="red", "C"="blue", "G"="cyan", "T"="orange")
+  
+  # Plot FASTA alignment beside tree
+  for(homoplasyIndex in 1:nrow(results)){
+    
+    # Get an array of the nucleotides associated with the current position
+    nucleotides = strsplit(results[homoplasyIndex, "Alleles"], split=",")[[1]]
+    
+    # Get an array of concatenated ID for each nucleotide
+    concatenatedIsolates = strsplit(results[homoplasyIndex, "IsolatesForAlleles"], split=",")[[1]]
+    
+    # Examine each nucleotides
+    for(nucleotideIndex in 1:length(nucleotides)){
+      
+      # Examine each isolate with the current nucleotide
+      for(id in strsplit(concatenatedIsolates[nucleotideIndex], split=":")[[1]]){
+        
+        # Get XY coordinates for tip
+        xy <- tipCoordinates[[id]]
+        
+        # Plot a polygon for the current tip's nucleotide at the current homoplasy's position
+        polygon(x=c(maxCoords[1] + ((homoplasyIndex-1) * charWidth),
+                    maxCoords[1] + ((homoplasyIndex-1) * charWidth),
+                    maxCoords[1] + (homoplasyIndex * charWidth),
+                    maxCoords[1] + (homoplasyIndex * charWidth)),
+                y=c(xy[2], xy[2] + 1, xy[2] + 1, xy[2]),
+                col=nucleotideColours[[nucleotides[nucleotideIndex]]],
+                border=rgb(0,0,0,0), xpd=TRUE)
+      }
+    }
+  }
+    
+  # Add separator lines
+  for(homoplasyIndex in 1:nrow(results)){
+    points(x=c(maxCoords[1] + ((homoplasyIndex-1) * charWidth),
+               maxCoords[1] + ((homoplasyIndex-1) * charWidth)),
+           y=c(axisLimits[3], axisLimits[4]),
+           type="l", col="white")
+  }
+  
+  # Note the positions of each homoplasy
+  for(row in 1:nrow(results)){
+    text(x=maxCoords[1] + ((row-1) * charWidth) + (0.5 * charWidth),
+         y=maxCoords[2] + 0.02*yLength,
+         labels=results[row, "Position"], cex=0.5, srt=90, xpd=TRUE)
+  }
+  
+  # Reset plotting margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+}
+
+maxCoordinates <- function(tipCoordinates){
+  
+  max <- c(NA, NA)
+  
+  for(key in names(tipCoordinates)){
+    
+    if(is.na(max[1]) == TRUE || tipCoordinates[[key]][1] > max[1]){
+      max[1] <- tipCoordinates[[key]][1]
+    }
+    
+    if(is.na(max[2]) == TRUE || tipCoordinates[[key]][2] > max[2]){
+      max[2] <- tipCoordinates[[key]][2]
+    }
+  }
+  
+  return(max)
+}
+
+getTipCoordinates <- function(tipLabels){
+  lastPP <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  tips <- list()
+  for(i in 1:length(tipLabels)){
+    tips[[as.character(tipLabels[i])]] <- c(lastPP$xx[i], lastPP$yy[i])
+  }
+  
+  return(tips)
+}
+
+## HomoplasyFinder methods
+runHomoplasyFinderJavaTool <- function(fastaFile, treeFile){
+  
+  system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
+         ignore.stdout=FALSE)
+}
+
+homoplasyFinder <- function(tree, sequencesDNABin, homoplasyPositionCex=1, verbose=TRUE){
+  
+  #### Parse tree and FASTA
+  
+  # Note the isolates at the tips of each node in the phylogenetic tree
+  nodes <- getNodes(tree)
+  
+  # Convert the DNAbin sequence alignment to alignment class
+  sequences <- as.alignment(sequencesDNABin)
+  
+  # Record the alleles present in FASTA sequences
+  alleles <- recordAllelesInPopulation(sequences, verbose)
+  
+  
+  #### Assign alleles to nodes in phylogeny
+  
+  # Assign alelles to nodes in the phylogeny - where possible
+  notAssigned <- assignAlellesToNodes(nodes, alleles, sequences$nam, verbose)
+  
+  
+  #### Report the homopalsies identified
+  
+  results <- reportHomoplasiesIdentified(notAssigned, alleles)
+  
+  
+  #### Plot the results
+  
+  if(verbose){
+    plotTreeAndHomoplasySites(tree=tree, cex=homoplasyPositionCex, results=results)
+  }
+  
+  return(results)
+}
 
 reportHomoplasiesIdentified <- function(notAssigned, alleles){
   
@@ -66,10 +208,10 @@ reportHomoplasiesIdentified <- function(notAssigned, alleles){
     output[row, "Alleles"] <- paste(toupper(nucleotides), collapse=",")
     
     # Get the isolates associated with each nucleotide observed at the current site
-    isolates <- paste(alleles[[paste(names(positions)[row], nucleotides[1], sep=":")]], collapse="-")
+    isolates <- paste(alleles[[paste(names(positions)[row], nucleotides[1], sep=":")]], collapse=":")
     for(i in 2:length(nucleotides)){
       
-      isolates <- paste(isolates, paste(alleles[[paste(names(positions)[row], nucleotides[1], sep=":")]], collapse="-"), sep=",")
+      isolates <- paste(isolates, paste(alleles[[paste(names(positions)[row], nucleotides[2], sep=":")]], collapse=":"), sep=",")
     }
     output[row, "IsolatesForAlleles"] <- isolates
   }
@@ -103,7 +245,7 @@ assignAlellesToNodes <- function(nodes, alleles, isolates, verbose){
   assigned <- c()
 
   # Examine each node
-  for(i in 1:length((nodes))){
+  for(i in 1:length(nodes)){
 
     # Progress
     if(verbose){
@@ -137,10 +279,12 @@ assignAlellesToNodes <- function(nodes, alleles, isolates, verbose){
       # Compare the two sets of alleles - if they match exactly then current allele can be assigned to node
       if(areSetsOfIsolatesTheSame(tipsWithoutNs, isolatesWithAllele) == TRUE){
 
+        print("here")
         nodeAlleles[[names(nodes)[i]]] <- c(nodeAlleles[[names(nodes)[i]]], allele)
         assigned[length(assigned) + 1] <- allele
       
       }else if(areSetsOfIsolatesTheSame(isolatesBelowWithoutNs, isolatesWithAllele) == TRUE){
+        print("here")
         nodeAlleles[[names(nodes)[i]]] <- c(nodeAlleles[[names(nodes)[i]]], allele)
         assigned[length(assigned) + 1] <- allele
       }
@@ -153,6 +297,9 @@ assignAlellesToNodes <- function(nodes, alleles, isolates, verbose){
   
   # Note the alleles that weren't assigned
   notAssigned <- names(alleles)[names(alleles) %in% assigned == FALSE]
+  
+  # Remove the N alleles
+  notAssigned <- notAssigned[grepl(notAssigned, pattern=":n") == FALSE]
   
   return(notAssigned)
 }

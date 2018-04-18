@@ -84,7 +84,6 @@ plotTreeAndHomoplasySites <- function(tree, sequences, cex, positions){
   maxCoords <- maxCoordinates(tipCoordinates)
   
   # Calculate width of space for nucleotide
-  
   charWidth <- (axisLimits[2] - maxCoords[1]) / length(sequences[[1]])
   
   # Set nucleotide colours
