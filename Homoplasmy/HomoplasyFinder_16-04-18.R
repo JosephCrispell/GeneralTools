@@ -6,42 +6,61 @@
 library(geiger) # For the tips function
 library(ape) # read.dna()
 
-# Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/"
-
-# Get the current date
-date <- format(Sys.Date(), "%d-%m-%y")
-
-#------------------------------#
-#### Read in tree and FASTA ####
-#------------------------------#
-
-# Read in the tree
-treeFile <- paste(path, "mlTree_27-03-18.tree", sep="")
-tree <- read.tree(treeFile)
-
-# Read in the FASTA file
-fastaFile<- paste(path,"sequences_Prox-10_24-03-2018.fasta", sep="")
-sequences <- read.dna(fastaFile, format="fasta", skip=1)
-
 #--------------------------------#
 #### Run HomoplasyFinder in R ####
 #--------------------------------#
 
-results <- homoplasyFinder(tree, sequencesDNABin, homoplasyPositionCex=1)
+# Read in the tree
+pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                            "mlTree_27-03-18.tree")
+tree <- read.tree(treeFile)
+
+# Read in the FASTA file
+pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                             "sequences_Prox-10_24-03-2018.fasta")
+sequences <- read.dna(fastaFile, format="fasta", skip=1)
+
+# Run HomoplasyFinder
+results <- homoplasyFinder(tree, sequencesDNABin)
 
 #-----------------------------------#
 #### Run HomoplasyFinder in Java ####
 #-----------------------------------#
 
-### STILL WORKING ON THIS
+# Note the paths to the tree, FASTA, and HomoplasyFinder jar files
+pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                            "mlTree_27-03-18.tree")
+pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                             "sequences_Prox-10_24-03-2018.fasta")
+pathToJarFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                           "HomoplasyFinder_06-03-18.jar")
+
+# Run HomoplasyFinder
+results <- runHomoplasyFinderJavaTool(pathToJarFile, pathToFastaFile, pathToTreeFile)
+
+#------------------------#
+#### Plotting Results ####
+#------------------------#
+
+# Read in the tree
+pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                            "mlTree_27-03-18.tree")
+tree <- read.tree(treeFile)
+
+# Read in the FASTA file
+pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
+                             "sequences_Prox-10_24-03-2018.fasta")
+sequences <- read.dna(fastaFile, format="fasta", skip=1)
+
+# Plot the homoplasy sites on the phylogeny
+plotTreeAndHomoplasySites(tree, results, nSites)
 
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
 
 ## Plotting results methods
-plotTreeAndHomoplasySites <- function(tree, cex=1, results, nSites){
+plotTreeAndHomoplasySites <- function(tree, results){
 
   # Set the plotting margins
   par(mar=c(0,0,1,0.5))
@@ -149,13 +168,44 @@ getTipCoordinates <- function(tipLabels){
 }
 
 ## HomoplasyFinder methods
-runHomoplasyFinderJavaTool <- function(fastaFile, treeFile){
+runHomoplasyFinderJavaTool <- function(jarFile, fastaFile, treeFile, verbose=TRUE){
   
-  system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
+  # Get the current date
+  date <- format(Sys.Date(), "%d-%m-%y")
+  
+  # Check for spaces in file paths - these can cause problems. If found surround path in quotes
+  jarFile <- checkForSpaces(jarFile)
+  fastaFile <- checkForSpaces(fastaFile)
+  treeFile <- checkForSpaces(treeFile)
+  
+  # Check whether verbose requested
+  verboseFlag = 0
+  if(verbose){
+    verboseFlag = 1
+  }
+  
+  # Run the HomoplasyFinder jar file
+  system(paste("java -jar", jarFile, verboseFlag, fastaFile, treeFile, sep=" "),
          ignore.stdout=FALSE)
+  
+  # Retrieve the output from HomoplasyFinder
+  file <- paste("homoplasyReport_", date, ".txt", sep="")
+  results <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
+                        check.names=FALSE)
+  
+  return(results)
 }
 
-homoplasyFinder <- function(tree, sequencesDNABin, homoplasyPositionCex=1, verbose=TRUE){
+checkForSpaces <- function(filePath){
+  
+  if(grepl(filePath, pattern=" ") == TRUE){
+    filePath <- paste("\"", filePath, "\"", sep="")
+  }
+  
+  return(filePath)
+}
+
+homoplasyFinder <- function(tree, sequencesDNABin, verbose=TRUE){
   
   #### Parse tree and FASTA
   
@@ -178,14 +228,7 @@ homoplasyFinder <- function(tree, sequencesDNABin, homoplasyPositionCex=1, verbo
   #### Report the homopalsies identified
   
   results <- reportHomoplasiesIdentified(notAssigned, alleles)
-  
-  
-  #### Plot the results
-  
-  if(verbose){
-    plotTreeAndHomoplasySites(tree=tree, cex=homoplasyPositionCex, results=results)
-  }
-  
+
   return(results)
 }
 
