@@ -29,14 +29,7 @@ fi
 #####################
 
 #### Find untracked (new) files
-NEWFILES=`git ls-files --others --exclude-standard`
-
-#### Add new files to git repository
-for FILE in ${NEWFILES[@]}; 
-do
-    git add $FILE
-	echo "Added "$FILE" to git repository."
-done
+git add *
 
 #### Remove any files that have been deleted
 git add . -A

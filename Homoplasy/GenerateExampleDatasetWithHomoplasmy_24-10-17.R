@@ -10,7 +10,7 @@ library(grid) # Used to plot lines between plot panels
 library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasmy/"
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -108,14 +108,21 @@ for(nHomoplasies in nHomoplasiesValues){
 
 #### Plot results ####
 
+resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-10_1000_09-04-18.csv", sep="")
+date <- strsplit(resultsFile, "_|\\.")[[1]][8]
+results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
               min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".pdf", sep="")
-pdf(file)
+pdf(file, height=7, width=14)
+par(mfrow=c(1,2))
 
 plot(x=NULL, y=NULL, xlim=range(results$NHomoplasies), ylim=c(0,1), las=1, bty="n",  
      xlab="Number homoplasies inserted", ylab="Proportion present",
      main="Identifying inserted homoplasies using HomoplasyFinder")
+text(x=-1.5, y=1.15, labels="1.", xpd=TRUE, cex=3)
+
 for(i in unique(results$NHomoplasies)){
   
   subset <- results[results$NHomoplasies == i, ]
@@ -136,6 +143,7 @@ plot(x=NULL, y=NULL,
      xlab="Number homoplasies inserted", 
      ylab="Number non-inserted homoplasies Present", 
      main="Identifying non-inserted homoplasies using HomoplasyFinder")
+text(x=-1.5, y=2.3, labels="2.", xpd=TRUE, cex=3)
 for(i in unique(results$NHomoplasies)){
   
   subset <- results[results$NHomoplasies == i, ]
@@ -220,13 +228,16 @@ write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Generation example ####
 
-# Simulation settings
-nHomoplasies <- 2
+nToSample <- 500
+popSize <- nToSample * 2
 
-for(i in 1:100){
-  file <- paste(path, "Examples/ManuscriptExample_", popSize, "-", mutationRate,
-                "-", infectiousness, "-", samplingProb, "-", nToSample, "_", nHomoplasies, "_", i, "_", date, ".pdf", sep="")
-  pdf(file)
+# Simulation settings
+#nHomoplasies <- 2
+
+#for(i in 1:100){
+#  file <- paste(path, "Examples/ManuscriptExample_", popSize, "-", mutationRate,
+#                "-", infectiousness, "-", samplingProb, "-", nToSample, "_", nHomoplasies, "_", i, "_", date, ".pdf", sep="")
+#  pdf(file)
   
   # Generate the sequences
   par(mfrow=c(1,1))
@@ -268,9 +279,9 @@ for(i in 1:100){
   # Plot lines between tips that have changed location
   plotLinesBetweenTips(tipsPriorToHomoplasies, tipsPostHomoplasies, col=rgb(1,0,0, 0.5), lwd=2)
   
-  par(mar=c(5.1, 4.1, 4.1, 2.1))
-  dev.off()
-}
+#  par(mar=c(5.1, 4.1, 4.1, 2.1))
+#  dev.off()
+#}
 
 #############
 # FUNCTIONS #
@@ -507,7 +518,7 @@ insertHomoplasies <- function(n, sequences, tree, verbose=FALSE){
   output <- list()
   
   # Initialise arrays to the store the nodes and sites already used for homoplasies
-  usedNodePairs <- c()
+  #usedNodePairs <- c()
   usedSites <- c()
   
   # Insert the homoplasies
@@ -528,15 +539,17 @@ insertHomoplasies <- function(n, sequences, tree, verbose=FALSE){
         # Randomly select a node to act as a sink - as long as it isn't on the path to the root
         sink <- randomlySelectSinkNode(nodes, source)
         
-        # Check that haven't already used this node pair
-        if(paste(source, sink, sep=":") %in% usedNodePairs == TRUE){
-          next
-        }else{
-          usedNodePairs[length(usedNodePairs) + 1] <- paste(source, sink, sep=":")
-        }
+        # Check that haven't already used this node pair - OFF
+        # if(paste(source, sink, sep=":") %in% usedNodePairs == TRUE){
+        #   next
+        # }else{
+        #   usedNodePairs[length(usedNodePairs) + 1] <- paste(source, sink, sep=":")
+        # }
         
         # Find the sites that are common and unique to all the isolates under the current node
         sitesUniqueToIsolates <- findConservedSitesThatAreUniqueToClade(nodes[[source]], sequences)
+        
+        # Remove sites that have already been used for a homoplasy
         sitesUniqueToIsolatesThatArentUsed <- sitesUniqueToIsolates[which(sitesUniqueToIsolates %in% usedSites == FALSE)]
       }
       
@@ -744,7 +757,7 @@ runSimulation <- function(n, mutationRate, infectiousness, samplingProb,
   
   while(nSampled < nToSample){
     
-    simulationOutput <- simulateSequences3(n, mutationRate, infectiousness, samplingProb,
+    simulationOutput <- simulateSequences(n, mutationRate, infectiousness, samplingProb,
                                            nToSample, verbose)
     
     nSampled <- length(simulationOutput$events)
@@ -753,7 +766,7 @@ runSimulation <- function(n, mutationRate, infectiousness, samplingProb,
   return(simulationOutput)
 }
 
-simulateSequences3 <- function(n, mutationRate, infectiousness, samplingProb,
+simulateSequences <- function(n, mutationRate, infectiousness, samplingProb,
                                nToSample, verbose){
   
   # Set population size

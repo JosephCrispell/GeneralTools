@@ -11,17 +11,17 @@ library(ape) # read.dna()
 #--------------------------------#
 
 # Read in the tree
-pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
-                            "mlTree_27-03-18.tree")
-tree <- read.tree(treeFile)
+pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy", "DataForTesting",
+                            "example-AFTER_09-04-18.tree")
+tree <- read.tree(pathToTreeFile)
 
 # Read in the FASTA file
-pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
-                             "sequences_Prox-10_24-03-2018.fasta")
-sequences <- read.dna(fastaFile, format="fasta", skip=1)
+pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy", "DataForTesting",
+                             "example_09-04-18.fasta")
+sequences <- read.dna(pathToFastaFile, format="fasta", skip=1)
 
 # Run HomoplasyFinder
-results <- homoplasyFinder(tree, sequencesDNABin)
+results <- homoplasyFinder(tree, sequences)
 
 #-----------------------------------#
 #### Run HomoplasyFinder in Java ####
@@ -45,12 +45,12 @@ results <- runHomoplasyFinderJavaTool(pathToJarFile, pathToFastaFile, pathToTree
 # Read in the tree
 pathToTreeFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
                             "mlTree_27-03-18.tree")
-tree <- read.tree(treeFile)
+tree <- read.tree(pathToTreeFile)
 
 # Read in the FASTA file
 pathToFastaFile <- file.path("C:", "Users", "Joseph Crisp", "Desktop", "UbuntuSharedFolder", "Homoplasy",
                              "sequences_Prox-10_24-03-2018.fasta")
-sequences <- read.dna(fastaFile, format="fasta", skip=1)
+sequences <- read.dna(pathToFastaFile, format="fasta", skip=1)
 
 # Plot the homoplasy sites on the phylogeny
 plotTreeAndHomoplasySites(tree, results, nSites)
@@ -218,18 +218,50 @@ homoplasyFinder <- function(tree, sequencesDNABin, verbose=TRUE){
   # Record the alleles present in FASTA sequences
   alleles <- recordAllelesInPopulation(sequences, verbose)
   
+  # Remove the constant sites (only one nucleotide present)
+  removeConstantSites(alleles, sequences$nb, verbose)
   
   #### Assign alleles to nodes in phylogeny
   
   # Assign alelles to nodes in the phylogeny - where possible
   notAssigned <- assignAlellesToNodes(nodes, alleles, sequences$nam, verbose)
   
-  
   #### Report the homopalsies identified
   
   results <- reportHomoplasiesIdentified(notAssigned, alleles)
 
   return(results)
+}
+
+removeConstantSites <- function(alleles, nSites, verbose=TRUE){
+  
+  nSitesRemoved <- 0
+  
+  nucleotides <- c('a', 'c', 'g', 't')
+  for(position in 1:nSites){
+    
+    # Count the number of alleles at the current position
+    count <- 0
+    for(nucleotide in nucleotides){
+      if(is.null(alleles[[paste(position, nucleotide, sep=":")]]) == FALSE){
+        count <- count + 1
+      }
+    }
+    # If only 1 allele present - remove it as it is a constant site (same across all isolates)
+    if(count == 1){
+      nSitesRemoved <- nSitesRemoved + 1
+      alleles[[paste(position, 'N', sep=":")]] <- NULL
+      for(nucleotide in nucleotides){
+        if(is.null(alleles[[paste(position, nucleotide, sep=":")]]) == FALSE){
+          alleles[[paste(position, nucleotide, sep=":")]] <- NULL
+        }
+      }     
+    }
+  }
+  
+  if(verbose){
+    cat(paste("Removed", nSitesRemoved, "constant site(s).\n"))
+  }
 }
 
 reportHomoplasiesIdentified <- function(notAssigned, alleles){
@@ -322,12 +354,11 @@ assignAlellesToNodes <- function(nodes, alleles, isolates, verbose){
       # Compare the two sets of alleles - if they match exactly then current allele can be assigned to node
       if(areSetsOfIsolatesTheSame(tipsWithoutNs, isolatesWithAllele) == TRUE){
 
-        print("here")
         nodeAlleles[[names(nodes)[i]]] <- c(nodeAlleles[[names(nodes)[i]]], allele)
         assigned[length(assigned) + 1] <- allele
       
       }else if(areSetsOfIsolatesTheSame(isolatesBelowWithoutNs, isolatesWithAllele) == TRUE){
-        print("here")
+
         nodeAlleles[[names(nodes)[i]]] <- c(nodeAlleles[[names(nodes)[i]]], allele)
         assigned[length(assigned) + 1] <- allele
       }
