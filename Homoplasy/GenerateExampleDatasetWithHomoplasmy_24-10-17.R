@@ -10,10 +10,7 @@ library(grid) # Used to plot lines between plot panels
 library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/"
-
-# Get the current date
-date <- format(Sys.Date(), "%d-%m-%y")
+path <- "/home/josephcrispell/Desktop/Research/Homoplasy/"
 
 #-----------------------#
 #### Run simulations ####
@@ -25,7 +22,7 @@ mutationRate <- 0.5
 infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
-nHomoplasiesValues <- 0:10
+nHomoplasiesValues <- 0:20
 nSimulations <- 1000
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
@@ -45,6 +42,9 @@ row <- 0
 for(nHomoplasies in nHomoplasiesValues){
   for(i in 1:nSimulations){
     row <- row + 1
+    
+    # Get the current date
+    date <- format(Sys.Date(), "%d-%m-%y")
     
     # Progress
     cat(paste("\rRunning simulation", i, "of", nSimulations, "inserting", nHomoplasies, "homoplasy(ies)     "))
@@ -82,7 +82,7 @@ for(nHomoplasies in nHomoplasiesValues){
     
     #######
     ## Run HomoplasyFinder using the TRUE tree
-    system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, trueTreeFile, sep=" "),
+    system(paste("java -jar HomoplasyFinder_30-04-18.jar", 0, fastaFile, trueTreeFile, sep=" "),
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
@@ -94,7 +94,7 @@ for(nHomoplasies in nHomoplasiesValues){
     
     #######
     ## Run HomoplasyFinder using the TRUE tree
-    system(paste("java -jar HomoplasyFinder_06-03-18.jar", 0, fastaFile, treeFile, sep=" "),
+    system(paste("java -jar HomoplasyFinder_30-04-18.jar", 0, fastaFile, treeFile, sep=" "),
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
@@ -108,9 +108,9 @@ for(nHomoplasies in nHomoplasiesValues){
 
 #### Plot results ####
 
-resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-10_1000_09-04-18.csv", sep="")
-date <- strsplit(resultsFile, "_|\\.")[[1]][8]
-results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+# resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-10_1000_09-04-18.csv", sep="")
+# date <- strsplit(resultsFile, "_|\\.")[[1]][8]
+# results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
@@ -157,67 +157,6 @@ for(i in unique(results$NHomoplasies)){
        labels=round(counts/nrow(subset), digits=2),
        col=rgb(1,0,0, 1), cex=1)
 }
-
-plot(x=results$NFoundTrue, y=results$NFoundAfter,
-     xlim=range(results$NHomoplasies), ylim=range(results$NHomoplasies), las=1, bty="n",  
-     xlab="Number inserted homoplasies present on tree built without homoplasies", 
-     ylab="Number inserted homoplasies present on tree built with homoplasies",
-     pch=19, cex=6, col=rgb(0,0,0, 0.005), xpd=TRUE,
-     main="Identifying inserted homoplasies on tree\n built with and without them")
-for(i in 0:max(results$NHomoplasies)){
-  
-  for(j in 0:max(results$NHomoplasies)){
-    
-    count <- nrow(results[results$NFoundTrue == i & results$NFoundAfter == j, ])
-    if(count != 0){
-      text(x=i, y=j,
-           labels=round(count/nrow(results), digits=2),
-           col=rgb(0,0,1, 1), cex=1)
-    }
-  }
-}
-
-plot(x=results$NIncorrectTrue, y=results$NIncorrectAfter,
-     xlim=range(results$NHomoplasies), ylim=range(results$NHomoplasies), las=1, bty="n",  
-     xlab="Number non-inserted homoplasies present on tree built without homoplasies", 
-     ylab="Number non-inserted homoplasies present on tree built with homoplasies",
-     pch=19, cex=6, col=rgb(0,0,0, 0.005), xpd=TRUE,
-     main="Identifying non-inserted homoplasies on tree\n built with and without them")
-for(i in 0:max(results$NHomoplasies)){
-  
-  for(j in 0:max(results$NHomoplasies)){
-    
-    count <- nrow(results[results$NIncorrectTrue == i & results$NIncorrectAfter == j, ])
-    if(count != 0){
-      text(x=i, y=j,
-           labels=round(count/nrow(results), digits=2),
-           col=rgb(0,0,1, 1), cex=1)
-    }
-  }
-}
-
-results$Proportion <- results$NFoundAfter / results$NFoundTrue
-results$Proportion[is.nan(results$Proportion)] <- 0
-plot(x=results$NFoundTrue, y=results$Proportion,
-     pch=19, cex=6, col=rgb(0,0,0, 0.01), bty="n", xpd=TRUE, las=1,
-     xlab="Number homoplasies present on tree built without homoplasies",
-     ylab="Proportion present on tree built with homoplasies",
-     main="Number homoplasies present on true tree that were\n identified on tree built using homoplasies")
-
-for(i in unique(results$NFoundTrue)){
-  
-  for(j in unique(results$Proportion)){
-    
-    count <- nrow(results[results$NFoundTrue == i & results$Proportion == j, ])
-    if(count != 0){
-      
-      text(x=i, y=j,
-           labels=round(count/nrow(results), digits=2),
-           col=rgb(0,0,1, 1), cex=1)
-    }
-  }
-}
-
 dev.off()
 
 # Write the results to file
@@ -347,7 +286,7 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
                                 homoplasyInsertionInfo[[key]]$sinkIsolates)
         isolates = strsplit(
           strsplit(homoplasyFinderOutput[row, "IsolatesForAlleles"], split=",")[[1]][alleleIndex], 
-          split="-")[[1]]
+          split=":")[[1]]
         for(isolate in sourceSinkIsolates){
           
           if(isolate %in% isolates == FALSE){
