@@ -1,7 +1,7 @@
 ##### Preparation #####
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/TimeTrial/"
+path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
 
 #### Read in data ####
 
