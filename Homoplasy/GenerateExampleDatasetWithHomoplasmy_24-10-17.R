@@ -139,7 +139,7 @@ for(i in unique(results$NHomoplasies)){
 
 plot(x=NULL, y=NULL, 
      xlim=range(results$NHomoplasies),
-     ylim=range(results$NIncorrectAfter), las=1, bty="n",  
+     ylim=range(results$NIncorrectAfter, na.rm=TRUE), las=1, bty="n",  
      xlab="Number homoplasies inserted", 
      ylab="Number non-inserted homoplasies Present", 
      main="Identifying non-inserted homoplasies using HomoplasyFinder")

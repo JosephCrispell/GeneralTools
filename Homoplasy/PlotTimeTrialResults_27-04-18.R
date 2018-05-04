@@ -12,7 +12,7 @@ table <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 #### Plot ####
 
 # Open a PDF
-file <- paste(path, "timeTaken_27-04-18.pdf", sep="")
+file <- paste(path, "timeTaken_04-05-18.pdf", sep="")
 pdf(file)
 
 # Plot log of speeds
@@ -27,7 +27,7 @@ lines(x=table$N.sequences, y=log(table$treetime), type="o", col="blue")
 axis(side=1, at=seq(0, 500, 50))
 
 # Add y axis (log scale)
-at <- c(1, 10, 60, 150, 300, 600)
+at <- c(1, 10, 30, 90)
 axis(side=2, at=c(-1,log(at)), labels=c(0, at), las=1)
 
 # Add legend
@@ -45,7 +45,7 @@ lines(x=table$N.sequences, y=table$treetime, type="o", col="blue")
 axis(side=1, at=seq(50, 500, 50))
 
 # Add y axis (log scale)
-at <- c(0, 120, 240, 360, 480, 600)
+at <- c(0, 30, 60, 90)
 axis(side=2, at=at, labels=at, las=1)
 
 # Add legend
