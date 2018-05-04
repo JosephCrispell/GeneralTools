@@ -22,7 +22,7 @@ mutationRate <- 0.5
 infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
-nHomoplasiesValues <- 0:20
+nHomoplasiesValues <- 0:100
 nSimulations <- 1000
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
@@ -82,7 +82,7 @@ for(nHomoplasies in nHomoplasiesValues){
     
     #######
     ## Run HomoplasyFinder using the TRUE tree
-    system(paste("java -jar HomoplasyFinder_30-04-18.jar", 0, fastaFile, trueTreeFile, sep=" "),
+    system(paste("java -jar HomoplasyFinder.jar", 0, fastaFile, trueTreeFile, sep=" "),
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
@@ -94,7 +94,7 @@ for(nHomoplasies in nHomoplasiesValues){
     
     #######
     ## Run HomoplasyFinder using the TRUE tree
-    system(paste("java -jar HomoplasyFinder_30-04-18.jar", 0, fastaFile, treeFile, sep=" "),
+    system(paste("java -jar HomoplasyFinder.jar", 0, fastaFile, treeFile, sep=" "),
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
