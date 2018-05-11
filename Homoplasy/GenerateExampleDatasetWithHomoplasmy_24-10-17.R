@@ -64,7 +64,7 @@ for(nHomoplasies in nHomoplasiesValues){
                                       samplingProb, nToSample)
 
     # Build the sequences based upon the mutation events
-    sequences <- buildSequences(simulationOutput)
+    sequences <- buildSequences(simulationOutput, nToSample)
     sequences[["REF"]] <- NULL
     
     # Build phylogeny
