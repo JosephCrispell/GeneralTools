@@ -12,6 +12,9 @@ library(ape) # ladderise() - orders nodes in phylogeny
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Homoplasy/"
 
+# Current date
+date <- format(Sys.Date(), "%d-%m-%y")
+
 #-----------------------#
 #### Run simulations ####
 #-----------------------#
@@ -165,63 +168,52 @@ file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".csv", sep="")
 write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
-#### Generation example ####
+#### Time trial example ####
 
-nToSample <- 500
-popSize <- nToSample * 2
+# Set the path
+path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/TimeTrial/"
 
 # Simulation settings
-#nHomoplasies <- 2
+mutationRate <- 0.5
+infectiousness <- 0.001
+samplingProb <- 0.05
+nToSampleValues <- seq(50, 500, 50)
+nHomoplasies <- 10
+nSimulations <- 1000
 
-#for(i in 1:100){
-#  file <- paste(path, "Examples/ManuscriptExample_", popSize, "-", mutationRate,
-#                "-", infectiousness, "-", samplingProb, "-", nToSample, "_", nHomoplasies, "_", i, "_", date, ".pdf", sep="")
-#  pdf(file)
+# Run 10 replicates
+for(replicate in 1:10){
   
-  # Generate the sequences
-  par(mfrow=c(1,1))
-  simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
-                                    samplingProb, nToSample, TRUE)
-  
-  # Build the sequences based upon the mutation events
-  sequences <- buildSequences(simulationOutput)
-  sequences[["REF"]] <- NULL
-  
-  par(mfrow=c(1,2))
-  par(mar=c(0,0,0,0))
-  
-  # Build phylogeny
-  trueTreeFile <- paste(path, "Examples/ManuscriptExample_TRUE_", date, ".tree", sep="")
-  treeBefore <- buildPhylogeny(sequences, trueTreeFile, maximumLikelihood=TRUE)
-  
-  # Insert homoplasies
-  homoplasyInsertionInfo <- insertHomoplasies(sequences, tree=treeBefore, n=nHomoplasies, verbose=TRUE)
-  sequences <- homoplasyInsertionInfo[["sequences"]]
-  plotPhylogeny(treeBefore, homoplasyInsertionInfo=homoplasyInsertionInfo, verbose=TRUE, tipCex=0.6, margins=FALSE,
-                showScale=TRUE, showTips=FALSE)
-  
-  # Get tip coordinates
-  tipsPriorToHomoplasies <- getTipCoordinates(simulationOutput$sampled)
-  
-  # Build FASTA
-  writeFasta(sequences, paste(path, "Examples/ManuscriptExample_", date, ".fasta", sep=""))
-  
-  # Build phylogeny
-  treeAfter <- buildPhylogeny(sequences, paste(path, "Examples/ManuscriptExample_AFTER_", date, ".tree", sep=""), 
-                              maximumLikelihood=TRUE)
-  plotPhylogeny(treeAfter, homoplasyInsertionInfo=NULL, verbose=TRUE, tipCex=0.6, margins=FALSE, showScale=FALSE,
-                direction="leftwards", showTips=FALSE)
-  
-  # Get tip coordinates
-  tipsPostHomoplasies <- getTipCoordinates(simulationOutput$sampled)
-  
-  # Plot lines between tips that have changed location
-  plotLinesBetweenTips(tipsPriorToHomoplasies, tipsPostHomoplasies, col=rgb(1,0,0, 0.5), lwd=2)
-  
-#  par(mar=c(5.1, 4.1, 4.1, 2.1))
-#  dev.off()
-#}
+  # Create each of the simulated datasets
+  for(nToSample in nToSampleValues){
+    
+    popSize <- nToSample * 2
+    
+    # Generate the sequences
+    par(mfrow=c(1,1))
+    simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                      samplingProb, nToSample, verbose=FALSE)
+    
+    # Build the sequences based upon the mutation events
+    sequences <- buildSequences(simulationOutput, nToSample)
+    
+    # Build phylogeny
+    treeBefore <- buildPhylogeny(sequences, maximumLikelihood=TRUE)
+    
+    # Insert homoplasies
+    homoplasyInsertionInfo <- insertHomoplasies(sequences, tree=treeBefore, n=nHomoplasies, verbose=FALSE)
+    sequences <- homoplasyInsertionInfo[["sequences"]]
+    
+    # Build FASTA
+    writeFasta(sequences, paste(path, "Example_", popSize, "-", nToSample, "_", replicate, "-", date, ".fasta", sep=""))
+    
+    # Build phylogeny
+    treeAfter <- buildPhylogeny(sequences, paste(path, "Example_", popSize, "-", nToSample, "-", replicate, "_", date, ".tree", sep=""), 
+                                maximumLikelihood=TRUE)
+  }
+}
 
+  
 #############
 # FUNCTIONS #
 #############
@@ -399,7 +391,7 @@ plotPhylogeny <- function(tree, homoplasyInsertionInfo=NULL, treeType="phylogram
   }
 }
 
-buildPhylogeny <- function(sequences, file, maximumLikelihood=FALSE){
+buildPhylogeny <- function(sequences, file=NULL, maximumLikelihood=FALSE){
   
   # Build genetic distance matrix
   geneticDistances <- dist.dna(as.DNAbin.alignment(as.alignment(sequences)), model="JC69")
@@ -442,8 +434,10 @@ buildPhylogeny <- function(sequences, file, maximumLikelihood=FALSE){
   }
   
   # Write the tree to file
-  write.tree(tree, file=file, append=FALSE,
-             digits=20, tree.names=FALSE)
+  if(is.null(file) == FALSE){
+    write.tree(tree, file=file, append=FALSE,
+               digits=20, tree.names=FALSE)    
+  }
   
   return(tree)
 }
@@ -652,7 +646,7 @@ getIsolatesFromHomoplasyInfo <- function(homoplasyFinderOutput){
   return(output)
 }
 
-buildSequences <- function(simulationOutput){
+buildSequences <- function(simulationOutput, nToSample){
   
   # Get the mutation event information from the simulation output
   mutationEvents = simulationOutput[["events"]]
@@ -668,6 +662,9 @@ buildSequences <- function(simulationOutput){
     eventsAltAlleles[i] <- sample(nucleotides[nucleotides != eventsRefAlleles[i]], size=1)
   }
   
+  # Subset the sampled individuals to match the number requested
+  simulationOutput$sampled <- simulationOutput$sampled[1:nToSample]
+  
   # Build each individuals sequence
   sequences <- list()
   for(key in names(mutationEvents)){
@@ -681,10 +678,7 @@ buildSequences <- function(simulationOutput){
     sequence[mutationEvents[[key]]] <- eventsAltAlleles[mutationEvents[[key]]]
     sequences[[key]] <- sequence[-1]
   }
-  
-  # Store the reference alleles
-  sequences[["REF"]] <- eventsRefAlleles[-1]
-  
+
   return(sequences)
 }
 
