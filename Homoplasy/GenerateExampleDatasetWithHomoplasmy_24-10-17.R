@@ -171,7 +171,7 @@ dev.off()
 #### Time trial example ####
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/TimeTrial/"
+path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
 
 # Simulation settings
 mutationRate <- 0.5
@@ -205,10 +205,10 @@ for(replicate in 1:10){
     sequences <- homoplasyInsertionInfo[["sequences"]]
     
     # Build FASTA
-    writeFasta(sequences, paste(path, "Example_", popSize, "-", nToSample, "_", replicate, "-", date, ".fasta", sep=""))
+    writeFasta(sequences, paste(path, "Example_", popSize, "-", nToSample, "_", replicate, "_", date, ".fasta", sep=""))
     
     # Build phylogeny
-    treeAfter <- buildPhylogeny(sequences, paste(path, "Example_", popSize, "-", nToSample, "-", replicate, "_", date, ".tree", sep=""), 
+    treeAfter <- buildPhylogeny(sequences, paste(path, "Example_", popSize, "-", nToSample, "_", replicate, "_", date, ".tree", sep=""), 
                                 maximumLikelihood=TRUE)
   }
 }
