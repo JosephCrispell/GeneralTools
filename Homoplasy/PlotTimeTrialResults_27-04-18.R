@@ -2,65 +2,54 @@
 
 # Set the path
 #path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
+#path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
 path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Homoplasy/TimeTrial/"
 
 #### Read in data ####
 
 # Read in the table with the times
-file <- paste(path, "timeTaken_27-04-18.csv", sep="")
+file <- paste(path, "timeTaken_11-05-18.csv", sep="")
 table <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 #### Plot ####
 
 # Open a PDF
-file <- paste(path, "timeTaken_04-05-18.pdf", sep="")
+file <- paste(path, "timeTaken_11-05-18.pdf", sep="")
 pdf(file)
 
-# Plot log of speeds
-plot(x=table$N.sequences, y=log(table$R), type="o", las=1, bty="n",
+# Create an empty plot on a log scale
+plot(table$NSequences, y=log(table$R), col="white", las=1, bty="n",
      ylab="Time taken (seconds)", xlab="Number of sequences",
      main="Speed comparison between tools to identify homoplasies",
-     yaxt="n", col="black", xaxt="n", ylim=c(-1, max(log(table$R))))
-lines(x=table$N.sequences, y=log(table$java), type="o", col="red")
-lines(x=table$N.sequences, y=log(table$treetime), type="o", col="blue")
+     yaxt="n", xaxt="n", ylim=c(-1.1, max(log(table$R))))
+
+# Add the mean values across 10 replicates and range
+for(nSequences in seq(50, 500, 50)){
+  
+  # Subset the table for the current value of sequences
+  subset <- table[table$NSequences == nSequences, ]
+  
+  # R
+  points(x=nSequences, y=log(mean(subset$R)), pch=19, col=rgb(0,0,0, 0.5))
+  points(x=c(nSequences, nSequences), y=log(range(subset$R)), type="l", col=rgb(0,0,0, 0.5))
+  
+  # Java
+  points(x=nSequences, y=log(mean(subset$Java)), pch=19, col=rgb(1,0,0, 0.5))
+  points(x=c(nSequences, nSequences), y=log(range(subset$Java)), type="l", col=rgb(1,0,0, 0.5))
+  
+  # TreeTime
+  points(x=nSequences, y=log(mean(subset$TreeTime)), pch=19, col=rgb(0,0,1, 0.5))
+  points(x=c(nSequences, nSequences), y=log(range(subset$TreeTime)), type="l", col=rgb(0,0,1, 0.5))
+}
 
 # Add x axis
 axis(side=1, at=seq(0, 500, 50))
 
 # Add y axis (log scale)
 at <- c(1, 10, 30, 90)
-axis(side=2, at=c(-1,log(at)), labels=c(0, at), las=1)
+axis(side=2, at=c(-1.1,log(at)), labels=c(0, at), las=1)
 
 # Add legend
 legend("bottomright", legend=c("R", "Java", "TreeTime"), bty="n", text.col=c("black", "red", "blue"))
 
-# Plot log of speeds
-plot(x=table$N.sequences, y=table$R, type="o", las=1, bty="n",
-     ylab="Time taken (seconds)", xlab="Number of sequences",
-     main="Speed comparison between tools to identify homoplasies",
-     col="black", ylim=c(0, max(table$R)), xaxt="n", yaxt="n")
-lines(x=table$N.sequences, y=table$java, type="o", col="red")
-lines(x=table$N.sequences, y=table$treetime, type="o", col="blue")
-
-# Add x axis
-axis(side=1, at=seq(50, 500, 50))
-
-# Add y axis (log scale)
-at <- c(0, 30, 60, 90)
-axis(side=2, at=at, labels=at, las=1)
-
-# Add legend
-legend("topleft", legend=c("R", "Java", "TreeTime"), bty="n", text.col=c("black", "red", "blue"))
-
-# Plot log of speeds
-plot(x=table$N.sequences, y=table$java, type="o", las=1, bty="n",
-     ylab="Time taken (seconds)", xlab="Number of sequences",
-     main="Speed comparison between tools to identify homoplasies",
-     col="red")
-lines(x=table$N.sequences, y=table$treetime, type="o", col="blue")
-
-# Add legend
-legend("topleft", legend=c("Java", "TreeTime"), bty="n", text.col=c("red", "blue"))
-
 dev.off()
-      
