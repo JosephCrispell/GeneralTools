@@ -109,6 +109,12 @@ for(nHomoplasies in nHomoplasiesValues){
   }
 }
 
+# Write the results to file
+file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".csv", sep="")
+write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
+
 #### Plot results ####
 
 # resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-10_1000_09-04-18.csv", sep="")
@@ -161,12 +167,6 @@ for(i in unique(results$NHomoplasies)){
        col=rgb(1,0,0, 1), cex=1)
 }
 dev.off()
-
-# Write the results to file
-file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
-              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
-              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".csv", sep="")
-write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Time trial example ####
 
