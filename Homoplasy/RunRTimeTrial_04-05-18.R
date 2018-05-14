@@ -22,7 +22,7 @@ nSequences <- seq(50, 500, 50)
 nReplicates <- 10
 
 # Initialise a table to record the time taken for homoplasyFinder to analyses each dataset
-timeTaken <- data.frame("NSequences"=NA, "NReplicates"=NA, "Speed"=NA, stringsAsFactors=FALSE)
+timeTaken <- data.frame("NSequences"=NA, "NReplicates"=NA, "User"=NA, "System"=NA, "Elapsed"=NA, stringsAsFactors=FALSE)
 row <- 0
 
 # Build each file name and run in homoplasyFinder
@@ -45,7 +45,7 @@ for(n in nSequences){
     time <- system.time(run(fastaFile, treeFile))
     
     # Store the time taken
-    timeTaken[row, ] <- c(n, replicate, time[[1]])
+    timeTaken[row, ] <- c(n, replicate, time[[1]], time[[2]], time[[3]])
   }
 }
 
