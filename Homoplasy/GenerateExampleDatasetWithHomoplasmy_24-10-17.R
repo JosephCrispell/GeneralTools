@@ -10,7 +10,7 @@ library(grid) # Used to plot lines between plot panels
 library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Homoplasy/"
+path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/Round3/"
 
 # Current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -26,7 +26,7 @@ infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
 nHomoplasiesValues <- 0:100
-nSimulations <- 1000
+nSimulations <- 100
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
 results <- data.frame("NFoundTrue"=rep(NA, nSimulations*length(nHomoplasiesValues)), 
