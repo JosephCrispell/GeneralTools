@@ -10,7 +10,7 @@ library(grid) # Used to plot lines between plot panels
 library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/Round3/"
+path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/"
 
 # Current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -26,7 +26,7 @@ infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 150
 nHomoplasiesValues <- 0:100
-nSimulations <- 100
+nSimulations <- 1000
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
 results <- data.frame("NFoundTrue"=rep(NA, nSimulations*length(nHomoplasiesValues)), 
@@ -43,7 +43,7 @@ setwd(path)
 seeds <- sample(1:100000000, size=nSimulations*length(nHomoplasiesValues), replace=FALSE)
 row <- 0
 for(nHomoplasies in nHomoplasiesValues){
-  for(i in 1:nSimulations){
+  for(i in seq_len(nSimulations)){
     row <- row + 1
     
     # Get the current date
@@ -106,6 +106,12 @@ for(nHomoplasies in nHomoplasiesValues){
                                         check.names=FALSE)
     results[row, c("NFoundAfter","NIncorrectAfter")] <- 
       reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
+    
+    #######
+    ## Save progress - keeps crashing!!!
+    if(i == nSimulations){
+      save.image(file=paste("testHomoplasyFinder_", date, ".RData", sep=""))
+    }
   }
 }
 
@@ -127,45 +133,30 @@ file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
 pdf(file, height=7, width=14)
 par(mfrow=c(1,2))
 
-plot(x=NULL, y=NULL, xlim=range(results$NHomoplasies), ylim=c(0,1), las=1, bty="n",  
-     xlab="Number homoplasies inserted", ylab="Proportion present",
-     main="Identifying inserted homoplasies using HomoplasyFinder")
-text(x=-1.5, y=1.15, labels="1.", xpd=TRUE, cex=3)
+# Set the colours used in plotting
+colours <- c("red", "goldenrod4", "blue", "orange", "purple")
+#colours <- c("#F8766D", "#B79F00", "#00BA38", "#00BFC4", "#619CFF")
 
-for(i in unique(results$NHomoplasies)){
-  
-  subset <- results[results$NHomoplasies == i, ]
-  counts <- table(subset$NFoundAfter / subset$NHomoplasies)
-  if(nrow(counts) == 0){
-    counts <- table(subset$NFoundAfter)
-  }
-  
-  points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
-  text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
-       labels=round(counts/nrow(subset), digits=2),
-       col=rgb(1,0,0, 1), cex=1)
-}
+### Plot the number homoplasies not found by HomoplasyFinder
+# Calculate the number of homoplasies missed by each simulation
+results$NMissed <- results$NHomoplasies - results$NFoundAfter
 
-plot(x=NULL, y=NULL, 
-     xlim=range(results$NHomoplasies),
-     ylim=range(results$NIncorrectAfter, na.rm=TRUE), las=1, bty="n",  
-     xlab="Number homoplasies inserted", 
-     ylab="Number non-inserted homoplasies Present", 
-     main="Identifying non-inserted homoplasies using HomoplasyFinder")
-text(x=-1.5, y=2.3, labels="2.", xpd=TRUE, cex=3)
-for(i in unique(results$NHomoplasies)){
-  
-  subset <- results[results$NHomoplasies == i, ]
-  counts <- table(subset$NIncorrectAfter)
-  if(nrow(counts) == 0){
-    counts <- table(subset$NIncorrectAfter)
-  }
-  
-  points(x=rep(i, length(counts)), y=as.numeric(names(counts)), pch=19, cex=6, col=rgb(0,0,0, counts/nrow(subset)), xpd=TRUE)
-  text(x=rep(i, length(counts)), y=as.numeric(names(counts)),
-       labels=round(counts/nrow(subset), digits=2),
-       col=rgb(1,0,0, 1), cex=1)
-}
+# Plot the proportion of simulations with X homoplasies not found
+plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
+                                             results=results, 
+                                             column="NMissed", colours=colours, 
+                                             title="Number inserted homoplasies NOT found by HomoplasyFinder",
+                                             legendTitle="N. NOT present",
+                                             plotLabel="1.", colourAlpha=0.75)
+
+### Plot the number non-inserted homoplasies found by homoplasyFinder
+plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
+                                             results=results, 
+                                             column="NIncorrectAfter", colours=colours, 
+                                             title="Number non-inserted homoplasies found by HomoplasyFinder",
+                                             legendTitle="N. present",
+                                             plotLabel="2.", colourAlpha=0.75)
+
 dev.off()
 
 #### Time trial example ####
@@ -217,6 +208,79 @@ for(replicate in 1:10){
 #############
 # FUNCTIONS #
 #############
+
+plotProportionOfSimulationsWithValueInColumn <- function(nHomoplasiesValues, nSimulations, results, column, colours, title, legendTitle,
+                                                         plotLabel, colourAlpha){
+  
+  # Initialise a dataframe to store the proportion of simulations where X non-inserted homoplasies found
+  propSimulationsWithValue <- data.frame(matrix(nrow=length(nHomoplasiesValues), ncol=max(results[, column]) + 2))
+  colnames(propSimulationsWithValue)[1] <- "NHomoplasies"
+  propSimulationsWithValue[, 1] <- nHomoplasiesValues
+  
+  # Examine the sets of simulations conducted for each number of homoplasies inserted
+  for(nHomoplasies in nHomoplasiesValues){
+    
+    # Get the subset of the results associated with the current nHomoplasies inserted
+    subset <- results[results$NHomoplasies == nHomoplasies, ]
+    
+    # Count the number of simulations with X and convert the counts to a proportion of the set of simulations
+    propSimulationsWithValues <- table(subset[, column])/nrow(subset)
+    
+    # Add the proportions calculated into the dataframe
+    propSimulationsWithValue[nHomoplasies + 1, as.numeric(names(propSimulationsWithValues)) + 2] <- 
+      as.vector(propSimulationsWithValues)
+  }
+  
+  # Create an empty plot to display the proportion of simulations for each nHomoplasies inserted with X missed homoplasies
+  plot(x=NULL, y=NULL, 
+       xlim=range(results$NHomoplasies), 
+       ylim=c(0,max(propSimulationsWithValue[3:ncol(propSimulationsWithValue)], na.rm=TRUE)), 
+       las=1, bty="n",  
+       xlab="Number homoplasies inserted", ylab=paste("Proportion of", nSimulations, "simulations"),
+       main=title)
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  text(x=axisLimits[1]-(0.04 * xLength), y=axisLimits[4]+(0.1*yLength), labels=plotLabel, xpd=TRUE, cex=3, pos=2)
+  
+  # Set the colour alpha value
+  colours <- convertToRGB(colours, colourAlpha)
+  
+  # Examine each X value (ignoring 0)
+  for(col in 3:ncol(propSimulationsWithValue)){
+    
+    # Add the points
+    points(x=propSimulationsWithValue$NHomoplasies, y=propSimulationsWithValue[, col], pch=21, bg=colours[col-2])
+    
+    # Note when there were no simulations with the current X 
+    rowsWithNAs <- is.na(propSimulationsWithValue[, col]) == FALSE
+    
+    # Calculate and add a smoothed line through the proportion simulations with X and number of homoplasies inserted
+    smoothSpline <- smooth.spline(propSimulationsWithValue[rowsWithNAs, col] ~ propSimulationsWithValue[rowsWithNAs, "NHomoplasies"],
+                                  spar=0.8)
+    lines(smoothSpline, col=colours[col-2], lwd=2)
+  }
+  
+  # Add a legend describing the colours chosen for values of X-missed
+  legend("topleft", 
+         legend=as.character(sort(unique(results[, column])))[-1],
+         pch=15, col=colours, bty="n", title=legendTitle, title.adj=0.75)
+}
+
+convertToRGB <- function(colours, alpha){
+  
+  rgbColours <- c()
+  for(i in seq_along(colours)){
+    rgbInfo <- col2rgb(colours[i])
+    
+    rgbColours[i] <- rgb(rgbInfo["red", 1], rgbInfo["green", 1], rgbInfo["blue", 1], alpha=alpha*255,
+                         maxColorValue=255)
+  }
+  
+  return(rgbColours)
+}
 
 plotLinesBetweenTips <- function(tipLocationsA, tipLocationsB, col="black", lwd=1, lty=1){
   
