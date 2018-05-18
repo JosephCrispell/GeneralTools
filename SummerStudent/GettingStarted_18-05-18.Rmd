@@ -1,0 +1,92 @@
+---
+title: "An introduction to modelling in R"
+author: "Joseph Crispell"
+date: "18 May 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+-----
+
+## What is R?
+
+R is a programming language. A programming language provides a means of communicating instructions to your computer. There many different programming languages out there, for example you may have heard of python, java, or c++. These languages are all very similar but work in slightly different ways making them useful for different tasks.
+
+R was designed for statistics and plotting, but because it is so great it is often used for all sorts of other things! We are going to be using R to create a model that will represent a population infected with a pathogen.
+
+Generally people use RStudio to write programs in R. RStudio is a program that has been designed to make writing R code easy. To get started we'll install R and RStudio on your computers.
+
+## Installation
+
+Download and install R by following the instructions [here](https://www.r-project.org/).
+
+Download and install RStudio by following the instructions [here](https://www.rstudio.com/).
+
+-----
+
+## Getting started with R
+
+Once you got RStudio up and running, let start writing some code:
+```{r}
+a <- 5
+b <- 7
+print(paste("a + b =", (a + b)))
+```
+
+Although the above R code is simple, it is doing some quite complicated. Firstly we created two variables `a` and `b`. Variables are used to store data. Here we created a variable called "a" and stored the number `5` in it. Then we created a variable called "b" and stored the number `7` in it.
+
+Variables are important in any programming language, they allow data to be stored and accessible later.
+
+Next we printed some information out into the RStudio console using the `print()` function. A function, in any language, is similar to a variable but instead of storing data, a function stores instructions used to complete a task. The `print()` function will print any information it is provided with to the screen. To find out a bit more about `print()`, type `help(print)` into the RStudio console.
+
+The information we used `print()` to print was a string (set) of characters. We used the function `paste()` function to combine the string "a + b =" with the sum of `a` and `b`.
+
+### Exercise
+Create a variable called "c" such that:
+\[ c = \frac{a}{b} \]
+
+## Writing a function
+
+We have touched on functions, they store a set of instructions used to complete a task. A function as inputs and returns an output. Here is a function that will return to sum of two numbers:
+```{r}
+
+addTwoNumbersTogether <- function(firstNumber, secondNumber){
+  return(firstNumber + secondNumber)
+}
+
+print(paste("a + b =", addTwoNumbersTogether(firstNumber=a, secondNumber=b)))
+```
+
+To create a function in R, as in above, you must give it a name and define what you want it to do. We created a function called "addTwoNumbersTogether". The `addTwoNumbersTogether()` function has two inputs: `firstNumber` and `secondNumber`. By naming its inputs, those inputs can be referred to within the function. `addTwoNumbersTogether()` returns the sum of the `firstNumber` and `secondNumber`.
+
+### Exercise
+Create a function that returns the product (`a * b`) of two numbers.
+
+## Vectors
+
+What if you have a lot of numbers? You don't want to have to create and name a variable for each one! a `vector` in R can be used to store multiple numbers in a single variable:
+```{r}
+numbers <- c(2, 3, 23, 13, -1)
+```
+
+Now we stored five different numbers in one place. The `c` function in R combines the things within the brackets into a vector. To access the numbers within our `numbers` vector, we can either get all of them in one go:
+```{r}
+print(numbers)
+```
+
+Or, we can access each number using its index (position) in the vector. For example to get third number:
+```{r}
+print(numbers[3])
+```
+
+### Exercise
+How would I print the first number of the `numbers` vector?
+
+## Looping
+
+## IF statement
+
+## Plotting
