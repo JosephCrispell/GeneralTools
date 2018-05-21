@@ -1,5 +1,5 @@
 ---
-title: "An introduction to modelling in R"
+title: "An introduction to R"
 author: "Joseph Crispell"
 date: "18 May 2018"
 output: html_document
@@ -36,7 +36,7 @@ b <- 7
 print(paste("a + b =", (a + b)))
 ```
 
-Although the above R code is simple, it is doing some quite complicated. Firstly we created two variables `a` and `b`. Variables are used to store data. Here we created a variable called "a" and stored the number `5` in it. Then we created a variable called "b" and stored the number `7` in it.
+Although the above R code is simple, it is doing something quite complicated. Firstly we created two variables `a` and `b`. Variables are used to store data. Here we created a variable called "a" and stored the number `5` in it. Then we created a variable called "b" and stored the number `7` in it.
 
 Variables are important in any programming language, they allow data to be stored and accessible later.
 
@@ -85,8 +85,61 @@ print(numbers[3])
 ### Exercise
 How would I print the first number of the `numbers` vector?
 
-## Looping
+## A `for` loop
 
-## IF statement
+A vector provides a means of storing multiple things in the same place. A `for` loop allows you to do the same thing multiple times. For example if I wanted to print each element of our vector `numbers` I could use the following code:
+```{r}
+print(numbers[1])
+print(numbers[2])
+print(numbers[3])
+print(numbers[4])
+print(numbers[5])
+```
 
-## Plotting
+We managed to print each element in the `numbers` vector, but what if our vector, `numbers`, was larger, it contained more numbers? A better way to print each element of our vector is to use a for loop:
+```{r}
+for(element in numbers){
+  print(element)
+}
+```
+
+By using the `for` loop, we have printed each element in the `numbers` successfully in a generalisable way that could be applied to any vector.
+
+### Exercise
+Create a function called "printElements" that will print each element of a vector
+
+## The `if` statement
+
+The last thing we'll touch on is the `if` statement. The `if` statement is programming equivalent of a question, generally taking this form:
+```{r, eval=FALSE}
+if(question == TRUE){
+  # Do something
+}else{
+  # Do something else
+}
+```
+
+For example if we wanted to check whether `a` was more than 10, we could use the following code:
+```{r}
+if(a > 10){
+  print("a is more than 10")
+}else{
+  print("a is not more than 10")
+}
+```
+
+The `>`, meaning more than, is called an operator. By using operators, such as `>`, `==` (equals), or `<` (less than), we can ask surprisingly complicated questions! We also used the `else` statement, which allows us to do something else, when our condition (`a > 10`) is `FALSE`.
+
+### Exercise
+Write code to check whether `b` is more than 3.
+
+## Learning more
+
+In this tutorial we have covered a little about programming in R. There is plenty more to learn, but all of programming more-or-less is built using what we have learnt so far. The important thing is to keep learning, by thinking of tasks that you could use R for and taking advantage of the internet! I have found the following tutorials extremely useful:
+
+* [tutorialspoint](https://www.tutorialspoint.com/r/index.htm)
+* [stackoverflow](https://stackoverflow.com/questions/4556524/whats-the-way-to-learn-r)
+* [rbloggers](https://www.r-bloggers.com/)
+
+### Exercise
+Write a function that will print each even number in a vector of numbers.
