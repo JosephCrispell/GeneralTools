@@ -36,7 +36,7 @@ b <- 7
 print(paste("a + b =", (a + b)))
 ```
 
-Although the above R code is simple, it is doing something quite complicated. Firstly we created two variables `a` and `b`. Variables are used to store data. Here we created a variable called "a" and stored the number `5` in it. Then we created a variable called "b" and stored the number `7` in it.
+Although the above R code is simple, it is doing something quite complicated. Firstly, we created two variables `a` and `b`. Variables are used to store data. Here we created a variable called "a" and stored the number `5` in it. Then we created a variable called "b" and stored the number `7` in it.
 
 Variables are important in any programming language, they allow data to be stored and accessible later.
 
@@ -50,7 +50,7 @@ Create a variable called "c" such that:
 
 ## Writing a function
 
-We have touched on functions, they store a set of instructions used to complete a task. A function as inputs and returns an output. Here is a function that will return to sum of two numbers:
+We have touched on functions, they store a set of instructions used to complete a task. A function has inputs and usually returns an output. Here is a function that will return the sum of two numbers:
 ```{r}
 
 addTwoNumbersTogether <- function(firstNumber, secondNumber){
@@ -62,17 +62,28 @@ print(paste("a + b =", addTwoNumbersTogether(firstNumber=a, secondNumber=b)))
 
 To create a function in R, as in above, you must give it a name and define what you want it to do. We created a function called "addTwoNumbersTogether". The `addTwoNumbersTogether()` function has two inputs: `firstNumber` and `secondNumber`. By naming its inputs, those inputs can be referred to within the function. `addTwoNumbersTogether()` returns the sum of the `firstNumber` and `secondNumber`.
 
+Creating a function will always take this form:
+```{r, eval=FALSE}
+functionName <- function(input(s)){
+  
+  # Write R code to a set of tasks here
+  
+  # Return something from the function - OPTIONAL
+  return(output)
+}
+```
+
 ### Exercise
 Create a function that returns the product (`a * b`) of two numbers.
 
 ## Vectors
 
-What if you have a lot of numbers? You don't want to have to create and name a variable for each one! a `vector` in R can be used to store multiple numbers in a single variable:
+What if you have a lot of numbers? You don't want to have to create and name a variable for each one! A `vector` in R can be used to store multiple numbers in a single variable:
 ```{r}
 numbers <- c(2, 3, 23, 13, -1)
 ```
 
-Now we stored five different numbers in one place. The `c` function in R combines the things within the brackets into a vector. To access the numbers within our `numbers` vector, we can either get all of them in one go:
+Now we stored five different numbers in one place. The `c` function in R combines the things within the brackets, `()`, into a vector. To access the numbers within our `numbers` vector, we can either get all of them in one go:
 ```{r}
 print(numbers)
 ```
@@ -104,6 +115,14 @@ for(element in numbers){
 ```
 
 By using the `for` loop, we have printed each element in the `numbers` successfully in a generalisable way that could be applied to any vector.
+
+The `for` loop always takes the form:
+```{r,eval=FALSE}
+for(element in vector){
+  
+  # Do something using the element here
+}
+```
 
 ### Exercise
 Create a function called "printElements" that will print each element of a vector

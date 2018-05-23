@@ -146,7 +146,7 @@ $(document).ready(function () {
 b &lt;- 7
 print(paste(&quot;a + b =&quot;, (a + b)))</code></pre>
 <pre><code>## [1] &quot;a + b = 12&quot;</code></pre>
-<p>Although the above R code is simple, it is doing something quite complicated. Firstly we created two variables <code>a</code> and <code>b</code>. Variables are used to store data. Here we created a variable called “a” and stored the number <code>5</code> in it. Then we created a variable called “b” and stored the number <code>7</code> in it.</p>
+<p>Although the above R code is simple, it is doing something quite complicated. Firstly, we created two variables <code>a</code> and <code>b</code>. Variables are used to store data. Here we created a variable called “a” and stored the number <code>5</code> in it. Then we created a variable called “b” and stored the number <code>7</code> in it.</p>
 <p>Variables are important in any programming language, they allow data to be stored and accessible later.</p>
 <p>Next we printed some information out into the RStudio console using the <code>print()</code> function. A function, in any language, is similar to a variable but instead of storing data, a function stores instructions used to complete a task. The <code>print()</code> function will print any information it is provided with to the screen. To find out a bit more about <code>print()</code>, type <code>help(print)</code> into the RStudio console.</p>
 <p>The information we used <code>print()</code> to print was a string (set) of characters. We used the function <code>paste()</code> function to combine the string “a + b =” with the sum of <code>a</code> and <code>b</code>.</p>
@@ -157,7 +157,7 @@ print(paste(&quot;a + b =&quot;, (a + b)))</code></pre>
 </div>
 <div id="writing-a-function" class="section level2">
 <h2>Writing a function</h2>
-<p>We have touched on functions, they store a set of instructions used to complete a task. A function as inputs and returns an output. Here is a function that will return to sum of two numbers:</p>
+<p>We have touched on functions, they store a set of instructions used to complete a task. A function has inputs and usually returns an output. Here is a function that will return the sum of two numbers:</p>
 <pre class="r"><code>addTwoNumbersTogether &lt;- function(firstNumber, secondNumber){
   return(firstNumber + secondNumber)
 }
@@ -165,6 +165,14 @@ print(paste(&quot;a + b =&quot;, (a + b)))</code></pre>
 print(paste(&quot;a + b =&quot;, addTwoNumbersTogether(firstNumber=a, secondNumber=b)))</code></pre>
 <pre><code>## [1] &quot;a + b = 12&quot;</code></pre>
 <p>To create a function in R, as in above, you must give it a name and define what you want it to do. We created a function called “addTwoNumbersTogether”. The <code>addTwoNumbersTogether()</code> function has two inputs: <code>firstNumber</code> and <code>secondNumber</code>. By naming its inputs, those inputs can be referred to within the function. <code>addTwoNumbersTogether()</code> returns the sum of the <code>firstNumber</code> and <code>secondNumber</code>.</p>
+<p>Creating a function will always take this form:</p>
+<pre class="r"><code>functionName &lt;- function(input(s)){
+  
+  # Write R code to a set of tasks here
+  
+  # Return something from the function - OPTIONAL
+  return(output)
+}</code></pre>
 <div id="exercise-1" class="section level3">
 <h3>Exercise</h3>
 <p>Create a function that returns the product (<code>a * b</code>) of two numbers.</p>
@@ -172,9 +180,9 @@ print(paste(&quot;a + b =&quot;, addTwoNumbersTogether(firstNumber=a, secondNumb
 </div>
 <div id="vectors" class="section level2">
 <h2>Vectors</h2>
-<p>What if you have a lot of numbers? You don’t want to have to create and name a variable for each one! a <code>vector</code> in R can be used to store multiple numbers in a single variable:</p>
+<p>What if you have a lot of numbers? You don’t want to have to create and name a variable for each one! A <code>vector</code> in R can be used to store multiple numbers in a single variable:</p>
 <pre class="r"><code>numbers &lt;- c(2, 3, 23, 13, -1)</code></pre>
-<p>Now we stored five different numbers in one place. The <code>c</code> function in R combines the things within the brackets into a vector. To access the numbers within our <code>numbers</code> vector, we can either get all of them in one go:</p>
+<p>Now we stored five different numbers in one place. The <code>c</code> function in R combines the things within the brackets, <code>()</code>, into a vector. To access the numbers within our <code>numbers</code> vector, we can either get all of them in one go:</p>
 <pre class="r"><code>print(numbers)</code></pre>
 <pre><code>## [1]  2  3 23 13 -1</code></pre>
 <p>Or, we can access each number using its index (position) in the vector. For example to get third number:</p>
@@ -208,6 +216,11 @@ print(paste(&quot;a + b =&quot;, addTwoNumbersTogether(firstNumber=a, secondNumb
 ## [1] 13
 ## [1] -1</code></pre>
 <p>By using the <code>for</code> loop, we have printed each element in the <code>numbers</code> successfully in a generalisable way that could be applied to any vector.</p>
+<p>The <code>for</code> loop always takes the form:</p>
+<pre class="r"><code>for(element in vector){
+  
+  # Do something using the element here
+}</code></pre>
 <div id="exercise-3" class="section level3">
 <h3>Exercise</h3>
 <p>Create a function called “printElements” that will print each element of a vector</p>

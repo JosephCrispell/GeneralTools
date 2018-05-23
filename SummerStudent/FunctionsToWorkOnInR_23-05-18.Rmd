@@ -1,0 +1,64 @@
+---
+title: "Plotting in R"
+author: "Joseph Crispell"
+date: "20 May 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+-----
+
+## Why write functions?
+
+A function is a stand-a-lone piece of code designed to complete a single task. A function has inputs and usually produces an output, it generally takes the form:
+
+```{r, eval=FALSE}
+functionName <- function(input(s)){
+  
+  # Write R code to a set of tasks here
+  
+  # Return something from the function - OPTIONAL
+  return(output)
+}
+```
+
+By restricting functions to single tasks, developing code becomes more manageable and efficient. The stand-a-lone aspect of a function is one of its main benefits, it can be developed and tested without relying upon any other code and, once ready, easily incorporated into other functions.
+
+Here we are going to be developing a whole series of functions, to do simple tasks within R. Most of the functions have already been developed and are available directly within R but hopefully by writing them ourselves we'll learn a bit more about the importance of functions and programming in general.
+
+## Functions to work on
+
+### Find the maximum
+Write a function that, given a vector of numbers as input, will return the maximum value present in the vector.
+
+### Repeat a value X times
+Write a function that, given a value and an integer specifying how many times the value is to be repeated, will return a vector containing the value repeated the specified number of times.
+
+### Calculate the mean
+Write a function that, given a vector of numbers as input, will return the sum of all the values in the vector.
+
+### Add two vectors together
+Write a function that, given two vectors of numbers ($a$, and $b$) as input, will return a single vector ($output$) where:
+\[ output[i] = a[i] + b[i] \]
+Although there are much better ways to do this, in your function you should use a `for` loop.
+
+### Check if value is in vector
+Write a function that, given a vector and a value as input, checks whether the value is present in the vector
+
+### Get the current date 
+Write a function that will return the current date as a string, in the format: dd-mm-YY. You are allowed to use the `Sys.Date()` and `format()` functions.
+
+### Reverse a vector
+Write a function that, given an vector of values, will return a vector of the same values but in reverse order.
+
+### Sequence of numbers
+Write a function that, given start, end, and step values as input, will return a sequence of numbers starting at the specified start and ending on or before the specified end, incrementing by the specified step value.
+
+### Calculate the euclidean distance between two points
+Write a function that, given X and Y coordinates for two points (in the form: $x1$, $y1$, $x2$, $y2$), will return the euclidean (stright line) distance between the points.
+
+### Find the unique values
+Write a function that, given a vector as input, will return a vector containing only the unique values present in the input vector.

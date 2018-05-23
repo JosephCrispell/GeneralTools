@@ -115,6 +115,8 @@ for(nHomoplasies in nHomoplasiesValues){
   }
 }
 
+# Java error -> simulation 474 of 1000 inserting 12 homoplasies
+
 # Write the results to file
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
@@ -130,11 +132,11 @@ write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
               min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".pdf", sep="")
-pdf(file, height=7, width=14)
-par(mfrow=c(1,2))
+pdf(file, height=14, width=7)
+par(mfrow=c(2,1))
 
 # Set the colours used in plotting
-colours <- c("red", "goldenrod4", "blue", "orange", "purple")
+colours <- c("purple", "orange", "blue", "red", "cyan", "goldenrod4")
 #colours <- c("#F8766D", "#B79F00", "#00BA38", "#00BFC4", "#619CFF")
 
 ### Plot the number homoplasies not found by HomoplasyFinder
@@ -147,7 +149,7 @@ plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValu
                                              column="NMissed", colours=colours, 
                                              title="Number inserted homoplasies NOT found by HomoplasyFinder",
                                              legendTitle="N. NOT present",
-                                             plotLabel="1.", colourAlpha=0.75)
+                                             plotLabel="1.", colourAlpha=0.75, spline=FALSE)
 
 ### Plot the number non-inserted homoplasies found by homoplasyFinder
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
@@ -155,7 +157,7 @@ plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValu
                                              column="NIncorrectAfter", colours=colours, 
                                              title="Number non-inserted homoplasies found by HomoplasyFinder",
                                              legendTitle="N. present",
-                                             plotLabel="2.", colourAlpha=0.75)
+                                             plotLabel="2.", colourAlpha=0.75, spline=FALSE)
 
 dev.off()
 
@@ -210,7 +212,7 @@ for(replicate in 1:10){
 #############
 
 plotProportionOfSimulationsWithValueInColumn <- function(nHomoplasiesValues, nSimulations, results, column, colours, title, legendTitle,
-                                                         plotLabel, colourAlpha){
+                                                         plotLabel, colourAlpha, spline=TRUE){
   
   # Initialise a dataframe to store the proportion of simulations where X non-inserted homoplasies found
   propSimulationsWithValue <- data.frame(matrix(nrow=length(nHomoplasiesValues), ncol=max(results[, column]) + 2))
@@ -246,21 +248,24 @@ plotProportionOfSimulationsWithValueInColumn <- function(nHomoplasiesValues, nSi
   text(x=axisLimits[1]-(0.04 * xLength), y=axisLimits[4]+(0.1*yLength), labels=plotLabel, xpd=TRUE, cex=3, pos=2)
   
   # Set the colour alpha value
-  colours <- convertToRGB(colours, colourAlpha)
+  coloursAlpha <- convertToRGB(colours, colourAlpha)
   
   # Examine each X value (ignoring 0)
   for(col in 3:ncol(propSimulationsWithValue)){
     
     # Add the points
-    points(x=propSimulationsWithValue$NHomoplasies, y=propSimulationsWithValue[, col], pch=21, bg=colours[col-2])
+    points(x=propSimulationsWithValue$NHomoplasies, y=propSimulationsWithValue[, col], pch=21, bg=coloursAlpha[col-2])
     
     # Note when there were no simulations with the current X 
-    rowsWithNAs <- is.na(propSimulationsWithValue[, col]) == FALSE
+    rowsWithoutNAs <- is.na(propSimulationsWithValue[, col]) == FALSE
     
     # Calculate and add a smoothed line through the proportion simulations with X and number of homoplasies inserted
-    smoothSpline <- smooth.spline(propSimulationsWithValue[rowsWithNAs, col] ~ propSimulationsWithValue[rowsWithNAs, "NHomoplasies"],
-                                  spar=0.8)
-    lines(smoothSpline, col=colours[col-2], lwd=2)
+    if(spline == TRUE && length(unique(propSimulationsWithValue[rowsWithoutNAs, col])) > 3){
+      smoothSpline <- smooth.spline(
+        propSimulationsWithValue[rowsWithoutNAs, col] ~ propSimulationsWithValue[rowsWithoutNAs, "NHomoplasies"],
+        spar=0.8)
+      lines(smoothSpline, col=coloursAlpha[col-2], lwd=2)
+    }
   }
   
   # Add a legend describing the colours chosen for values of X-missed

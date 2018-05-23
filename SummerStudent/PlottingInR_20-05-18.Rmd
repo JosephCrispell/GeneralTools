@@ -39,7 +39,7 @@ I've created an example dataset "BadgerInformation.csv". We'll be working with t
 The data is in a `csv` file. CSV stands for Comma Separated Values, each value in each column is separated by a comma and rows are on new lines. Lets read in the "BadgerInformation.csv" file:
 ```{r}
 badgerInfo <- read.table(
-  file="C:/Users/Joseph Crisp/Dropbox/SummerStudents/BadgerInformation.csv",
+  file="/home/josephcrispell/Dropbox/UCDProject/SummerProject_Modelling/BadgerInformation.csv",
   header=TRUE,
   sep=",")
 ```
@@ -62,13 +62,13 @@ We can use the `head()` function to have a quick look at the table:
 head(badgerInfo)
 ```
 
-We used the function `head()`. `head()` is a function that will by default print the first 6 rows of a `data.frame`. `data.frame`s in R provide a means of storing a table, with rows and columns. `badgerInfo` is a table with:
+We used the function `head()`. `head()` is a function that will by default print the first 6 rows of a `data.frame`. `data.frame`s in R provide a means of storing a table, with rows and columns. We can use the `dim()` function to tell us how many rows and columns are in the `badgerInfo` with:
 
 ```{r}
 dim(badgerInfo)
 ```
 
-The `dim()` function will tell us how many rows (100) and columns (3) are in the `data.frame` (`badgerInfo`) we provide it with.
+There are 100 rows and 3 columns are in the `data.frame` (`badgerInfo`).
 
 ### Exercise
 Create a function that mimics `dim()`. It will tell you how many rows and columns a table has. Hint: you could use the `nrow()` function.
@@ -88,20 +88,21 @@ What if we wanted all of the values in a row or column? We can get all the value
 head(badgerInfo[,2])
 ```
 
-We used the `head()` function here so that we didn't end up printing too many values to the screen. When you want all the values
+We used the `head()` function here so that we didn't end up printing too many values to the screen.
 
 ### Exercises
 How would I get the value in the 1st column of the 3rd row?
+
 How would I get all the values in the 34th row?
 
 ## Plotting data
 
-So now we have a table with some data, and we know how to access the data in the table, lets get plotting. First lets see what the weights of the badgers look like:
+So now we have a table with some data, and we know how to access the data in that table, lets get plotting. First lets see what the weights of the badgers look like:
 ```{r}
 hist(badgerInfo[, "Weight"])
 ```
 
-The `hist()` function will plot any set of numbers as a histogram - here we gave the `hist()` function the badger weights (we sneakily used the columns name "Weight" as its index).
+The `hist()` function will plot any set of numbers as a histogram - here we gave the `hist()` function the badger weights (we sneakily used the column's name "Weight" as its index).
 
 We can make the plot look a lot better by adding some titles:
 ```{r}
@@ -110,8 +111,9 @@ hist(badgerInfo[, "Weight"],
      xlab="Weight (kg)")
 ```
 
-How does a badgers weight relate to its length?
-We can make the plot look a lot better by adding some titles:
+Here we took advantage of the additional parameters that the `hist()` function can take as input (see `help(hist)`), to change the title and X axis label of our plot.
+
+How does a badgers weight relate to its length? We can make a scatter plot, where the X values are the badgers' weights, and the Y values are the badgers' lengths:
 ```{r}
 plot(x=badgerInfo[, "Weight"], y=badgerInfo[, "Length"],
      main="Badger weight versus length",
@@ -119,24 +121,28 @@ plot(x=badgerInfo[, "Weight"], y=badgerInfo[, "Length"],
      ylab="Length (cm)")
 ```
 
-Lastly, how does the badger's sex relate to their weights?
+Here, we used the more general `plot()` function. The `plot()` will plot values in one vector, or two. Here, we assigned the badger weights to the X coordinates and badger lengths to the Y coordinates. We also used the `main`, `xlab`, and `ylab` parameters to add some meaningful labels to our plot.
+
+Lastly, how does the badger's sex relate to their weights? Here, we are comparing a continuous set of numbers (weights) against a categorical set of names (sex can either be "Male" or "Female" - defining categories). To compare continuous and categorical values we can use a boxplot:
 ```{r}
 boxplot(badgerInfo[, "Weight"] ~ badgerInfo[, "Sex"],
      main="Badger weight versus sex",
      ylab="Weight (kg)")
 ```
 
-The `boxplot()` takes its data in the form of a formula: `response ~ explanatory`. Where the explanatory data is the data that we are trying to used to explain the variation we observed in the response data.
+The `boxplot()` function takes its data in the form of a formula: `response ~ explanatory`. Where the explanatory data is the data that we are trying to use to explain the variation we observed in the response data. The boxplot aims to summarise the values that fall within a category. The 
 
 ### Exercises
 Plot a histogram of the badger lengths.
+
 Plot a boxplot to see whether there is a relationship between the badger's length and their sex.
-Plot the badgers lengths against their lengths using the same code as above but colour the points red and make points be shaped like triangles.
+
+Plot the badgers lengths against their weights using the same code as above but colour the points red and make points be shaped like triangles.
 
 ## Learning more
 We have very quickly created a few different plots. We used the plots to have a look at some data we had about badgers. By plotting data we were able to see, though we probably expected it, that heavy badgers were longer. Also we found that female badgers were lighter.
 
-Plotting the provides an easy and quick way to see what's going on with our data. To learn a bit more, there are loads of tutorials available online showing you how to make some amazing plots. Here are a few to get started with:
+Plotting provides an easy and quick way to see what's going on with our data. To learn a bit more, there are loads of tutorials available online showing you how to make some amazing plots. Here are a few to get started with:
 
 * https://www.statmethods.net/graphs/creating.html
 * https://www.datamentor.io/r-programming/plot-function
