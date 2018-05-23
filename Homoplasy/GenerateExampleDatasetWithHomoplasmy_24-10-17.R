@@ -125,9 +125,9 @@ write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Plot results ####
 
-# resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-10_1000_09-04-18.csv", sep="")
-# date <- strsplit(resultsFile, "_|\\.")[[1]][8]
-# results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-100_1000_23-05-18.csv", sep="")
+date <- strsplit(resultsFile, "_|\\.")[[1]][8]
+results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
@@ -149,7 +149,7 @@ plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValu
                                              column="NMissed", colours=colours, 
                                              title="Number inserted homoplasies NOT found by HomoplasyFinder",
                                              legendTitle="N. NOT present",
-                                             plotLabel="1.", colourAlpha=0.75, spline=FALSE)
+                                             plotLabel="A.", colourAlpha=0.75, spline=FALSE)
 
 ### Plot the number non-inserted homoplasies found by homoplasyFinder
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
@@ -157,7 +157,7 @@ plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValu
                                              column="NIncorrectAfter", colours=colours, 
                                              title="Number non-inserted homoplasies found by HomoplasyFinder",
                                              legendTitle="N. present",
-                                             plotLabel="2.", colourAlpha=0.75, spline=FALSE)
+                                             plotLabel="B.", colourAlpha=0.75, spline=FALSE)
 
 dev.off()
 

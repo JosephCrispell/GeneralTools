@@ -3,6 +3,8 @@
 ##################
 
 # Install biostrings using bioclite() - Installs biostrings and all associated packages
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("Biostrings")
 library(Biostrings)
 
 ##########################
@@ -10,26 +12,26 @@ library(Biostrings)
 ##########################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Reference/"
+path <- "/home/josephcrispell/Desktop/Research/Reference/"
 
 # Original
-file <- paste(path, "TransferAnnotations_09-02-18/RATT_output/embl/",
-              "GarnierAnnotations.embl", sep="")
+# file <- paste(path, "TransferAnnotations_23-05-18/RATT_output/embl/",
+#               "AF2122-97.embl", sep="")
+# original <- readEMBLFile(file)
+file <- paste(path, "UpdatedReference_Malone2017/",
+             "LT708304.1_AF2122-97_rmPrefixToLocusTag.embl", sep="")
 original <- readEMBLFile(file)
-#file <- paste(path, "UpdatedReference_Malone2017/",
-#              "LT708304.1_AF2122-97_Malone2017_rmPrefixToLocusTag.embl", sep="")
-#original <- readEMBLFile(file)
 
 # Transferred
-file <- paste(path, "TransferAnnotations_09-02-18/RATT_output/",
-              "TransferAnnotations_GarnierToMalone_09-02-18.LT708304.1.final.embl", sep="")
+file <- paste(path, "TransferAnnotations_23-05-18/RATT_output/",
+              "TransferGarnierToMalone_23-05-18.LT708304.1.final.embl", sep="")
 transferred <- readEMBLFile(file)
 
 # Open a pdf
-#file <- paste(path, "TransferAnnotations_09-02-18/",
-#              "MaloneVersusTransferred_09-02-18.pdf", sep="")
-file <- paste(path, "TransferAnnotations_09-02-18/",
-              "GarnierVersusTransferred_09-02-18.pdf", sep="")
+file <- paste(path, "TransferAnnotations_23-05-18/",
+             "MaloneVersusTransferred_23-05-18.pdf", sep="")
+# file <- paste(path, "TransferAnnotations_23-05-18/",
+#               "GarnierVersusTransferred_23-05-18.pdf", sep="")
 pdf(file)
 
 ########################
