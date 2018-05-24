@@ -1,0 +1,139 @@
+---
+title: "Things to keep in mind"
+author: "Joseph Crispell"
+date: "24 May 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+-----
+
+## What is this file?
+I wanted to note down the most important things to remember when you're getting started with programming. Below are the pieces of code that you'll see everywhere - these are the building blocks of programs! There are 4 things to wrap your head around.
+
+-----
+
+## 1. Variables
+
+In R we create and store things in variables. When creating them, we give them a name that we'll use to refer to them in the rest of our code. Creating a variable takes the form:
+```{r, eval=FALSE}
+variableName <- somethingToStoreInVariable
+```
+
+### Strings
+A string represents a set of characters. Strings in R are referred to as a character class. Strings can be created using
+```{r}
+stringName <- "hello"
+```
+
+### Numbers
+Numbers in programming can be stored in different types: integers (1,2,3,4,...), doubles (1.34565), and longs (2.345464647474654). R treats all of these slightly differently internally but they are all created in the same way:
+```{r}
+numberName <- 1
+```
+
+### Boolean
+A boolean variable can be either `TRUE` or `FALSE`. Boolean variables are extremely useful and used through most programs. Here is how you might create one:
+```{r}
+booleanName <- TRUE
+```
+
+### Vectors
+Vectors, in R, store multiple things in one place. For example we could have a vector of strings, or a vector of numbers. Importantly, the things within a vector can be access via their position (index) in the vector. In addition, a vector will have a length.
+```{r}
+# Create a vector
+vectorName <- c(1,2,3,4,5,6)
+
+# Get the second element of the vector
+vectorName[2]
+
+# Get the length of the vector
+length(vectorName)
+```
+
+### Tables
+Tables in R can be represented as a `data.frame` or a `matrix` (a no-thrills type of table). Tables will have rows and columns. Values in a table can be accessed via thier index.
+```{r}
+# Create a data.frame
+dataFrameName <- data.frame("FirstColumnsName"=rep("test", 10), "SecondColumnsName"=rep(3, 10), stringsAsFactors=FALSE)
+
+# Create a matrix
+matrixName <- matrix(1:100, nrow=10, ncol=10, byrow=TRUE)
+
+# Have a quick look at the data.frame and matrix
+head(dataFrameName)
+head(matrixName)
+
+# Use indices to get values from the data.frame and matrix
+dataFrameName[1:5, "FirstColumnsName"]
+matrixName[4, 2]
+matrixName[, 6]
+```
+
+### Lists
+Lists are really powerful but they are pretty different the other variable classes. Data in list are stored and accessed by keys. Here how we create one and access the data within it:
+```{r}
+# Create a list
+listName <- list("FirstName"="Joseph", "SecondName"="Crispell", "Age"=25, "Sex"="Male")
+
+# Access information in the list
+listName[["Sex"]]
+listName[["Age"]]
+
+# Oops, I am actually 28!
+listName[["Age"]] <- 28
+```
+
+-----
+
+## 2. Functions
+Functions represent a stand-a-lone set of code. A functions has (optional) inputs and a single (optional) output. Functions are really important, they allow a complex task to be broken down into simple tasks, each of which can be written into its own function! Creating a function in takes the following form:
+```{r, eval=FALSE}
+functionName <- function(input1, input2){
+  
+  # Do something with the inputs here to create an output
+  output <- ...
+  
+  # Return the single output (optional)
+  return(output)
+}
+```
+
+-----
+
+## 3. For loop
+A `for` loop is a construct that allows us to do the same task multiple times. Generally a `for` loop iterates (moves through) a vector. A for loop in R takes the form:
+```{r, eval=FALSE}
+# Sequentially the variable "value" will take up each value in the vector "vectorOfValues"
+for(value in vectorOfValues){
+  
+  # Do something with the variable named "value""
+}
+```
+
+-----
+
+## 4. If statement
+The `if` statement is programming's equivalent of a question and with it we can do amazing things!!! Within the `if` statement, we ask a question using operators (such as `>`, `<`, `<=`,  `==`, ...). The answer to the question will always be `TRUE` or `FALSE`. Here is the general structure of the if statement:
+```{r, eval=FALSE}
+# Using an if statement
+if(something == somthingElse){
+  
+  # If TRUE, do something here
+}
+
+# We can add an else statement, when we want to do somehting when the answer is FALSE
+if(something == somthingElse){
+  
+  # If TRUE, do something here
+}else{
+  
+  # If FALSE, do something here
+}
+```
+
+## That'll do for now!
+The variables are the most complicated! Variables can have different classes, and each class has different properties. Generally though, all of programming relies upon what we've cover in this single document.

@@ -49,7 +49,7 @@ Although there are much better ways to do this, in your function you should use 
 Write a function that, given a vector and a value as input, checks whether the value is present in the vector
 
 ### Get the current date 
-Write a function that will return the current date as a string, in the format: dd-mm-YY. You are allowed to use the `Sys.Date()` and `format()` functions.
+Write a function that will return the current date as a string, in the format: dd-mm-yy. You are allowed to use the `Sys.Date()` and `format.Date()` functions.
 
 ### Reverse a vector
 Write a function that, given an vector of values, will return a vector of the same values but in reverse order.

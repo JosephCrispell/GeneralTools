@@ -21,17 +21,20 @@ path <- "/home/josephcrispell/Desktop/Research/Reference/"
 file <- paste(path, "UpdatedReference_Malone2017/",
              "LT708304.1_AF2122-97_rmPrefixToLocusTag.embl", sep="")
 original <- readEMBLFile(file)
+# file <- paste(path, "UpdatedReference_Malone2017/",
+#               "LT708304.1_AF2122-97_ENA_rmPrefixToLocusTag.embl", sep="")
+# original <- readEMBLFile(file)
 
 # Transferred
-file <- paste(path, "TransferAnnotations_23-05-18/RATT_output/",
-              "TransferGarnierToMalone_23-05-18.LT708304.1.final.embl", sep="")
-transferred <- readEMBLFile(file)
+# file <- paste(path, "TransferAnnotations_23-05-18/RATT_output/",
+#               "TransferGarnierToMalone_23-05-18.LT708304.1.final.embl", sep="")
+# transferred <- readEMBLFile(file)
 
 # Open a pdf
-file <- paste(path, "TransferAnnotations_23-05-18/",
-             "MaloneVersusTransferred_23-05-18.pdf", sep="")
 # file <- paste(path, "TransferAnnotations_23-05-18/",
-#               "GarnierVersusTransferred_23-05-18.pdf", sep="")
+#              "MaloneVersusTransferred_23-05-18.pdf", sep="")
+file <- paste(path, "TransferAnnotations_23-05-18/",
+              "GarnierVersusTransferred_23-05-18.pdf", sep="")
 pdf(file)
 
 ########################
@@ -290,25 +293,7 @@ readEMBLFile <- function(fileName){
                       "mobile_element", "rRNA", "misc_RNA")){
       
       # Store the information for the previous feature
-      if(is.na(locusTag) == FALSE && grepl(locusTag, pattern="XXXX") == FALSE){
-        features[[locusTag]] <- list(
-          "locus_tag"=locusTag,
-          "gene_tag"=geneTag,
-          "type"=type,
-          "direction"=direction,
-          "coordinates"=coordinates)
-      }else if(is.na(geneTag) == FALSE){
-
-        cat(paste("Locus tag:", locusTag, "\tGene tag:", geneTag,
-                  "\tType:", type, "\n"))
-        
-        features[[geneTag]] <- list(
-          "locus_tag"=locusTag,
-          "gene_tag"=geneTag,
-          "type"=type,
-          "direction"=direction,
-          "coordinates"=coordinates)
-      }
+      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates)
       
       # Reset the tag variables
       locusTag <- NA
@@ -366,7 +351,10 @@ readEMBLFile <- function(fileName){
       
       # Check whether reached end of feature section  
     }else if(cols[1] == "SQ"){
-      foundSequence <- TRUE
+      foundSequence <- TRUE#
+      
+      # Store the information for the last feature
+      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates)
       next
     }
     
@@ -389,4 +377,30 @@ readEMBLFile <- function(fileName){
   )
   
   return(output)
+}
+
+storeFeature <- function(features, locusTag, geneTag, type, direction, coordinates){
+  
+  # Store the information for the previous feature
+  if(is.na(locusTag) == FALSE && grepl(locusTag, pattern="XXXX") == FALSE){
+    features[[locusTag]] <- list(
+      "locus_tag"=locusTag,
+      "gene_tag"=geneTag,
+      "type"=type,
+      "direction"=direction,
+      "coordinates"=coordinates)
+  }else if(is.na(geneTag) == FALSE){
+    
+    cat(paste("Locus tag:", locusTag, "\tGene tag:", geneTag,
+              "\tType:", type, "\n"))
+    
+    features[[geneTag]] <- list(
+      "locus_tag"=locusTag,
+      "gene_tag"=geneTag,
+      "type"=type,
+      "direction"=direction,
+      "coordinates"=coordinates)
+  }
+  
+  return(features)
 }
