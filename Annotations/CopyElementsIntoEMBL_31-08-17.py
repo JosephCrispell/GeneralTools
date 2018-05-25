@@ -12,11 +12,137 @@ import re # pattern matching
 # Created: 31-08-17
 
 # Command line structure:
-# python CopyElementsIntoEMBL.py elements.txt from.embl to.embl output.embl
+# python CopyElementsIntoEMBL.py elements.txt codonTable from.embl to.embl output.embl
 
 #############
 # FUNCTIONS #
 #############
+
+def getReverseComplement(sequence):
+	
+	# Get the reverse
+	reverse = sequence[::-1]
+	
+	# Note the nucleotide compliments
+	complimentNucleotides = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
+	
+	# Get the compliment
+	compliment = ""
+	for nucleotide in list(reverse):
+		compliment += complimentNucleotides[nucleotide]
+		
+	return compliment
+
+def buildCodonTable(fileName):
+	
+	# Intialise a dictionary to store the codon table
+	codonTable = {}
+	
+	# Read the file in line by line
+	with open(fileName) as fileLines:
+	
+		for line in fileLines:
+			
+			# Skip header region
+			if re.match(r"Codon(.*)", line):
+				continue
+				
+			# Remove the end of line character
+			line = line.rstrip()
+		
+			# Split the current line into parts
+			parts = re.split("\t", line)
+
+			# Store the codon information in the codon table
+			codonTable[parts[0]] = parts[3]
+	
+	return codonTable
+
+def takeAway(vector, number):
+	
+	output = [0] * len(vector)
+	
+	for index in range(0, len(vector)):
+		
+		output[index] = vector[index] - number
+		
+	return output
+
+def convertToAA(sequence, codonTable, key):
+	
+	# Initialise a string to store the AA sequence
+	aaSequence = ""
+	
+	# Note the start of each codon
+	codonStarts = range(0, len(sequence), 3)
+	
+	# Remove last start if not divisible by 3
+	if len(sequence) % 3 != 0:
+		del codonStarts[-1]
+		print "ERROR: Length of feature (coordinates: " + key + ") not divisble by 3"
+	
+	# Examine each codon in the sequence
+	for i in codonStarts:
+		
+		# Get the current codon
+		codon = sequence[i:i+3] # splice: start:end:by[optional]
+		
+		# Skip stop codon
+		if codonTable[codon] == "*":
+			continue
+		
+		# Get the current codon's AA
+		aaSequence += codonTable[codon]
+	
+	return aaSequence
+
+def getFeatureSequence(coords, genome, compliment):
+	
+	# Take 1 from the coordinates to make them 0-based
+	coords = takeAway(coords, 1)
+	
+	# Initialise a variable to store the sequence of the feature
+	sequence = sequence = genome[coords[0]:coords[1]+1:1].upper() # splice syntax: start:end:by
+	
+	# Check if want the compliment
+	if compliment == True:
+
+		sequence = getReverseComplement(sequence)
+
+	return sequence
+
+def addAASequencesToFeatures(keys, features, sequence, codonTable):
+	
+	# Examine each of the features
+	for key in keys:
+		
+		# Get the coordinate information from the coords
+		coords = parseCoords(key)
+		
+		# Get the feature information for the current feature
+		featureInfo = features[key]
+		
+		# Skip features that aren't coding sequences
+		if re.search(r"FT( +)CDS", featureInfo) == None:
+			continue
+			
+		# Skip pseudo genes
+		if re.search(r"/pseudo", featureInfo):
+			continue
+		
+		# Get the nucleotide sequence for the current sequence
+		featureSequence = getFeatureSequence(coords, sequence, re.search(r"complement(.*)", key) != None)
+		
+		# Convert the sequence to an amino acid sequence
+		aaSequence = convertToAA(featureSequence, codonTable, key)
+		
+		# Add the sequence into the feature Info
+		linesToAdd = "FT                   /translation=\"" + aaSequence + "\""
+		features[key] += linesToAdd + "\n"
+		
+		print "Added AA sequence to feature (coordinates: " + key + ")"
+	
+	return features
 
 def getCoordsFromFeatureInfo(featureInfo):
 	
@@ -103,7 +229,7 @@ def getGeneInfo(lines):
 
 	return output
 
-def getFeatureInfoFromEMBL(fileName, tags):
+def getFeatureInfoFromEMBL(fileName, tags, codonTable):
 	
 	# Initialise a dictionary to store the feature information
 	features = {}
@@ -114,6 +240,9 @@ def getFeatureInfoFromEMBL(fileName, tags):
 	# Initialise a variable to record that a feature was found
 	foundFeature = False
 	
+	# Initialise a variable to record the sequence
+	sequence = None
+	
 	# Initialise an array to store the previous 100 file lines
 	previousLines = [None] * 100
 	
@@ -123,13 +252,31 @@ def getFeatureInfoFromEMBL(fileName, tags):
 		for line in fileLines:
 			
 			# Skip header region
-			if not re.search(r"FT(.*)", line):
+			if re.match(r"FT(.*)", line) == None and re.match(r"SQ(.*)", line) == None and sequence == None:
+				continue
 				
-				# If reached sequence - break out
-				if re.search(r"SQ(.*)", line):
-					break
-				else:
-					continue
+			# Check if reached sequence
+			elif re.match(r"SQ(.*)", line):
+				
+				# Check if we need to store a feature of interest
+				if foundFeature == True:
+				
+					# Get the features coords from the featureInfo
+					coords = getCoordsFromFeatureInfo(featureInfo)
+
+					# Store the feature information
+					keys.append(coords)
+
+					# Store the information for the previous feature
+					features[coords] = featureInfo
+				
+					# Reset search for features
+					foundFeature = False
+					
+				# Note that reached sequence and skip line
+				sequence = ""
+				continue
+
 					
 			# Remove the end of line character
 			line = line.rstrip()
@@ -139,10 +286,9 @@ def getFeatureInfoFromEMBL(fileName, tags):
 		
 			# Split the current line into parts
 			parts = re.split("  +", line)		
-			
-			
+						
 			# If haven't found a feature of interest yet - search for one!
-			if foundFeature == False:
+			if foundFeature == False and sequence == None:
 				
 				# Check whether of the tags was found in the current line
 				for tag in tags:
@@ -152,6 +298,8 @@ def getFeatureInfoFromEMBL(fileName, tags):
 						featureInfo = getGeneInfo(previousLines)
 						foundFeature = True
 						break
+						
+						
 			# If found feature - continue building feature information until reach next gene tag
 			elif foundFeature == True and parts[1] != "gene":
 				featureInfo += line + "\n"
@@ -170,10 +318,21 @@ def getFeatureInfoFromEMBL(fileName, tags):
 				
 				# Reset search for features
 				foundFeature = False
+				
+			# Check if we have reached sequence
+			elif sequence != None and re.match("//", line) == None:
+				
+				sequence += parts[1]
+	
+	# Remove spaces from the nucleotide sequence
+	sequence = sequence.replace(" ", "")
 
 	# Note how many of the features were found
 	print "Found " + str(len(keys)) + " features of " + str(len(tags))
-				
+	
+	# Add the protein sequences to the information for the features of interest
+	features = addAASequencesToFeatures(keys, features, sequence, codonTable)
+					
 	# Return an output that has the feature dictionary and keys
 	output = {"Keys":keys, "Feature Info":features}
 	
@@ -383,16 +542,26 @@ def getElementTags(fileName):
 
 elementsTable = sys.argv[1]
 tags = getElementTags(elementsTable)
-	
+
+###########################
+# Read in the codon table #
+###########################
+
+# Get the codon table file from the command line
+codonTableFile = sys.argv[2]
+
+# Build the codon table
+codonTable = buildCodonTable(codonTableFile)
+
 #################################################
 # Get feature information from input EMBL file #
 #################################################
 	
 # Get the input file name from the command line
-inputEMBL = sys.argv[2]
+inputEMBL = sys.argv[3]
 
 # Read the file and get the information for the elements of interest
-featuresFound = getFeatureInfoFromEMBL(inputEMBL, tags)
+featuresFound = getFeatureInfoFromEMBL(inputEMBL, tags, codonTable)
 features = featuresFound["Feature Info"]
 orderedKeys = featuresFound["Keys"] # Ordered by their insertion into feature table - i.e. their order in EMBL
 
@@ -401,10 +570,10 @@ orderedKeys = featuresFound["Keys"] # Ordered by their insertion into feature ta
 ###############################################################
 
 # Get the input file name from the command line
-EMBL = sys.argv[3]
+EMBL = sys.argv[4]
 
 # Open the output file
-output = open(sys.argv[4],"w")
+output = open(sys.argv[5],"w")
 
 # Read in the EMBL, print out its lines and insert features at the correct locations to produce the output EMBL file
 featuresAdded = readAndPrintEMBLInsertingFeatures(EMBL, output, features, orderedKeys)

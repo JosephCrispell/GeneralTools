@@ -99,6 +99,23 @@ dev.off()
 # FUNCTIONS #
 #############
 
+getReverseCompliment <- function(sequence){
+  
+  # Note the nucleotide compliments
+  nucleotideCompliments <- list('A'='T', 'C'='G', 'G'='C', 'T'='A')
+  
+  # Get the reverse of the input sequence
+  reverse <- rev(sequence)
+  
+  # Build the reverse compliment
+  reverseComplement = c()
+  for(i in seq_along(reverse)){
+    reverseCompliment[i] = nucleotideCompliments[[reverse[i]]]
+  }
+  
+  return(reverseComplement())
+}
+
 plotFeatureTypes <- function(features, featureInfo, main){
   
   # Get the types of the current features
@@ -216,8 +233,8 @@ getFeatureSequence <- function(feature, annotationInfo){
         coordinates[i]:coordinates[i+1]])
       
     }else if(annotationInfo[["Features"]][[feature]]$direction == "COMPLEMENT"){
-      sequence <- c(sequence, annotationInfo[["Sequence"]][
-        coordinates[i+1]:coordinates[i]])
+      sequence <- c(sequence, getReverseCompliment(annotationInfo[["Sequence"]][
+        coordinates[i]:coordinates[i+1]]))
       
     }else{
       cat(paste("ERROR: Feature direction not recognised:", 
