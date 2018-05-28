@@ -29,7 +29,11 @@ By restricting functions to single tasks, developing code becomes more manageabl
 
 Here we are going to be developing a whole series of functions, to do simple tasks within R. Most of the functions have already been developed and are available directly within R but hopefully by writing them ourselves we'll learn a bit more about the importance of functions and programming in general.
 
-## Functions to work on
+-----
+
+## General functions to work on
+
+Here, we work on creating some of the functions that already exist within R, which we often take for granted. The aim here isn't the re-invention of the wheel but it is to teach us about creating functions. Having the functions already available within R will allow us to very easily test our work.
 
 ### Find the maximum
 Write a function that, given a vector of numbers as input, will return the maximum value present in the vector.
@@ -62,3 +66,56 @@ Write a function that, given X and Y coordinates for two points (in the form: $x
 
 ### Find the unique values
 Write a function that, given a vector as input, will return a vector containing only the unique values present in the input vector.
+
+### Find the unique values in the vector and count how many times each is found
+Write a function that, given a vector as input, will find each of the unique values in that vector and count how many times each value is present in the vector. This function should replicate the `table()` function in R.
+
+### Calculate the mean of rows or columns in matrix
+Write a function that, given a matrix and boolean choice variable as input, will return a vector containing the means of each row or column in the input matrix. The boolean choice variable, called "byRow" (`TRUE/FALSE`), will be set by the user to decide whether the want the means of the rows (byRow=`TRUE`) or columns (byRow=`FALSE`). The "byRow" input parameter should be set to `TRUE` by default.
+
+
+-----
+## Plotting functions to work on
+
+Here, we'll get a little practice in for sampling from and plotting distributions. You are allowed to use the base (no packages) for these tasks.
+
+### Plot a sample from a normal distribution
+Plot a sample (n=1000) of a normal distribution with a mean of 5 and a standard deviation of 3. State in the legend the values used for the mean and standard deviation. It should look like this:
+```{r, echo=FALSE}
+hist(rnorm(n=1000, mean=5, sd=3), 
+     main="The normal distribution",
+     xlab="Value sampled from normal distribution",
+     las=1, breaks=100)
+legend("topleft", legend=c("Mean = 5", "Standard deviation = 3"), bty="n")
+```
+
+### Plotting samples from a Poisson distribution
+Plot a sample (n=1000) of a Poisson distribution with a mean of 2, stating the value used for the mean in the legend. On the same plotting panel, add a plot of a sample from a Poisson distribution with a mean of 10.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+hist(rpois(n=1000, lambda=2), 
+     main="The Poisson distribution",
+     xlab="Value sampled from Poisson distribution",
+     las=1)
+legend("topright", legend=c("Mean = 2"), bty="n")
+hist(rpois(n=1000, lambda=10), 
+     main="The Poisson distribution",
+     xlab="Value sampled from Poisson distribution",
+     las=1)
+legend("topright", legend=c("Mean = 10"), bty="n")
+```
+
+Write a few notes detailing why these plots look so different, even though they are drawn from the same distribution and only the mean has changed.
+
+# Comparing samples from Normal distributions
+Create a boxplot to compare two samples from a normal distribution each with a mean of 10, but one with a standard deviation of 1 and the other with a standard deviation of 5. It should look something like this (see if you can match the colours):
+```{r, echo=FALSE}
+boxplot(rnorm(n=1000, mean=10, sd=1), rnorm(n=1000, mean=10, sd=5), 
+        names=c("sd = 1", "sd = 5"), 
+        ylab="Value drawn from normal distribution",
+        main="Comparing normal distributions", las=1,
+        pch=19, outcol=rgb(1,0,0, 0.5))
+```
+
+Write a few notes detailing the differences, and their cause, between these two sample normal distributions.
