@@ -4,7 +4,7 @@
 
 library(ape)
 
-### NOTES
+### NOTES - WINDOWS
 # Needs clustalw2.exe to be in path
 # Install from here: http://www.clustal.org/download/current/
 # Add to path on Windows machine by:
@@ -13,6 +13,10 @@ library(ape)
 # - Start -> Control Panel -> System -> Advanced system settings
 #   -> Environment Variables -> Select "Path" from System variables
 # - Go to end, type ";", paste path
+
+### NOTES - UBUNTU
+# sudo apt upgrade
+# sudo apt install clustalw
 
 ######################
 # Read in FASTA file #
