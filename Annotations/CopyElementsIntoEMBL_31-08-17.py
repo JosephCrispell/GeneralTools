@@ -533,7 +533,7 @@ def getElementTags(fileName):
 #if len(sys.argv) != 4: # First argument is the python script. Python is 0 indexed
 #	print "Requires three file names in input arguments. Number of input arguments = ", len(sys.argv) - 1
 #	print "Command line structure:"
-#	print "\tpython CopyElementsIntoEMBL.py CopyElementsIntoEMBL.py elements.txt from.embl to.embl output.embl"
+#	print "\tpython CopyElementsIntoEMBL.py elements.txt codonTable from.embl to.embl output.embl"
 #	sys.exit()
 
 ############################################
