@@ -67,6 +67,9 @@ rootedTree <- root(tree,
                    outgroup="2", # Set the isolate to root the tree on - can also use node
                    resolve.root=TRUE) # Ensures new root will be bifurcating
 
+# Remove any non-dichotomous branching nodes (nodes with more than two daughters)
+rootedTree <- multi2di(tree, random=TRUE)
+
 # Make branches with lengths of 0 very very small
 rootedTree$edge.length[rootedTree$edge.length <= 0] <- 0.000001
 
