@@ -385,7 +385,6 @@ getIsolatesInBASTAClade <- function(tipLabels){
   return(isolatesInClade)
 }
 
-
 viewRAxMLTree <- function(treeBS, filePath=path){
 
   # Set the margins
