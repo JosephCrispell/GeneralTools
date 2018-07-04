@@ -3,20 +3,20 @@
 ##########
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 #################################
 # Note the Genome Size examined #
 #################################
 
 # Get the constant site counts
-constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt",
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_24-03-2018.txt",
                                 sep="")
 constantSiteCounts <- getConstantSiteCounts(constantSiteCountsFile)
 genomeSize <- sum(constantSiteCounts)
 
 # Get number of sites used in FASTA file
-fastaFile <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 genomeSize <- genomeSize + nSites
 
@@ -41,7 +41,7 @@ demeStructures <- list(
 )
 
 # Note the date when all analyses were created
-date <- "20-12-17"
+date <- "10-04-18"
 
 # Note the population size estimation options
 popEstimationTypes <- c("varying", "equal")
@@ -51,7 +51,7 @@ clockEstimateTypes <- c("relaxed") # strict not used
 
 # Store each of the log tables in a list
 logTables <- readInBASTALogTables(date, demeStructures, popEstimationTypes,
-                                  clockEstimateTypes, path, nReplicates=3)
+                                  clockEstimateTypes, path, nReplicates=3, ignoreIfFlagged=FALSE)
 
 ####################
 # Examine each run #
@@ -240,7 +240,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # Above method for weighting AICM suggested by Paul Johnson
     # This is known as Ensemble Bayesian Model Averaging
     
-    # Get the analysis names
+    # Get the analyses names
     analyses <- names(migrationRateEstimates)
     names <- c()
     
@@ -309,10 +309,10 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       }
       
       # Calculate sum of the rates between cattle and badgers
-      sumRateBadgerToCow <- sum(ratesBadgerToCow)
+      sumRateBadgerToCow <- sum(ratesBadgerToCow, na.rm=TRUE)
       modelSumBadgerToCowRates[length(modelSumBadgerToCowRates) + 1] <- 
         sumRateBadgerToCow
-      sumRateCowToBadger <- sum(ratesCowToBadger)
+      sumRateCowToBadger <- sum(ratesCowToBadger, na.rm=TRUE)
       modelSumCowToBadgerRates[length(modelSumCowToBadgerRates) + 1] <- 
         sumRateCowToBadger
     }
@@ -345,9 +345,9 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     weightedMeanCowToBadger <- sum(modelSumCowToBadgerRates * 
                                      normalisedModelAICMWeights)
     points(x=weightedMeanBadgerToCow, y=weightedMeanCowToBadger,
-           pch=15, col="black", cex=2)
+           pch=15, col=rgb(0,0,0, 0.5), cex=2)
     text(x=weightedMeanBadgerToCow, y=weightedMeanCowToBadger, 
-         labels="Weighted Mean", cex=0.75, pos=4, offset=0.6)
+         labels="Weighted Mean", cex=0.75, pos=4, offset=0.6, col=rgb(0,0,0, 0.75))
     
     
     # # Normalise the values between 0 and arrowFactor
@@ -404,10 +404,6 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     
     return(c(weightedMeanBadgerToCow, weightedMeanCowToBadger))
   }
-
-euclideanDistance <- function(x1, y1, x2, y2){
-  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
-}
 
 plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   
@@ -529,6 +525,9 @@ summarisePosteriorLogTables <- function(path, logTables, code=2, arrowFactor, nB
     migrationRateEstimates[[analysis]] <- 
       plotMigrationRates(logTable, demeStructure, code, arrowFactor)
     
+    # Plot the forward migration rate posterior distributions and their flags
+    plotMigrationRatePosteriors(logTable, demeStructure)
+    
     # Plot the parameter traces
     plotParameterTraces(logTable, colsToCalculateESS)
     
@@ -570,6 +569,81 @@ examineSubstitutionRateEstimates <- function(logTable, genomeSize){
        col=colours, las=1, bty="n")
   legend("topright", legend=c("High", "Low"), pch=20, col=c("red", "blue"),
          bty="n")
+}
+
+plotMigrationRatePosteriors <- function(logTable, demeStructure, alpha=0.5){
+  
+  # Get the deme names
+  demeNames <- getDemeNamesForDemeStructure(demeStructure)
+  
+  # Get the forward migration rate estimates and their associated flags
+  rateEstimates <- list()
+  rateFlags <- list()
+  for(col in colnames(logTable)){
+    
+    if(grepl(col, pattern="migModel.forwardRateMatrix_") == TRUE){
+      
+      # Get the demes involved
+      parts <- strsplit(col, split="_")[[1]]
+      a <- parts[2]
+      b <- parts[3]
+      
+      # Build migration rate name
+      rateName <- paste(demeNames[as.numeric(a) + 1], "->", demeNames[as.numeric(b) + 1])
+      
+      # Store the posterior distribution
+      rateEstimates[[rateName]] <- logTable[, col]
+      
+      # Find the rate flag values for this rate (note that flags will be for backward rate from b to a)
+      rateFlags[[rateName]] <- logTable[, paste("migModel.rateMatrixFlag_", b, "_", a, sep="")]
+    }
+  }
+  
+  # Define a grid of plots
+  nPlots <- ceiling(sqrt(length(rateEstimates)))
+  
+  # Set the plotting window dimensions
+  par(mfrow=c(nPlots, nPlots))
+  
+  # Set the margins
+  par(mar=c(2, 0, 2, 0))
+  
+  # Plot a trace for each parameter
+  for(key in names(rateEstimates)){
+    
+    values <- rateEstimates[[key]]
+    values[is.na(values)] <- 0
+    
+    hist(values, xlab="", ylab="", yaxt="n", bty="n",
+         main=key, cex.main=0.5)
+  }
+  
+  # Reset the plotting window dimensions
+  par(mfrow=c(1,1))
+  
+  # Change the margin sizes
+  par(mar=c(12, 4.1, 4.1, 2.1))
+  
+  # Plot the rate flags
+  plot(x=NULL, y=NULL, 
+       las=1, bty="n",
+       main="Forward migration rate posterior flags", xlab="", ylab="Proportion MCMC steps flag = ON",
+       ylim=c(0,1), xlim=c(1, length(rateFlags)), xaxt="n")
+  
+  # Add in the points
+  for(i in 1:length(rateFlags)){
+    points(x=i, y=mean(rateFlags[[i]]))
+  }
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add X axis
+  axis(side=1, at=1:length(rateFlags), labels=names(rateFlags), cex=0.5)
+  
+  # Reset the margin sizes
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  
 }
 
 plotPopulationSizes <- function(logTable, demeStructure, alpha=0.5){
@@ -709,7 +783,7 @@ timesValuesInListByValue <- function(list, value){
 }
 
 divideValuesInListByMax <- function(arrowRates){
-    max <- max(getValues(arrowRates))
+    max <- max(getValues(arrowRates), na.rm=TRUE)
     output <- timesValuesInListByValue(arrowRates, 1/max)
     
   return(output)
@@ -746,7 +820,7 @@ getArrowRates <- function(logTable){
     direction <- paste(parts[length(parts) - 1], "_", parts[length(parts)], sep="")
     
     # Store a summary statistic for the rate distribution
-    arrowRates[[direction]] <- median(logTable[, col])
+    arrowRates[[direction]] <- median(logTable[, col], na.rm=TRUE)
   }
   
   return(arrowRates)
@@ -761,9 +835,9 @@ plotMigrationRates <- function(logTable, demeStructure, code, arrowFactor){
   migrationRates <- divideValuesInListByMax(output)
   migrationRates <- timesValuesInListByValue(migrationRates, arrowFactor)
   
-  # Check for "NaN" values
+  # Check for "NaN" or NA values
   for(key in names(migrationRates)){
-    if(is.nan(migrationRates[[key]]) == TRUE){
+    if(is.nan(migrationRates[[key]]) == TRUE || is.na(migrationRates[[key]]) == TRUE){
       migrationRates[[key]] <- 0
     }
   }
@@ -1491,13 +1565,13 @@ plot8DemeNS <- function(arrowWeights, code){
   }
 }
 
-calculateForwardMigrationRates <- function(logTable){
+calculateForwardMigrationRates <- function(logTable, ignore=FALSE){
   
   # Get the names of the backward in time migration rate estimates
   migrationRateCols <- colnames(logTable)[
     grepl(colnames(logTable), pattern = "migModel.rateMatrix_")]
   
-  # For each backward in time migration rate caculate the forward migration rate
+  # For each backward in time migration rate calculate the forward migration rate
   # FMR_ab = BMR_ba * (Nb / Na)
   #   MR: Migration rate (F - Forward, B - Backward)
   #   N: Effective population size
@@ -1507,6 +1581,9 @@ calculateForwardMigrationRates <- function(logTable){
   #   BMR_ba = FMR_ab * (Na / Nb)
   #   ->  FMR_ab = BMR_ba / (Na / Nb)
   #     ->  FMR_ab = BMR_ba * (Nb / Na)
+  #
+  ### NOTE: Backward rates are multiplied by rate flag before being used ###
+  # - Converts estimates to 0 when flag = 0 (i.e. rate turned off). If rate isn't likely, then they'll be a lot of zeros that will drag down estimate
   
   for(backwardMigrationRateCol in migrationRateCols){
     
@@ -1525,6 +1602,11 @@ calculateForwardMigrationRates <- function(logTable){
     # Calculate forward rate
     forwardMigrationRateCol <- paste("migModel.forwardRateMatrix_", b, "_", a, sep="")
     logTable[, forwardMigrationRateCol] <- backwardRate * (popASizes/popBSizes)
+    
+    # Convert the zeros to NAs, if requested. If ignore == TRUE, we want to ignore values when flag = 0
+    if(ignore == TRUE){
+      logTable[, forwardMigrationRateCol][logTable[, forwardMigrationRateCol] == 0] <- NA
+    }
   }
   
   return(logTable)
@@ -1731,7 +1813,7 @@ getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
 
 readInBASTALogTables <- function(date, demeStructures, popEstimationTypes,
                                  clockEstimateTypes, path, burnInProp=0.1,
-                                 nReplicates=NULL){
+                                 nReplicates=NULL, ignoreIfFlagged=FALSE){
   
   # Store each of the log tables in a list
   logTables <- list()
@@ -1774,7 +1856,7 @@ readInBASTALogTables <- function(date, demeStructures, popEstimationTypes,
             logTable <- logTable[burnIn:nrow(logTable), ]
             
             # Calculate the forward rates
-            logTable <- calculateForwardMigrationRates(logTable)
+            logTable <- calculateForwardMigrationRates(logTable, ignoreIfFlagged)
             
             # Store the logTable
             logTablesForReplicates[[as.character(replicate)]] <- logTable

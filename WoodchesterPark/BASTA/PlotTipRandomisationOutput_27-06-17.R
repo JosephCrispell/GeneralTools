@@ -3,10 +3,10 @@
 ####################
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_13-07-17/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Note FASTA alignment size
-fastaFile <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 
 # Note the burn in proportion
@@ -17,12 +17,11 @@ burnIn <- 0.1
 ####################################################
 
 # Get the constant site counts
-constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_29-09-2017.txt",
+constantSiteCountsFile <- paste(path, "vcfFiles/", "constantSiteCounts_24-03-2018.txt",
                                 sep="")
 constantSiteCounts <- getConstantSiteCounts(constantSiteCountsFile)
 
 # Get number of sites used in FASTA file
-fastaFile <- paste(path, "vcfFiles/", "sequences_Prox-10_29-09-2017.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 genomeSize <- sum(constantSiteCounts) + nSites
 
@@ -31,8 +30,8 @@ genomeSize <- sum(constantSiteCounts) + nSites
 #############################################
 
 # Read in the log table
-file <- paste(path, "BASTA/StrictVersusRelaxed/", "2Deme_equal_relaxed_03-10-17/",
-              "2Deme_equal_relaxed_03-10-17.log",
+file <- paste(path, "BASTA/StrictVersusRelaxed_03-04-18/", "2Deme_equal_relaxed_03-04-18/",
+              "2Deme_equal_relaxed_03-04-18.log",
               sep="")
 logTable <- read.table(file, header=TRUE, stringsAsFactors=FALSE)
 
@@ -47,10 +46,10 @@ actualRate <- logTable$ucedMean * genomeSize
 ################################################################
 
 # Note date and number of replicates
-path <- paste(path, "BASTA/TipDateRandomisation_13-02-18/", sep="")
-date <- "03-10-17"
+path <- paste(path, "BASTA/TipDateRandomisation_10-04-18/", sep="")
+date <- "03-04-18"
 nReplicates <- 10
-filePrefix <- "2Deme_equal_relaxed_03-10-17"
+filePrefix <- "2Deme_equal_relaxed_03-04-18"
 
 # Read in the substitution rate estimates based on the randomised tip dates and store
 rateEstimatesFromRandomised <- getRateEstimatesFromDateRandomisationRuns(burnIn, 
@@ -64,7 +63,7 @@ rateEstimatesFromRandomised <- getRateEstimatesFromDateRandomisationRuns(burnIn,
 #################################################################
 
 # Open a PDF
-file <- paste(path, "TipRandomisationResults_19-02-18.pdf", sep="")
+file <- paste(path, "TipRandomisationResults_03-04-18.pdf", sep="")
 pdf(file)
 
 # Create a table with all the rate estimates
