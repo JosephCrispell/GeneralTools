@@ -191,16 +191,16 @@ function checkForPrinseqSettingsFile {
 		done <$PRINSEQSETTINGS
 		
 		echo "Using the following Prinseq settings:"
-		echo "	READLENGTH = "$LENGTH"		The minimum length of read to be accepted"
-		echo "	MEANQUAL = "$MEANQUAL"		Filter sequence if mean quality score below x"
-		echo "	TRIML = "$TRIML"		Trim sequence at the 5' end by x positions"
-		echo "	TRIMR = "$TRIMR"		Trim sequence at the 3' end by x positions"
-		echo "	TRIMQUALL = "$TRIMQUALL"		Trim sequence by quality score from the 5' end with this threshold score"
-		echo "	TRIMQUALR = "$TRIMQUALR"		Trim sequence by quality score from the 3' end with this threshold score"
+		echo "	READLENGTH = "$LENGTH"			The minimum length of read to be accepted"
+		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
+		echo "	TRIML = "$TRIML"	Trim sequence at the 5' end by x positions"
+		echo "	TRIMR = "$TRIMR"	Trim sequence at the 3' end by x positions"
+		echo "	TRIMQUALL = "$TRIMQUALL"	Trim sequence by quality score from the 5' end with this threshold score"
+		echo "	TRIMQUALR = "$TRIMQUALR"	Trim sequence by quality score from the 3' end with this threshold score"
 		echo "	TRIMTYPE = "$TRIMTYPE"		Type of quality score calculation to use [min, mean, max, sum]"
 		echo "	WINDSIZE = "$WINDSIZE"		The sliding window size used to calculate quality score by type"
-		echo "	TRIMLTAIL = "$TRIMLTAIL"		Trim poly A/T > X length at 5' end"
-		echo "	TRIMRTAIL = "$TRIMRTAIL"		Trim poly A/T > X length at 3' end"
+		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
+		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
    
 	else
 	
@@ -328,7 +328,7 @@ do
 	echo -e "\e[0;34m Beginning Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS... \e[0m""	"$TIME
 	echo "	$FILE1"
 	echo "	$FILE2"
-	
+		
 	# Unzip Files
 	echo -e "\e[0;34m Unzipping Read Sequence Files... \e[0m"
 	gunzip $FILE1
@@ -495,8 +495,9 @@ do
 	# -S Flag: input is SAM
 	# -u Flag: uncompressed BAM output (force -b)
 	# -o Flag: output file name [stdout]
-	samtools view -S -u -o $BAMFILE $SAMFILE
-	samtools sort $BAMFILE $PAIRID"_"$RUN"_srtd"
+	#samtools view -S -u -o $BAMFILE $SAMFILE
+	samtools view -bS $SAMFILE > $BAMFILE
+	samtools sort $BAMFILE -o $SRTDBAMFILE
 	samtools index $SRTDBAMFILE
 	samtools rmdup $SRTDBAMFILE $NDUPBAMFILE			# Should I be removing the duplicates????!!!!!
 	echo -e "\e[0;34m and Converted to BAM File -> Alignment Complete. \e[0m"
@@ -507,7 +508,7 @@ do
 	rm $BAMFILEINDX
 	rm $SRTDBAMFILE
 	
-	####### Identify Variants #######h
+	####### Identify Variants #######
 	echo -e "\e[0;34m Identifying Variants... \e[0m"
 	
 	# Create BCF File
@@ -525,13 +526,14 @@ do
 	rm $NDUPBAMFILE
 	
 	# Convert BCF File to VCF File
-	# -c Flag: SNP calling
-	# -g Flag: call genotypes at variant sites
-	# -N Flag: skip sites where REF is not A/C/G/T
-	# -I Flag: skip indels
-	
+	# -Ov Flag: output format is uncompressed vcf
+	# -c Flag:  Original calling method from bcftools view - consensus variant calling
+	# --ploidy 1 Flag: Treat sites as haploid
+	# Notes:
+	#	- Calls varying and non-varying sites by default
+	#	- Ignores dubious reference (N) sites	
 	VCFFILE=$PAIRID"_"$RUN".vcf"
-	bcftools view -c -g -N $BCFFILE > $VCFFILE
+	bcftools call $BCFFILE --ploidy 1 -c -Ov > $VCFFILE 
 	echo -e "\e[0;34m VCF File Created. \e[0m"
 	echo -e "\e[0;34m Finished Identifying Variants. \e[0m"
 	

@@ -9,7 +9,7 @@ library(ips) # Using RAxML
 #### Path and Date ####
 #~~~~~~~~~~~~~~~~~~~~~#
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 date <- format(Sys.Date(), "%d-%m-%y")
 
@@ -23,7 +23,7 @@ nSites <- getNSitesInFASTA(fastaFile)
 
 # Run RAxML to produce a Maximum Likelihood phylogeny with bootstrap support values
 # TAKES AGES!!! - WP data ~5 hours
-treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=4)
+treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path)
 
 # Convert the branch lengths to SNPs
 treeBS$edge.length <- treeBS$edge.length * nSites
@@ -60,8 +60,8 @@ file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_", date, ".pdf", sep
 pdf(file, height=10, width=10)
 
 # Define branch colours by clade and plot the tree
-nodesDefiningClades <- c(528, 539, 638, 497, 630)
-cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
+nodesDefiningClades <- c(528, 539, 638, 497)#, 630)
+cladeColours <- c("cyan", "magenta", "green", "darkorchid4")#, "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
          colours=cladeColours)
@@ -403,7 +403,7 @@ viewRAxMLTree <- function(treeBS, filePath=path){
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
 
-runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
+runRAXML <- function(fastaFile, date, nBootstraps, nThreads, path){
   
   # Create a directory for the output file
   directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
@@ -411,13 +411,7 @@ runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
   
   # Set the Working directory - this will be where the output files are dumped
   setwd(directory)
-  
-  # Note where RaxML is located
-  raxmlExecutable <- shQuote("C:/Users/Joseph Crisp/Desktop/RAxML_v8.2.10/raxmlHPC-PTHREADS.exe", type="cmd")
-  
-  # Using system command - convert FASTA file path into windows format (deals with spaces in directory/file names)
-  fastaFile <- shQuote(fastaFile, type="cmd")
-  
+
   # Build analysis name
   analysisName <- paste("RaxML-R_", date, sep="")
   
@@ -425,7 +419,7 @@ runRAXML <- function(fastaFile, date, nBootstraps, nThreads){
   model <- "GTRCAT" # No rate heterogenity
   seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
   
-  command <- paste(raxmlExecutable, 
+  command <- paste("raxmlHPC", 
                    " -f a", # Algorithm: Rapid boostrap inference
                    " -N ", nBootstraps,
                    " -T ", nThreads,
