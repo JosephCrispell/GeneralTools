@@ -2,14 +2,14 @@
 # Set path #
 ############
 
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewCattle_16-03-18/fastqs/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/MAP/"
 
 ###################################
 # Read in isolate mapping summary #
 ###################################
 
 # Note the file name
-file <- paste(path, "isolateMappingSummary_20-03-18.txt", sep="")
+file <- paste(path, "isolateMappingSummary_10-07-18.txt", sep="")
 # file <- paste(path, "Badger_Batch1/",
 #              "isolateMappingSummary_14-07-17.txt", sep="")
 # file <- paste(path, "Cattle_FASTQ_1stRound/",

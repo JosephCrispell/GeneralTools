@@ -60,8 +60,8 @@ file <- paste(path, "vcfFiles/", "mlTree_CladesAndLocations_", date, ".pdf", sep
 pdf(file, height=10, width=10)
 
 # Define branch colours by clade and plot the tree
-nodesDefiningClades <- c(528, 539, 638, 497)#, 630)
-cladeColours <- c("cyan", "magenta", "green", "darkorchid4")#, "brown")
+nodesDefiningClades <- c(528, 539, 638, 497, 630)
+cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
          colours=cladeColours)

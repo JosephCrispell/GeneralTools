@@ -3,18 +3,14 @@
 ####################
 
 # Set directory path
-#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/"
-#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/NewZealand/NewAnalyses_12-05-16/vcfFiles/"
-#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/PoorlyMappedBadgers/"
-#path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_02-06-16/allVCFs-IncludingPoor/vcfFiles/MislabelledBadgers/"
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Fastqs/vcfFiles/"
 newZealand <- grepl(x=path, pattern="NewZealand")
 
 # Read in the variant site coverage and alternate allele support files
-coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_23-03-2018.txt", sep="")
+coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_10-07-2018.txt", sep="")
 siteInfoCoverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE,
                                comment.char="~", check.names=FALSE)
-altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_23-03-2018.txt", sep="")
+altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_10-07-2018.txt", sep="")
 siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=FALSE,
                                  comment.char="~", check.names=FALSE)
 
@@ -25,8 +21,8 @@ siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=F
 
 # Parse the VCF file names in the columns
 isolateIDs <- getIDsFromFileNames(colnames(siteInfoAltSupport)[-1], newZealand)
-colnames(siteInfoCoverage) <- c("Positive", isolateIDs)
-colnames(siteInfoAltSupport) <- c("Positive", isolateIDs)
+colnames(siteInfoCoverage) <- c("Position", isolateIDs)
+colnames(siteInfoAltSupport) <- c("Position", isolateIDs)
 #genomeCoverage$IsolateID <- isolateIDs
 
 #################
@@ -41,7 +37,7 @@ depthThreshold <- 0
 nHeterozygousSites <- c()
 
 # Open a pdf
-file <- paste(path, "heterozygousSiteInfo_23-03-2018.pdf", sep="")
+file <- paste(path, "heterozygousSiteInfo_10-07-2018.pdf", sep="")
 pdf(file, width=14)
 
 par(mfrow=c(1,2))
@@ -91,9 +87,13 @@ for(i in 1:length(isolateIDs)){
 #                                           "PercentageCoverage"], digits=2), sep=""))
   
   # Plot as histogram
-  hist(siteInfoAltSupport[badRows, isolate], breaks=10,
-       xlab="Proportion HQ Reads Supporting Alternate", las=1,
-       xlim=c(0, 1), main=isolate)
+  if(length(badRows) > 0){
+    hist(siteInfoAltSupport[badRows, isolate], breaks=10,
+         xlab="Proportion HQ Reads Supporting Alternate", las=1,
+         xlim=c(0, 1), main=isolate)
+  }else{
+    plot(x=NULL, y=NULL, xlim=c(0,1), ylim=c(0,1), xaxt="n", yaxt="n", bty="n", xlab="", ylab="")
+  }
 }
 
 

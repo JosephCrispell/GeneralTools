@@ -523,17 +523,17 @@ do
 	echo -e "\e[0;34m BCF File Created. \e[0m"
 
 	# Remove unnecessary files
-	rm $NDUPBAMFILE
+	#rm $NDUPBAMFILE
 	
 	# Convert BCF File to VCF File
-	# -Ov Flag: output format is uncompressed vcf
-	# -c Flag:  Original calling method from bcftools view - consensus variant calling
+	# --output-type v Flag: output format is uncompressed vcf
+	# --consensus-caller Flag:  Original calling method from bcftools view - consensus variant calling - I THINK THIS WON'T CALL INDELS
 	# --ploidy 1 Flag: Treat sites as haploid
 	# Notes:
 	#	- Calls varying and non-varying sites by default
 	#	- Ignores dubious reference (N) sites	
 	VCFFILE=$PAIRID"_"$RUN".vcf"
-	bcftools call $BCFFILE --ploidy 1 -c -Ov > $VCFFILE 
+	bcftools call $BCFFILE --ploidy 1 --consensus-caller --output-type v > $VCFFILE 
 	echo -e "\e[0;34m VCF File Created. \e[0m"
 	echo -e "\e[0;34m Finished Identifying Variants. \e[0m"
 	
@@ -543,7 +543,7 @@ do
 	mv $VCFFILE".gz" vcfFiles
 	
 	# Remove unnecessary files
-	rm $BCFFILE
+	#rm $BCFFILE
 	
 	echo -e "\e[0;34m Completed Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS. \e[0m"
 done
