@@ -454,9 +454,12 @@ do
 	
 	####### Check Unmapped Reads #######
 	# Get the information for the reads in the current SAM file
-	MAPPED=`samtools view -S $SAMFILE -c -F 4`
-	UNMAPPED=`samtools view -S $SAMFILE -c -f 4`
-	MULTIMAPPED=`samtools view -S $SAMFILE -c -f 256`
+	# -F Flag: only include reads with none of the FLAGS
+	# -f Flag: only include reads with all of the FLAGS
+	# -c Flag: print only a count of matching records
+	MAPPED=`samtools view $SAMFILE -c -F 4`
+	UNMAPPED=`samtools view $SAMFILE -c -f 4`
+	MULTIMAPPED=`samtools view $SAMFILE -c -f 256`
 	
 	# Print out the information for the reads in the current SAM file
 	echo $PAIRID"	"$MAPPED"	"$UNMAPPED"	"$MULTIMAPPED >> $SAMSUMMARY
@@ -475,7 +478,8 @@ do
 		BLASTHITS=$PAIRID"_"$RUN"_unmappedReadHits.txt"
 		
 		# BLAST some random reads from the unmapped reads file
-		samtools view -S $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
+		# -f Flag: onlu include reads with all of the FLAGS in INT present
+		samtools view $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
 		perl $PICKREADS 10 $UNMAPPEDFILE $RANDOMREADS # Pick 10 random unmapped reads
 		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote
 		perl $EXAMINEBLASTOUTPUT 1 $BLASTOUTPUT > $BLASTHITS
@@ -492,11 +496,8 @@ do
 	BAMFILEINDX=$SRTDBAMFILE".bai"
 	NDUPBAMFILE=$PAIRID"_"$RUN"_srtd_ndup.bam"
 
-	# -S Flag: input is SAM
-	# -u Flag: uncompressed BAM output (force -b)
-	# -o Flag: output file name [stdout]
-	#samtools view -S -u -o $BAMFILE $SAMFILE
-	samtools view -bS $SAMFILE > $BAMFILE
+	# -b Flag: output BAM
+	samtools view -b $SAMFILE > $BAMFILE
 	samtools sort $BAMFILE -o $SRTDBAMFILE
 	samtools index $SRTDBAMFILE
 	samtools rmdup $SRTDBAMFILE $NDUPBAMFILE			# Should I be removing the duplicates????!!!!!
@@ -512,28 +513,27 @@ do
 	echo -e "\e[0;34m Identifying Variants... \e[0m"
 	
 	# Create BCF File
-	# -P Flag: comma separated list of platforms for indels [all]
-	# -C Flag: parameter for adjusting mapQ
-	# -q Flag: skip alignments with mapQ smaller than INT
-	# -Q Flag: skip bases with baseQ/BAQ smaller than INT
-	# -u Flag: generate uncompress BCF output
-	# -f Flag: faidx indexed reference sequence file
+	# --adjust-MQ: parameter for adjusting mapQ
+	# --min-BQ: skip alignments with mapQ smaller than INT
+	# --min-BQ: skip bases with baseQ/BAQ smaller than INT
+	# --uncompressed: generate uncompress BCF output
+	# --fasta-ref: faidx indexed reference sequence file
 	BCFFILE=$PAIRID"_"$RUN".bcf"
-	samtools mpileup -P ILLUMINA -C50 -q30 -Q20 -u -f $REFERENCE $NDUPBAMFILE > $BCFFILE
+	samtools mpileup --adjust-MQ 50 --min-MQ 30 --min-BQ 20 --uncompressed --fasta-ref $REFERENCE $NDUPBAMFILE > $BCFFILE
 	echo -e "\e[0;34m BCF File Created. \e[0m"
 
 	# Remove unnecessary files
-	#rm $NDUPBAMFILE
+	rm $NDUPBAMFILE
 	
 	# Convert BCF File to VCF File
-	# --output-type v Flag: output format is uncompressed vcf
-	# --consensus-caller Flag:  Original calling method from bcftools view - consensus variant calling - I THINK THIS WON'T CALL INDELS
-	# --ploidy 1 Flag: Treat sites as haploid
+	# --output-type v: output format is uncompressed vcf
+	# --multiallelic-caller:  Updated and recommended calling method
+	# --ploidy 1: Treat sites as haploid
 	# Notes:
 	#	- Calls varying and non-varying sites by default
 	#	- Ignores dubious reference (N) sites	
 	VCFFILE=$PAIRID"_"$RUN".vcf"
-	bcftools call $BCFFILE --ploidy 1 --consensus-caller --output-type v > $VCFFILE 
+	bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v > $VCFFILE 
 	echo -e "\e[0;34m VCF File Created. \e[0m"
 	echo -e "\e[0;34m Finished Identifying Variants. \e[0m"
 	
@@ -543,7 +543,7 @@ do
 	mv $VCFFILE".gz" vcfFiles
 	
 	# Remove unnecessary files
-	#rm $BCFFILE
+	rm $BCFFILE
 	
 	echo -e "\e[0;34m Completed Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS. \e[0m"
 done
