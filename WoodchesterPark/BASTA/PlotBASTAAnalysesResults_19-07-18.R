@@ -209,22 +209,25 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # across BASTA models
     # Weighting is by the AICM score
     #
-    # 1. Each model: Calculate the median of each migration rate estimated
-    # 2. Each model: Calculate sum of median rates between cattle and badger demes
-    #                   sum of cattle -> badger
-    #                   sum of badger -> cattle
-    # 2. Store sums for each model in two arrays (one for c->b and one for b->c)
+    # 1. Each model: Get the posterior distributions for each rate
+    # 2. Each model: Calculate sum of posteriors between cattle and badger demes
+    #                   sum of cattle -> badger posteriors
+    #                   sum of badger -> cattle posteriors
     # 3. Each Model: Calculate AICM
     # 4. Convert model AICM scores to weights:
     #       weight = exp((AIC_min - AIC_i)/2)
     # 5. Normalise weights to sum to 1: 
     #       normalisedWeights = weight / sum(weights)
     # 6. Calculate weighted average rates:
-    #       c->b = sum(sumOfCBRatesFromEachModel * modelAICMWeightsNormalised)
-    #       b->c = sum(sumOfBCRatesFromEachModel * modelAICMWeightsNormalised)
+    #      - Sample the posterior sums for cattle->badgers relative to AICM weight
+    #      - Sample the posterior sums for badgers->cattle relative to AICM weight
+    #       c->b = median(sampleCB, na.rm=TRUE)
+    #       b->c = median(sampleBC, na.rm=TRUE)
+    #      - NOTE: NAs introduced when flag = 0, these are removed after relative sampling
     #
     # Above method for weighting AICM suggested by Paul Johnson
-    # This is known as Ensemble Bayesian Model Averaging
+    # I think this is equivalent to Ensemble Bayesian Model Averaging
+    # AICM weights calculating described in: Wagenmakers and Farrell - 2004 - AIC model selection using Akaike weights
     
     # Get the analyses names
     analyses <- names(migrationRateEstimates)
@@ -288,15 +291,18 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
                  pattern="badger") == TRUE &&
            grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                  pattern="cow") == TRUE){
-          
-          sumRatesBadgerToCow <- sumRatesBadgerToCow + migrationRateEstimates[[analyses[i]]][[key]]
+          values <- migrationRateEstimates[[analyses[i]]][[key]]
+          values[is.na(values)] <- 0
+          sumRatesBadgerToCow <- sumRatesBadgerToCow + values
           
         }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
                        pattern="cow") == TRUE &&
                  grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                        pattern="badger") == TRUE){
           
-          sumRatesCowToBadger <- sumRatesCowToBadger + migrationRateEstimates[[analyses[i]]][[key]]
+          values <- migrationRateEstimates[[analyses[i]]][[key]]
+          values[is.na(values)] <- 0
+          sumRatesCowToBadger <- sumRatesCowToBadger + values
         }
       }
       
@@ -324,7 +330,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     currentMar <- par("mar")
     par(mar=c(10, 7, 4, 0.1))
     plot(x=NULL, y=NULL, xlim=c(1, length(analyses) + 1), 
-         ylim=c(0, max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper))),
+         ylim=c(0, max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper), na.rm=TRUE)),
          ylab="Per lineage transition rate per year", main="Estimated inter-species transition rates",
          las=1, xaxt="n", xlab="", bty="n", cex.lab=1.5, cex.main=1.5)
     for(i in 1:length(analyses)){
@@ -355,7 +361,10 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=0.9, col.axis="black", tick=FALSE)
     legend("top", legend=c("Badgers -> Cattle", "Cattle -> Badgers"), text.col=c("red", "blue"), bty="n")
     
-    # Plot badger -> cattle versus cattle -> badger
+    # Add a plot label
+    mtext("B", side=3, line=1, at=-2, cex=3)
+    
+    ## Plot badger -> cattle versus cattle -> badger
     par(mar=c(5.1, 4.1, 0.5, 2.1))
     max <- max(c(modelBadgerToCowRateMedians, modelCowToBadgerRateMedians), na.rm=TRUE)
     plot(x=modelBadgerToCowRateMedians, y=modelCowToBadgerRateMedians, las=1,
@@ -424,7 +433,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   # Create an empty plot
   plot(x=NULL, y=NULL, bty="n", 
        xlim=c(1, length(analyses) + 1), ylim=yLim,
-       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM scores", cex.main=1.5)
+       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=1.5)
   axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2)
   mtext(side=2, text="AICM scores", line=5.5, cex=1.5)
   axis(side=1, at=1:length(analyses),
@@ -450,6 +459,9 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
          y=c(bootstrapMaxs[minIndex], bootstrapMaxs[minIndex]),
          lty=2, col=rgb(0,0,0, 0.5), type="l")
 
+  # Add a plot label
+  mtext("A", side=3, line=1, at=-2, cex=3)
+  
   # Reset the margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
@@ -1581,6 +1593,7 @@ calculateForwardMigrationRates <- function(logTable){
   #
   ### NOTE: Backward rates are multiplied by rate flag before being used ###
   # - Converts estimates to 0 when flag = 0 (i.e. rate turned off). If rate isn't likely, then they'll be a lot of zeros that will drag down estimate
+  # - Set to NA when flag = 0
   
   for(backwardMigrationRateCol in migrationRateCols){
     
