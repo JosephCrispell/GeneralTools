@@ -1,8 +1,8 @@
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Open the Cluster Summary table
-file <- paste(path, "ClusterSummaryWithRandomNullDistributions_05-04-2018.txt", sep="")
+file <- paste(path, "ClusterSummaryWithRandomNullDistributions_24-07-2018.txt", sep="")
 summaryTable <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Define the order of the plots
@@ -74,7 +74,8 @@ colNames <- c(
   "Cluster-0",
   "Cluster-1",
   "Cluster-2",
-  "Cluster-3"
+  "Cluster-3",
+  "Cluster-4"
 )
 
 outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
@@ -83,7 +84,7 @@ outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
 rownames(outputTable) <- replaceFromList(rownames(outputTable), fullNames)
 
 # Save the output table as csv
-file <- paste(path, "ClusterSummaryWithBoundsOfNulls_06-04-2018.txt", sep="")
+file <- paste(path, "ClusterSummaryWithBoundsOfNulls_24-07-2018.txt", sep="")
 write.table(file, x=outputTable, quote=FALSE, row.names=TRUE, sep="\t")
 
 
@@ -128,8 +129,12 @@ buildOutputTable <- function(summaryTable, fullNames, colNames){
       }else if(grepl(x=metric, pattern="DistToRef") == TRUE || 
                grepl(x=metric, pattern="SeqQual") == TRUE){
         
+        # Split the current cell into its parts
+        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        
         # Put cell info into output table
-        outputTable[metric, cluster + 1] <- round(summaryTable[cluster + 1, metric], digits=2)
+        outputTable[metric, cluster + 1] <- paste(
+          round(values[2], digits=2), " (", round(values[1], digits=2), ", ", round(values[3], digits=2), ")", sep="")
         
         # Don't examine null distribution for N sampled metrics - all the same
       }else if(metric == "NBadgersSampled" || metric == "NCattleSampled"){

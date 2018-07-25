@@ -16,7 +16,7 @@ library(gplots)
 #######################################################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
 # Read in the table
 file <- paste(path, "GeneticVsEpidemiologicalDistances_05-04-18.txt", sep="")
@@ -26,7 +26,7 @@ geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 # General settings #
 ####################
 
-selection <- "CB" # CC, BB, CB
+selection <- "BB" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 
@@ -437,9 +437,9 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   par(mfrow=c(1,1))
   
   marginSizes <- list(
-    "BB" = 26,
-    "CC" = 33,
-    "CB" = 22
+    "BB" = 35,
+    "CC" = 40,
+    "CB" = 30
   )
   
   legendPos <- list(
@@ -468,7 +468,7 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
        col=variableColours,
        x=rep(xLabPosition,length(variableImportance)),
        y=at,
-       srt = 0, pos = 2, xpd = TRUE, cex=0.75)
+       srt = 0, pos = 2, xpd = TRUE, cex=1)
   
   if(showY == TRUE){
     axis(side=1, line=-0.5, cex.axis=0.75, mgp=c(3, .25, 0))

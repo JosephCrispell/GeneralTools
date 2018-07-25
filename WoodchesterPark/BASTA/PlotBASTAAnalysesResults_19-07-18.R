@@ -435,7 +435,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
        xlim=c(1, length(analyses) + 1), ylim=yLim,
        xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=1.5)
   axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2)
-  mtext(side=2, text="AICM scores", line=5.5, cex=1.5)
+  mtext(side=2, text="AICM score", line=5.5, cex=1.5)
   axis(side=1, at=1:length(analyses),
        labels=names, las=2, cex.axis=0.75)
   
