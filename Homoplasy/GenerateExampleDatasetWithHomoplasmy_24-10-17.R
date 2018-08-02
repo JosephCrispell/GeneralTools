@@ -3,6 +3,7 @@
 #-------------------#
 
 # Packages
+library(ape) # Used by phangorn
 library(phangorn) # Maximum likelihood phylogeny
 library(gplots)
 library(geiger) # For the tips function
@@ -20,11 +21,11 @@ date <- format(Sys.Date(), "%d-%m-%y")
 #-----------------------#
 
 # Simulation settings
-popSize <- 300
-mutationRate <- 0.5
-infectiousness <- 0.001
-samplingProb <- 0.05
-nToSample <- 150
+popSize <- 200
+mutationRate <- 0.8
+infectiousness <- 0.0001
+samplingProb <- 0.005
+nToSample <- 100
 nHomoplasiesValues <- 0:100
 nSimulations <- 1000
 
