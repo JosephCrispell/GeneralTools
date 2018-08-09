@@ -203,31 +203,31 @@ function checkForPrinseqSettingsFile {
 		done <$PRINSEQSETTINGS
 		
 		echo "Using the following Prinseq settings:"
-		echo "	READLENGTH = "$LENGTH"			The minimum length of read to be accepted"
+		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
 		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
 		echo "	TRIML = "$TRIML"	Trim sequence at the 5' end by x positions"
 		echo "	TRIMR = "$TRIMR"	Trim sequence at the 3' end by x positions"
 		echo "	TRIMQUALL = "$TRIMQUALL"	Trim sequence by quality score from the 5' end with this threshold score"
 		echo "	TRIMQUALR = "$TRIMQUALR"	Trim sequence by quality score from the 3' end with this threshold score"
-		echo "	TRIMTYPE = "$TRIMTYPE"		Type of quality score calculation to use [min, mean, max, sum]"
-		echo "	WINDSIZE = "$WINDSIZE"		The sliding window size used to calculate quality score by type"
+		echo "	TRIMTYPE = "$TRIMTYPE"	Type of quality score calculation to use [min, mean, max, sum]"
+		echo "	WINDSIZE = "$WINDSIZE"	The sliding window size used to calculate quality score by type"
 		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
 		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
    
 	else
 	
 		echo
-		echo "No Prinseq settings file found, using the following default settings:"
+		echo "Using the following Prinseq settings:"
 		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
-		echo "	MEANQUAL = "$MEANQUAL"		Filter sequence if mean quality score below x"
-		echo "	TRIML = "$TRIML"		Trim sequence at the 5' end by x positions"
-		echo "	TRIMR = "$TRIMR"		Trim sequence at the 3' end by x positions"
-		echo "	TRIMQUALL = "$TRIMQUALL"		Trim sequence by quality score from the 5' end with this threshold score"
-		echo "	TRIMQUALR = "$TRIMQUALR"		Trim sequence by quality score from the 3' end with this threshold score"
+		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
+		echo "	TRIML = "$TRIML"	Trim sequence at the 5' end by x positions"
+		echo "	TRIMR = "$TRIMR"	Trim sequence at the 3' end by x positions"
+		echo "	TRIMQUALL = "$TRIMQUALL"	Trim sequence by quality score from the 5' end with this threshold score"
+		echo "	TRIMQUALR = "$TRIMQUALR"	Trim sequence by quality score from the 3' end with this threshold score"
 		echo "	TRIMTYPE = "$TRIMTYPE"	Type of quality score calculation to use [min, mean, max, sum]"
-		echo "	WINDSIZE = "$WINDSIZE"		The sliding window size used to calculate quality score by type"
-		echo "	TRIMLTAIL = "$TRIMLTAIL"		Trim poly A/T > X length at 5' end"
-		echo "	TRIMRTAIL = "$TRIMRTAIL"		Trim poly A/T > X length at 3' end"
+		echo "	WINDSIZE = "$WINDSIZE"	The sliding window size used to calculate quality score by type"
+		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
+		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
 	fi
 }
 
@@ -334,7 +334,7 @@ do
 	FILE2=${RAWREADS[$i+1]}
 	
 	# Create Unique Prefix using first two columns
-	PAIRID=`echo $FILE1 | awk '{ split($0, array, "_"); print array[1]"_"array[2] }'`
+	PAIRID=`echo $FILE1 | awk '{ split($0, array, "_"); print array[1] }'`
 	
 	# Note progress and check file names
 	echo -e "\e[0;34m Beginning Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS... \e[0m""	"$TIME
