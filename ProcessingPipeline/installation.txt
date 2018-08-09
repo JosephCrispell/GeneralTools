@@ -46,7 +46,13 @@
 		$source ~/.bashrc
 	
 # samtools - tools for processing aligned sequence data
-	$sudo apt-get install samtools
+	Download tar file from: http://www.htslib.org/download/
+		$tar -xvf samtools-x.x.tar.bz2
+		$cd samtools-x.x
+		$make
+		$nano ~/.bashrc
+			Add: export PATH=$PATH:/path/to/samtools-x.x
+		$source ~/.bashrc
 
 # BLASTn - tool for comparing sequences to sequence databases
 	(Note if previously installed blastn with sudo apt-get install ncbi-blast+. Remove using sudo apt-get remove ncbi-blast+)
@@ -58,8 +64,14 @@
 		$source ~/.bashrc
 
 
-# bcftools - tools for variant calling
-	$sudo apt-get install bcftools
+# bcftools - tools for variant calling 
+	Download tar file from: http://www.htslib.org/download/
+		$tar -xvf bcftools-x.x.tar.bz2
+		$cd bcftools-x.x
+		$make
+		$nano ~/.bashrc
+			Add: export PATH=$PATH:/path/to/bcftools-x.x
+		$source ~/.bashrc
 	
 # java - programming language used by some scripts
 	Following the instructions available here: http://tipsonubuntu.com/2016/07/31/install-oracle-java-8-9-ubuntu-16-04-linux-mint-18/

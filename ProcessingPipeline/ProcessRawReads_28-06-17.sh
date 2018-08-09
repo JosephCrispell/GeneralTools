@@ -79,7 +79,13 @@ function checkToolsAreInstalled {
 	if ! type "samtools" > /dev/null 2>&1;
 	then
 		echo -e "\e[0;31m ERROR! A necessary program is not accessible: \e[0m""samtools"
-		echo "	sudo apt-get install samtools"
+		echo "	Download tar file from: http://www.htslib.org/download/"
+		echo "	tar -xvf samtools-x.x.tar.bz2"
+		echo "	cd samtools-x.x"
+		echo "	make"
+		echo "	nano ~/.bashrc"
+		echo "		Add: export PATH=\$PATH:/path/to/samtools-x.x"
+		echo "	source ~/.bashrc"
 		exit 0
 	fi
 
@@ -101,7 +107,13 @@ function checkToolsAreInstalled {
 	if ! type "bcftools" > /dev/null 2>&1;
 	then
 		echo -e "\e[0;31m ERROR! A necessary program is not accessible: \e[0m""bcftools"
-		echo "	sudo apt-get install bcftools"
+		echo "	Download tar file from: http://www.htslib.org/download/"
+		echo "	tar -xvf bcftools-x.x.tar.bz2"
+		echo "	cd bcftools-x.x"
+		echo "	make"
+		echo "	nano ~/.bashrc"
+		echo "		Add: export PATH=\$PATH:/path/to/bcftools-x.x"
+		echo "	source ~/.bashrc"
 		exit 0
 	fi
 	
