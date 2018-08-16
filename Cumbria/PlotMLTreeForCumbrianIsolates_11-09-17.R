@@ -4,7 +4,7 @@ library(geiger) # For the tips function
 library(plotrix)
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/"
+path <- "/home/josephcrispell/Desktop/Research/Cumbria/"
 
 ###################################
 # Get the Maximum Likelihood Tree #

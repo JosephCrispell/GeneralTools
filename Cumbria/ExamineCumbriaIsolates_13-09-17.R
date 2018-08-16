@@ -10,10 +10,10 @@ library(gplots)
 #########################
 
 # Set the path
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Cumbria/"
+path <- "/home/josephcrispell/Desktop/Research/Cumbria/"
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/sequences_Prox-10_10-09-2017.fasta", sep="")
+file <- paste(path, "vcfFiles/sequences_Prox-10_09-08-2018.fasta", sep="")
 sequences <- readFasta(file)
 
 ############################
@@ -21,20 +21,20 @@ sequences <- readFasta(file)
 ############################
 
 # Mapping
-file <- paste(path, "vcfFiles/","isolateMappingSummary_09-09-17.txt", sep="")
+file <- paste(path, "isolateMappingSummary_09-08-18.txt", sep="")
 mapping <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 mapping$Prop <- mapping$NumberMappedReads / (mapping$NumberMappedReads + mapping$NumberUnmappedReads)
 mapping$Isolate <- parseIds(mapping$Isolate)
 isolateMapping <- createList("Isolate", "Prop", mapping)
 
 # Genome coverage
-file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_10-09-2017.txt", sep="")
+file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_09-08-2018.txt", sep="")
 vpCoverage <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 vpCoverage$Isolate <- parseIds(vpCoverage$Isolate)
 isolateVPCoverage <- createList("Isolate", "Coverage", vpCoverage)
 
 # Sampling information
-file <- paste(path, "17z_metadata_280717.csv", sep="")
+file <- paste(path, "17z_metadata_290618_forR.csv", sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 idLabels <- designTipLabels(samplingInfo)
 
@@ -63,7 +63,7 @@ tips <- tree$tip.label
 tree$tip.label <- getValues(idLabels, tree$tip.label)
 
 # Plot tree with and without reference
-file <- paste(path, "vcfFIles/CumbrianIsolates_SummaryPlots_12-09-17.pdf", sep="")
+file <- paste(path, "vcfFiles/CumbrianIsolates_SummaryPlots_09-08-18.pdf", sep="")
 pdf(file)
 
 #### WITH REFERENCE
@@ -172,7 +172,7 @@ informativeSequences <- keepSites(sequences, informativeSites)
 
 # Print out SNP table
 newLabels <- getValues(idLabels, names(informativeSequences))
-file <- paste(path, "vcfFIles/InformativeFasta_12-09-17.fasta", sep="")
+file <- paste(path, "vcfFiles/InformativeFasta_09-08-18.fasta", sep="")
 printOutInformativeSequences(informativeSequences, file, newLabels)
 
 #################################

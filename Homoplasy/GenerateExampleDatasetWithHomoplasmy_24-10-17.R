@@ -3,12 +3,11 @@
 #-------------------#
 
 # Packages
-library(ape) # Used by phangorn
+library(ape) # Used by phangorn and ladderise() - orders nodes in phylogeny
 library(phangorn) # Maximum likelihood phylogeny
 library(gplots)
 library(geiger) # For the tips function
 library(grid) # Used to plot lines between plot panels
-library(ape) # ladderise() - orders nodes in phylogeny
 
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/"

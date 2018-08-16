@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Download FASTQ files from NCBI using SRA toolkit
+# Author: Joseph Crispell
+
+# Command Line Structure:
+# bash DownloadFASTQsUsingSRAToolkit.sh accessionFile.csv pathToFasterq-dump
+
+# AccessionFile.csv created by:
+# Clicking on SRA Experiments link (https://www.ncbi.nlm.nih.gov/bioproject/247745 -> https://www.ncbi.nlm.nih.gov/sra?linkname=bioproject_sra_all&from_uid=247745)
+# Click Send to: -> file -> Summary -> Create File
+
+# Requires SRA Toolkit
+# Downloaded from here: https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=software
+
+# Get the command line arguments
+ACCESSIONSFILE=$1
+FASTERQDUMP=$2
+
+# Get the isolate accession numbers from the file
+ACCESSIONS=(`cat $ACCESSIONSFILE | egrep -v "Experiment" | awk '{ split($0, array, ","); print array[1]}'`)
+N=${#ACCESSIONS[@]}
+
+# Report how many Accessions found
+echo -e "\e[0;34m Found $N Accessions in the file provided ... \e[0m"
+
+# Examine each accession number
+COUNT=0
+for ACCESSION in "${ACCESSIONS[@]}"
+do
+	
+	# Keep track of progress and time
+	COUNT=`expr $COUNT + 1`
+	TIME=`date +"%T"`
+	
+	# Remove the quotations
+	ACCESSION="${ACCESSION//\"/}"
+
+	# Check that file hasn't already been downloaded
+	FOUND=`ls | grep $ACCESSION | wc -l`
+	if [ $FOUND == "2" ]
+	then
+		echo -e "\e[0;34m Files for $ACCESSION already present ($COUNT of $N)\e[0m""	"$TIME
+		continue
+	fi
+	
+	# Note progress
+	echo -e "\e[0;34m Beginning file download for $ACCESSION ($COUNT of $N)\e[0m""	"$TIME
+	
+	# Download the FASTQ files for the current ACCESSION
+	$FASTERQDUMP $ACCESSION --outdir . --progress --split-files
+	
+	# Zip up the files downloaded
+	echo "Zipping up downloaded files..."
+	pigz *fastq
+	
+done
+
+# Run fastqc on the output
+TIME=`date +"%T"`
+echo -e "\e[0;34m Finished file downloads. Running FASTQC...\e[0m""	"$TIME
+fastqc *fastq.gz
+rm *fastqc.zip
+mkdir FASTQC
+mv *fastqc.html FASTQC
+
+# FINISHED!!!
+TIME=`date +"%T"`
+echo -e "\e[0;32m Finished! \e[0m""	"$TIME
