@@ -168,9 +168,9 @@ path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
 
 # Simulation settings
 mutationRate <- 0.5
-infectiousness <- 0.001
-samplingProb <- 0.05
-nToSampleValues <- seq(50, 500, 50)
+infectiousness <- 0.0001
+samplingProb <- 0.01
+nToSampleValues <- seq(100, 1000, 50)
 nHomoplasies <- 10
 nSimulations <- 1000
 
@@ -185,7 +185,7 @@ for(replicate in 1:10){
     # Generate the sequences
     par(mfrow=c(1,1))
     simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
-                                      samplingProb, nToSample, verbose=FALSE)
+                                      samplingProb, nToSample, verbose=TRUE)
     
     # Build the sequences based upon the mutation events
     sequences <- buildSequences(simulationOutput, nToSample)
