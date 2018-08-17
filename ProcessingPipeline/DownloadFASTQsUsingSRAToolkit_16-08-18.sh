@@ -4,11 +4,9 @@
 # Author: Joseph Crispell
 
 # Command Line Structure:
-# bash DownloadFASTQsUsingSRAToolkit.sh accessionFile.csv pathToFasterq-dump
+# bash DownloadFASTQsUsingSRAToolkit.sh linkTable.csv pathToFasterq-dump linkTableForIsolates
 
-# AccessionFile.csv created by:
-# Clicking on SRA Experiments link (https://www.ncbi.nlm.nih.gov/bioproject/247745 -> https://www.ncbi.nlm.nih.gov/sra?linkname=bioproject_sra_all&from_uid=247745)
-# Click Send to: -> file -> Summary -> Create File
+# Downloaded linkTable.csv from: https://doi.org/10.1371/journal.pone.0189838.s009 (paste content into excel and coverted to csv)
 
 # Requires SRA Toolkit
 # Downloaded from here: https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=software
@@ -17,8 +15,8 @@
 ACCESSIONSFILE=$1
 FASTERQDUMP=$2
 
-# Get the isolate accession numbers from the file
-ACCESSIONS=(`cat $ACCESSIONSFILE | egrep -v "Experiment" | awk '{ split($0, array, ","); print array[1]}'`)
+# Get the isolate accession numbers from the file - using fourth column - secondary accession
+ACCESSIONS=(`cat $ACCESSIONSFILE | egrep -v "ENAProjectAccesion" | awk '{ split($0, array, ","); print array[4]}'`)
 N=${#ACCESSIONS[@]}
 
 # Report how many Accessions found
@@ -32,9 +30,6 @@ do
 	# Keep track of progress and time
 	COUNT=`expr $COUNT + 1`
 	TIME=`date +"%T"`
-	
-	# Remove the quotations
-	ACCESSION="${ACCESSION//\"/}"
 
 	# Check that file hasn't already been downloaded
 	FOUND=`ls | grep $ACCESSION | wc -l`
@@ -48,7 +43,7 @@ do
 	echo -e "\e[0;34m Beginning file download for $ACCESSION ($COUNT of $N)\e[0m""	"$TIME
 	
 	# Download the FASTQ files for the current ACCESSION
-	$FASTERQDUMP $ACCESSION --outdir . --progress --split-files
+	$FASTERQDUMP $ACCESSION --outdir . --progress --split-files --threads 12
 	
 	# Zip up the files downloaded
 	echo "Zipping up downloaded files..."
