@@ -25,14 +25,14 @@ function checkIfHelpStatementRequested {
 		echo "	pathToRef:		Provide full path to indexed (bwa index) reference fasta sequence"
 		echo "	pickRandomReads:	Provide full path to perl script that randomly picks unmapped reads to blast"
 		echo "	examineBlastOutput:	Provide full path to perl script that examines blast output"
-		echo 
+		echo
 		echo " Requires the following tools:"
 		echo "	cutadapt"
 		echo "	bwa (capable of aln and mem)"
 		echo "	samtools"
 		echo "	BLASTn"
 		echo "	bcftools"
-		echo 
+		echo
 		echo " Notes:"
 		echo "	Needs access to the internet to run BLAST searches on unmapped reads of poorly mapped"
 		echo "	Threshold for BLASTING unmapped reads is hard coded. Edit script to change."
@@ -41,14 +41,14 @@ function checkIfHelpStatementRequested {
 		echo "	Only examines unmapped reads if proportion mapped drops below 0.9"
 		echo "	Requires sudo rights and internet to examine unmapped reads"
 		echo "	If wanting to specify Prinseq settings outside of this bash script. Put settings into file with start: PrinseqSettings. Use same format as used in this script"
-	
+
 		# Exit without an error
 		exit 0
 	fi
 }
 
 function checkToolsAreInstalled {
-	
+
 	# cutadapt - used by trim galore
 	if ! type "cutadapt" > /dev/null 2>&1;
 	then
@@ -74,7 +74,7 @@ function checkToolsAreInstalled {
 		echo "	source ~/.bashrc"
 		exit 0
 	fi
-	
+
 	# samtools
 	if ! type "samtools" > /dev/null 2>&1;
 	then
@@ -116,7 +116,7 @@ function checkToolsAreInstalled {
 		echo "	source ~/.bashrc"
 		exit 0
 	fi
-	
+
 	# java - not used in pipeline but necessary
 	if ! type "java" > /dev/null 2>&1;
 	then
@@ -131,77 +131,77 @@ function checkToolsAreInstalled {
 }
 
 function checkForPrinseqSettingsFile {
-	
+
 	# Check for Prinseq settings file
 	FOUNDPRINSEQSETTINGS=`ls | grep "PrinseqSettings" | wc -l`
 	if [ $FOUNDPRINSEQSETTINGS == "1" ]
 	then
-   
+
 		# Get the Prinseq settings file
 		PRINSEQSETTINGS=`ls | grep "PrinseqSettings"`
-	
+
 		# Notify that found Prinseq Settings
 		echo
 		echo "Found Prinseq settings in "$PRINSEQSETTINGS
-   
+
 		# Read settings from file
 		while read LINE
 		do
-		
+
 			# Read length filter
 			if [ `echo $LINE | grep "LENGTH" | wc -l` == "1" ]
 			then
 				LENGTH=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-		
+
 			# Read mean quality filter
 			elif [ `echo $LINE | grep "MEANQUAL" | wc -l` == "1" ]
 			then
 				MEANQUAL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-			
+
 			# Number of sites to trim off left
 			elif [ `echo $LINE | grep "TRIML=" | wc -l` == "1" ]
 			then
 				TRIML=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-			
+
 			# Number of sites to trim off right
 			elif [ `echo $LINE | grep "TRIMR=" | wc -l` == "1" ]
 			then
 				TRIMR=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-		
+
 			# Quality filter for sliding window working from left
 			elif [ `echo $LINE | grep "TRIMQUALL" | wc -l` == "1" ]
 			then
 				TRIMQUALL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-				
+
 			# Quality filter for sliding window working from right
 			elif [ `echo $LINE | grep "TRIMQUALR" | wc -l` == "1" ]
 			then
 				TRIMQUALR=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-				
+
 			# Summary statistic for sliding window
 			elif [ `echo $LINE | grep "TRIMTYPE" | wc -l` == "1" ]
 			then
 				TRIMTYPE=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 				TRIMTYPE="${TRIMTYPE//\"/}"
-				
+
 			# Sliding window size
 			elif [ `echo $LINE | grep "WINDSIZE" | wc -l` == "1" ]
 			then
 				WINDSIZE=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-				
+
 			# Size of nucleotide repeat to filter from left
 			elif [ `echo $LINE | grep "TRIMLTAIL" | wc -l` == "1" ]
 			then
 				TRIMLTAIL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-			
+
 			# Size of nucleotide repeat to filter from right
 			elif [ `echo $LINE | grep "TRIMRTAIL" | wc -l` == "1" ]
 			then
 				TRIMRTAIL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 			fi
-		
+
 		done <$PRINSEQSETTINGS
-		
+
 		echo "Using the following Prinseq settings:"
 		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
 		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
@@ -213,9 +213,9 @@ function checkForPrinseqSettingsFile {
 		echo "	WINDSIZE = "$WINDSIZE"	The sliding window size used to calculate quality score by type"
 		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
 		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
-   
+
 	else
-	
+
 		echo
 		echo "Using the following Prinseq settings:"
 		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
@@ -273,7 +273,7 @@ echo "Isolate	NumberMappedReads	NumberUnmappedReads	NumberMultimappedReads" > $S
 
 if [ ! $PRINSEQ == "false" ]
 then
-	
+
 	# Define Prinseq settings - USE THIS FORMAT FOR INPUT FILE IF USING ONE
 	LENGTH=50			# The minimum length of read to be accepted
 	MEANQUAL=20			# Filter sequence if mean quality score below x
@@ -324,41 +324,41 @@ RUN=0
 for (( i=0; i<${NFILES}; i+=2))
 do
 	###### Prepare files #######
-	
+
 	# Keep track of progress and time
 	RUN=`expr $RUN + 1`
 	TIME=`date +"%T"`
-	
+
 	# Get the names of the forward and reverse reads
 	FILE1=${RAWREADS[$i]}
 	FILE2=${RAWREADS[$i+1]}
-	
+
 	# Create Unique Prefix using first two columns
 	PAIRID=`echo $FILE1 | awk '{ split($0, array, "_"); print array[1] }'`
-	
+
 	# Note progress and check file names
 	echo -e "\e[0;34m Beginning Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS... \e[0m""	"$TIME
 	echo "	$FILE1"
 	echo "	$FILE2"
-		
+
 	# Unzip Files
 	echo -e "\e[0;34m Unzipping Read Sequence Files... \e[0m"
 	gunzip $FILE1
 	gunzip $FILE2
 	FILE1=`echo ${FILE1:0:-3}` # Remove the .gz from the file name
 	FILE2=`echo ${FILE2:0:-3}`
-	
+
 	####### Removing the adapter sequence #######
 	# --paired: Used paired-end reads
 	if [ ! $TRIMGALORE == "false" ]
 	then
 		echo -e "\e[0;34m Removing adapter sequences if present... \e[0m"
 		$TRIMGALORE --paired $FILE1 $FILE2
-	
+
 		# Zip original fastq files
 		gzip $FILE1
 		gzip $FILE2
-	
+
 		# Get the output files from trim galore
 		echo -e "\e[0;34m Adapter sequences removed. \e[0m"
 		FILE1=`ls | grep $PAIRID".*_val_1"`
@@ -366,12 +366,12 @@ do
 
 		# Remove the unecessary output files
 		rm *trim*
-		
+
 		# Check found the correct files
 		echo "	$FILE1"
 		echo "	$FILE2"
 	fi
-	
+
 	####### Trim the Reads #######
 	# Using program Prinseq -> Trimming reads to remove low quality bases according to the Phred Scoring system
 	# min_len: The minimum length of read to be accepted
@@ -386,7 +386,7 @@ do
 	if [ ! $PRINSEQ == "false" ]
 	then
 		echo -e "\e[0;34m Beginning Read Trimming... \e[0m"
-		perl $PRINSEQ -fastq $FILE1 -fastq2 $FILE2 -min_len $LENGTH -min_qual_mean $MEANQUAL -trim_left $TRIML -trim_right $TRIMR -trim_qual_left $TRIMQUALL -trim_qual_right $TRIMQUALR -trim_qual_type $TRIMTYPE -trim_qual_window $WINDSIZE  
+		perl $PRINSEQ -fastq $FILE1 -fastq2 $FILE2 -min_len $LENGTH -min_qual_mean $MEANQUAL -trim_left $TRIML -trim_right $TRIMR -trim_qual_left $TRIMQUALL -trim_qual_right $TRIMQUALR -trim_qual_type $TRIMTYPE -trim_qual_window $WINDSIZE -trim_tail_right $TRIMRTAIL -trim_tail_left $TRIMLTAIL
 
 		# Remove files previously stored under FILE1 and FILE2
 		if [ ! $TRIMGALORE == "false" ]
@@ -397,44 +397,44 @@ do
 			gzip $FILE1
 			gzip $FILE2
 		fi
-		
+
 		# Find the output files
 		echo -e "\e[0;34m Read Trimming Complete. \e[0m"
 		TRIMFILES=(`ls | grep $PAIRID".*prinseq_good" | grep -v "singletons"`)
 		FILE1=${TRIMFILES[0]}
 		FILE2=${TRIMFILES[1]}
-	
+
 		echo "	$FILE1"
 		echo "	$FILE2"
-		
+
 		# Remove unecessary files
 		rm *prinseq_bad*
 		rm *prinseq_good_singletons*
 	fi
-	
+
 	# Get the read length - of first forward read
 	READLENGTH=`sed '2q;d' $FILE1 | wc | awk '{ split($0, array, " "); print array[3] }'`
-	
+
 	####### Alignment #######
 	# Get number of cores of computer
 	NCORES=`nproc --all`
-	
+
 	# Generate SAM file
 	# Create a name for the SAM file
 	SAMFILE=$PAIRID"_"$RUN"_aln-pe.sam"
-	
+
 	# Run bwa mem for reads > 70bp and bwa aln for <= 70bp
-	if [ $(echo "$READLENGTH > 70" | bc) -eq 1 ] 
+	if [ $(echo "$READLENGTH > 70" | bc) -eq 1 ]
 	then
 		echo -e "\e[0;34m Beginning Read Alignment with bwa mem... \e[0m"
-		
+
 		# Generate SAM file
 		# -t Flag: specify the number of cores to use
 		bwa mem -t $NCORES $REFERENCE $FILE1 $FILE2 > $SAMFILE
-	
+
 	else
 		echo -e "\e[0;34m Beginning Read Alignment with bwa aln... \e[0m"
-	
+
 		# Index the FASTQ Files
 		# -I Illumina 1.3+ encoding (NOTE: This encoding covers 1.3+ to 1.8)
 		# REMOVE -I flag if Illumina 1.9
@@ -442,18 +442,18 @@ do
 		FILE2SAI=$FILE2".sai"
 		bwa aln -I $REFERENCE $FILE1 > $FILE1SAI
 		bwa aln -I $REFERENCE $FILE2 > $FILE2SAI
-	
+
 		# Generate SAM file
 		# -f Flag: SAM file to output results
 		bwa sampe -f $SAMFILE $REFERENCE $FILE1SAI $FILE2SAI $FILE1 $FILE2
-		
+
 		# Remove unwanted files
 		rm $FILE1SAI
 		rm $FILE2SAI
 	fi
-	
+
 	echo -e "\e[0;34m SAM file created. \e[0m"
-	
+
 	# Remove un-needed files
 	if [ $TRIMGALORE == "false" ] && [ $PRINSEQ == "false" ]
 	then
@@ -463,7 +463,7 @@ do
 		rm $FILE1
 		rm $FILE2
 	fi
-	
+
 	####### Check Unmapped Reads #######
 	# Get the information for the reads in the current SAM file
 	# -F Flag: only include reads with none of the FLAGS
@@ -472,36 +472,36 @@ do
 	MAPPED=`samtools view $SAMFILE -c -F 4`
 	UNMAPPED=`samtools view $SAMFILE -c -f 4`
 	MULTIMAPPED=`samtools view $SAMFILE -c -f 256`
-	
+
 	# Print out the information for the reads in the current SAM file
 	echo $PAIRID"	"$MAPPED"	"$UNMAPPED"	"$MULTIMAPPED >> $SAMSUMMARY
-	
+
 	# Check the proportion of mapped reads
 	PROPMAPPED=`perl -E "say $MAPPED / ($MAPPED + $UNMAPPED + $MULTIMAPPED)"` # Changed to include multi-mapped reads!
 
-	if [ $(echo " $PROPMAPPED < 0.9" | bc) -eq 1 ] 
+	if [ $(echo " $PROPMAPPED < 0.9" | bc) -eq 1 ]
 	then
-		
+
 		echo -e "\e[0;31m Examining unmapped reads of poorly mapped isolate: \e[0m"$PAIRID
-		
+
 		UNMAPPEDFILE=$PAIRID"_"$RUN"_unmapped.sam"
 		RANDOMREADS=$PAIRID"_"$RUN"_randomReads.txt"
 		BLASTOUTPUT=$PAIRID"_"$RUN"_BLAST.txt"
 		BLASTHITS=$PAIRID"_"$RUN"_unmappedReadHits.txt"
-		
+
 		# BLAST some random reads from the unmapped reads file
 		# -f Flag: onlu include reads with all of the FLAGS in INT present
 		samtools view $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
 		perl $PICKREADS 10 $UNMAPPEDFILE $RANDOMREADS # Pick 10 random unmapped reads
 		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote
 		perl $EXAMINEBLASTOUTPUT 1 $BLASTOUTPUT > $BLASTHITS
-		
+
 		# Remove the unneccesary files
 		rm $UNMAPPEDFILE
 		rm $RANDOMREADS
 		rm $BLASTOUTPUT
 	fi
-	
+
 	# Convert the SAM file to a BAM file
 	BAMFILE=$PAIRID"_"$RUN".bam"
 	SRTDBAMFILE=$PAIRID"_"$RUN"_srtd.bam"
@@ -520,10 +520,10 @@ do
 	rm $BAMFILE
 	rm $BAMFILEINDX
 	rm $SRTDBAMFILE
-	
+
 	####### Identify Variants #######
 	echo -e "\e[0;34m Identifying Variants... \e[0m"
-	
+
 	# Create BCF File
 	# --adjust-MQ: parameter for adjusting mapQ
 	# --min-BQ: skip alignments with mapQ smaller than INT
@@ -536,27 +536,27 @@ do
 
 	# Remove unnecessary files
 	rm $NDUPBAMFILE
-	
+
 	# Convert BCF File to VCF File
 	# --output-type v: output format is uncompressed vcf
 	# --multiallelic-caller:  Updated and recommended calling method
 	# --ploidy 1: Treat sites as haploid
 	# Notes:
 	#	- Calls varying and non-varying sites by default
-	#	- Ignores dubious reference (N) sites	
+	#	- Ignores dubious reference (N) sites
 	VCFFILE=$PAIRID"_"$RUN".vcf"
-	bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v > $VCFFILE 
+	bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v > $VCFFILE
 	echo -e "\e[0;34m VCF File Created. \e[0m"
 	echo -e "\e[0;34m Finished Identifying Variants. \e[0m"
-	
+
 	####### Moving VCF File to the VCF Directory #######
 	echo -e "\e[0;34m Zipping up and moving VCF File... \e[0m"
 	gzip $VCFFILE
 	mv $VCFFILE".gz" vcfFiles
-	
+
 	# Remove unnecessary files
 	rm $BCFFILE
-	
+
 	echo -e "\e[0;34m Completed Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS. \e[0m"
 done
 

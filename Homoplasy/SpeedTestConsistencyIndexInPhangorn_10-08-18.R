@@ -30,4 +30,3 @@ ci <- CI(tree, sequences, sitewise=TRUE)
 
 # Identify inconsistent sites
 inconsistent <- (which(!is.nan(ci) & ci < 1))
-print(inconsistent)
