@@ -4,7 +4,7 @@
 # Author: Joseph Crispell
 
 # Command Line Structure:
-# bash DownloadFASTQsUsingSRAToolkit.sh linkTable.csv pathToFasterq-dump linkTableForIsolates
+# bash DownloadFASTQsUsingSRAToolkit.sh linkTable.csv pathToFasterq-dump
 
 # Downloaded linkTable.csv from: https://doi.org/10.1371/journal.pone.0189838.s009 (paste content into excel and coverted to csv)
 
@@ -26,7 +26,7 @@ echo -e "\e[0;34m Found $N Accessions in the file provided ... \e[0m"
 COUNT=0
 for ACCESSION in "${ACCESSIONS[@]}"
 do
-	
+
 	# Keep track of progress and time
 	COUNT=`expr $COUNT + 1`
 	TIME=`date +"%T"`
@@ -38,26 +38,26 @@ do
 		echo -e "\e[0;34m Files for $ACCESSION already present ($COUNT of $N)\e[0m""	"$TIME
 		continue
 	fi
-	
+
 	# Note progress
 	echo -e "\e[0;34m Beginning file download for $ACCESSION ($COUNT of $N)\e[0m""	"$TIME
-	
+
 	# Download the FASTQ files for the current ACCESSION
 	$FASTERQDUMP $ACCESSION --outdir . --progress --split-files --threads 12
-	
+
 	# Zip up the files downloaded
 	echo "Zipping up downloaded files..."
 	pigz *fastq
-	
+
 done
 
 # Run fastqc on the output
-TIME=`date +"%T"`
-echo -e "\e[0;34m Finished file downloads. Running FASTQC...\e[0m""	"$TIME
-fastqc *fastq.gz
-rm *fastqc.zip
-mkdir FASTQC
-mv *fastqc.html FASTQC
+#TIME=`date +"%T"`
+#echo -e "\e[0;34m Finished file downloads. Running FASTQC...\e[0m""	"$TIME
+#fastqc *fastq.gz
+#rm *fastqc.zip
+#mkdir FASTQC
+#mv *fastqc.html FASTQC
 
 # FINISHED!!!
 TIME=`date +"%T"`

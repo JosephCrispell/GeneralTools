@@ -21,9 +21,9 @@ date <- format(Sys.Date(), "%d-%m-%y")
 
 # Simulation settings
 popSize <- 200
-mutationRate <- 0.8
-infectiousness <- 0.0001
-samplingProb <- 0.005
+mutationRate <- 0.5
+infectiousness <- 0.001
+samplingProb <- 0.05
 nToSample <- 100
 nHomoplasiesValues <- 0:100
 nSimulations <- 1000
@@ -89,7 +89,7 @@ for(nHomoplasies in nHomoplasiesValues){
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
-    file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
+    file <- paste(path, "consistencyIndexReport_", date, ".txt", sep="")
     homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
                                         check.names=FALSE)
     results[row, c("NFoundTrue","NIncorrectTrue")] <- 
@@ -101,7 +101,7 @@ for(nHomoplasies in nHomoplasiesValues){
            ignore.stdout=FALSE)
     
     # Get and Check HomoplasyFinder output
-    file <- paste(path, "homoplasyReport_", date, ".txt", sep="")
+    file <- paste(path, "consistencyIndexReport_", date, ".txt", sep="")
     homoplasyFinderOutput <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
                                         check.names=FALSE)
     results[row, c("NFoundAfter","NIncorrectAfter")] <- 
@@ -327,44 +327,12 @@ reportHowManyHomoplasiesWereFound <- function(homoplasyFinderOutput, homoplasyIn
     for(key in as.character(homoplasies)){
       
       # Search for current homoplasy in HomoplasyFinder output
-      rows <- which(homoplasyFinderOutput$Position == homoplasyInsertionInfo[[key]]$position)
-      if(length(rows) == 0){
-        next
-      }
-      
-      for(row in rows){
-        
-        # Find the allele index
-        alleleIndex <- which(strsplit(homoplasyFinderOutput[row, "Alleles"], split=",")[[1]] == 
-                               homoplasyInsertionInfo[[key]]$allele)
-        if(length(alleleIndex) == 0){
-          next
-        }
-        
-        # Check all the isolates associated with the source an dsink nodes are present
-        present <- TRUE
-        sourceSinkIsolates <- c(homoplasyInsertionInfo[[key]]$sourceIsolates,
-                                homoplasyInsertionInfo[[key]]$sinkIsolates)
-        isolates = strsplit(
-          strsplit(homoplasyFinderOutput[row, "IsolatesForAlleles"], split=",")[[1]][alleleIndex], 
-          split=":")[[1]]
-        for(isolate in sourceSinkIsolates){
-          
-          if(isolate %in% isolates == FALSE){
-            present <- FALSE
-            break
-          }
-        }
-        if(present == TRUE){
-          nFound <- nFound + 1
-        }
+      if(length(which(homoplasyFinderOutput$Position == homoplasyInsertionInfo[[key]]$position)) != 0){
+        nFound <- nFound + 1
       }
     }
   }
-  
-  # Calculate proportion found and number of false positives (sequences also present in insertion info)
-  #propFound <- nFound / (length(homoplasyInsertionInfo) - 1)
-  
+
   # Calculate proportion found that weren't inserted
   nWronglyFound <- nrow(homoplasyFinderOutput) - nFound
   if(nWronglyFound < 0){
