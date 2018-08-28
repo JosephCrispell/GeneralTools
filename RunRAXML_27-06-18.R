@@ -2,19 +2,19 @@
 library(ape)
 
 # Note the FASTA file name and path
-fastaFile <- "/home/josephcrispell/Desktop/test.fasta"
+fastaFile <- "/home/josephcrispell/Desktop/Research/Granjean2017ConvergentEvolution/FASTQs/vcfFiles/sequences_Prox-0_27-08-2018.fasta"
 
 # Set the working directory
-setwd("/home/josephcrispell/Desktop/")
+setwd("/home/josephcrispell/Desktop/Research/Granjean2017ConvergentEvolution/")
 
 # Build analysis name
-analysisName <- "RaxML-R_27-06-18"
+analysisName <- "RaxML-R_27-08-18"
 
 # Set the input parameters for RAXML
 model <- "GTRCAT" # No rate heterogenity
 seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
 nBootstraps <- 100
-nThreads <- 4
+nThreads <- 10
 
 # Build the command for RAXML
 command <- paste("raxmlHPC-PTHREADS", # Note on WINDOWS replace with: /path/to/raxmlHPC-PTHREADS.exe
@@ -38,3 +38,4 @@ treeBSFile <- files[grepl(files, pattern=paste("RAxML_bipartitions[.]", analysis
 # Open the file
 treeBS <- read.tree(treeBSFile)
 
+treeBSFile

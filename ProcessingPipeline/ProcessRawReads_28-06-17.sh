@@ -342,8 +342,15 @@ do
 
 	# Unzip Files
 	echo -e "\e[0;34m Unzipping Read Sequence Files... \e[0m"
-	gunzip $FILE1
-	gunzip $FILE2
+	if type "pigz" > /dev/null 2>&1;
+	then
+		pigz --decompress $FILE1
+		pigz --decompress $FILE2
+	else
+		gunzip $FILE1
+		gunzip $FILE2
+	fi
+
 	FILE1=`echo ${FILE1:0:-3}` # Remove the .gz from the file name
 	FILE2=`echo ${FILE2:0:-3}`
 
@@ -355,8 +362,14 @@ do
 		$TRIMGALORE --paired $FILE1 $FILE2
 
 		# Zip original fastq files
-		gzip $FILE1
-		gzip $FILE2
+		if [ type "pigz" > /dev/null 2>&1; ]
+		then
+			pigz $FILE1
+			pigz $FILE2
+		else
+			gzip $FILE1
+			gzip $FILE2
+		fi
 
 		# Get the output files from trim galore
 		echo -e "\e[0;34m Adapter sequences removed. \e[0m"
@@ -393,8 +406,15 @@ do
 			rm $FILE1
 			rm $FILE2
 		else
-			gzip $FILE1
-			gzip $FILE2
+
+			if type "pigz" > /dev/null 2>&1;
+			then
+				pigz $FILE1
+				pigz $FILE2
+			else
+				gzip $FILE1
+				gzip $FILE2
+			fi
 		fi
 
 		# Find the output files
@@ -456,8 +476,14 @@ do
 	# Remove un-needed files
 	if [ $TRIMGALORE == "false" ] && [ $PRINSEQ == "false" ]
 	then
-		gzip $FILE1
-		gzip $FILE2
+		if type "pigz" > /dev/null 2>&1;
+		then
+			pigz $FILE1
+			pigz $FILE2
+		else
+			gzip $FILE1
+			gzip $FILE2
+		fi
 	else
 		rm $FILE1
 		rm $FILE2
@@ -550,7 +576,12 @@ do
 
 	####### Moving VCF File to the VCF Directory #######
 	echo -e "\e[0;34m Zipping up and moving VCF File... \e[0m"
-	gzip $VCFFILE
+	if type "pigz" > /dev/null 2>&1;
+	then
+		pigz $VCFFILE
+	else
+		gzip $VCFFILE
+	fi
 	mv $VCFFILE".gz" vcfFiles
 
 	# Remove unnecessary files
