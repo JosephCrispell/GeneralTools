@@ -18,23 +18,22 @@
 ####################################################################
 
 # Initialise an output file
-OUTPUT="timeTaken_17-08-18.csv"
+OUTPUT="timeTaken_03-09-18.csv"
 echo "NSequences	Replicate	NSites	Java	R	Phangorn	TreeTime" > $OUTPUT
 
 # Set the date the datasets were created
 DATE="17-08-18"
 
-# Loop through the number of sequences in each dataset
-for (( NSEQUENCES=100; NSEQUENCES<=1000; NSEQUENCES+=50 ))
+# Loop through the replicates for each dataset - replicates first means that largest datasets aren't left till last
+for (( REPLICATE=1; REPLICATE<=10; REPLICATE+=1 ))
 do
-	TIME=`date +"%T"`
-	echo -e "\e[0;34m Processing example data set with $NSEQUENCES sequences... \e[0m""	"$TIME
 
-	# Loop through the replicates for each dataset
-	for (( REPLICATE=1; REPLICATE<=10; REPLICATE+=1 ))
+	# Loop through the number of sequences in each dataset
+	for (( NSEQUENCES=100; NSEQUENCES<=1000; NSEQUENCES+=50 ))
 	do
 
-		echo "    Replicate: $REPLICATE"
+		TIME=`date +"%T"`
+		echo -e "\e[0;34m Processing example data set with $NSEQUENCES sequences. Replicate $REPLICATE... \e[0m""	"$TIME
 
 		# Build fasta file
 		FASTA="Example_"$((2 * $NSEQUENCES))"-"$NSEQUENCES"_"$REPLICATE"_"$DATE".fasta"
@@ -54,7 +53,7 @@ do
 
 		# Run HomoplasyFinder Java tool
 		START="$(date -u +%s.%N)"
-		java -jar ../HomoplasyFinder.jar 0 $FASTA $TREE
+		java -Xmx8000m -jar ../HomoplasyFinder.jar 0 $FASTA $TREE
 		END="$(date -u +%s.%N)"
 		JAVATIME="$(bc <<<"$END-$START")"
 

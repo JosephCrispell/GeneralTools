@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
 
+#### Increase java heap size ####
+options(java.parameters = "-Xmx4000m")
+
 #### Load packages ####
 suppressMessages(library(homoplasyFinder))
 

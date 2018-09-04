@@ -136,7 +136,7 @@ pdf(file, height=14, width=7)
 par(mfrow=c(2,1))
 
 # Set the colours used in plotting
-colours <- c("purple", "orange", "blue", "red", "cyan", "goldenrod4")
+colours <- c("purple", "orange", "blue", "red", "cyan", "goldenrod4", "black", "pink")
 #colours <- c("#F8766D", "#B79F00", "#00BA38", "#00BFC4", "#619CFF")
 
 ### Plot the number homoplasies not found by HomoplasyFinder

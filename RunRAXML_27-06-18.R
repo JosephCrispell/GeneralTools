@@ -1,14 +1,15 @@
 # Load the ape library
 library(ape)
+library(beepr)
 
 # Note the FASTA file name and path
-fastaFile <- "/home/josephcrispell/Desktop/Research/Granjean2017ConvergentEvolution/FASTQs/vcfFiles/sequences_Prox-0_27-08-2018.fasta"
+fastaFile <- "/home/josephcrispell/Desktop/Research/Grandjean2017ConvergentEvolution/FASTQs/vcfFiles/sequences_Prox-0_02-09-2018.fasta"
 
 # Set the working directory
-setwd("/home/josephcrispell/Desktop/Research/Granjean2017ConvergentEvolution/")
+setwd("/home/josephcrispell/Desktop/Research/Grandjean2017ConvergentEvolution/")
 
 # Build analysis name
-analysisName <- "RaxML-R_27-08-18"
+analysisName <- "RaxML-R_02-09-18"
 
 # Set the input parameters for RAXML
 model <- "GTRCAT" # No rate heterogenity
@@ -28,6 +29,8 @@ command <- paste("raxmlHPC-PTHREADS", # Note on WINDOWS replace with: /path/to/r
 
 # Run RAXML
 system(command, intern=TRUE)
+beep(3)
+
 
 # Get files in current working directory
 files <- list.files()
