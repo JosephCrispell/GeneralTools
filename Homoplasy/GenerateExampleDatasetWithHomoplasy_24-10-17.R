@@ -125,15 +125,16 @@ write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Plot results ####
 
-resultsFile <- paste(path, "TestingHomoplasyFinder_300-0.5-0.001-0.05-150_0-100_1000_23-05-18.csv", sep="")
-date <- strsplit(resultsFile, "_|\\.")[[1]][8]
-results <- read.table(resultsFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", "30-08-18", ".csv", sep="")
+results <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
-              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", date, ".pdf", sep="")
-pdf(file, height=14, width=7)
-par(mfrow=c(2,1))
+              min(nHomoplasiesValues), "-", max(nHomoplasiesValues), "_", nSimulations, "_", "30-08-18", ".pdf", sep="")
+pdf(file, height=7, width=14)
+par(mfrow=c(1,2))
 
 # Set the colours used in plotting
 colours <- c("purple", "orange", "blue", "red", "cyan", "goldenrod4", "black", "pink")

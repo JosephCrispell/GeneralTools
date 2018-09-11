@@ -48,7 +48,7 @@ for(nSequences in seq(100, 1000, 50)){
 axis(side=1, at=seq(100, 1000, 100))
 
 # Add legend
-legend("topleft", legend=c("HomoplasyFinder (R)", "HomoplasyFinder (Java)", "Phangorn", "TreeTime"), 
-       bty="n", text.col=c("black", "red", "blue", "cyan"))
+legend("topleft", legend=c("HomoplasyFinder (via R)", "HomoplasyFinder (via command line)", "Phangorn", "TreeTime"), 
+       bty="n", text.col=c("black", "red", "blue", "cyan"), cex=0.9)
 
 dev.off()
