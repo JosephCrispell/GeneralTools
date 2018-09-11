@@ -2,6 +2,7 @@
 library("devtools")
 install_github("JosephCrispell/homoplasyFinder")
 library(homoplasyFinder)
+library(addTextLabels)
 
 #### Run HomoplasyFinder ####
 
@@ -30,8 +31,8 @@ annotatedTree <- changeFastaPositionsToGenomePositions(annotatedTree, inconsiste
 truePositions <- fastaPositions$Position[inconsistentPositions]
 
 # Plot the annotated tree
-pdf(paste0(path, "HomoplasyFinder_AnnotatedTree_03-09-18.pdf"), height=10, width=10)
-plotAnnotatedTree(annotatedTree, inconsistentPositions, fastaFile, addScale=FALSE, truePositions, nodeLabelCex=0.5)
+pdf(paste0(path, "HomoplasyFinder_AnnotatedTree_11-09-18.pdf"))
+plotAnnotatedTree(annotatedTree, inconsistentPositions, fastaFile, addScale=FALSE, truePositions, nodeLabelCex=0.7)
 dev.off()
 
 #### FUNCTIONS ####
@@ -118,7 +119,8 @@ addInternalNodeLabels <- function(tree, cex){
   # Get the coordinates of the internal nodes
   internalNodeCoords <- getInternalNodeCoordinates(length(tree$tip.label))
   
-  # Add a label to each internal node
+  # Note the indices of labels to plot
+  indices <- c()
   for(i in 1:length(tree$node.label)){
     
     # Skip internal nodes with no label
@@ -126,31 +128,13 @@ addInternalNodeLabels <- function(tree, cex){
       next
     }
     
-    # Get the coordinates of the current internal node
-    coords <- internalNodeCoords[i, ]
-    
-    # Create the label into the inconsistent positions
-    positions <- paste(strsplit(tree$node.label[i], split="-")[[1]], collapse=",")
-    
-    # Calculate the height and width of the label
-    labelHeight <- strheight(positions, cex=cex)
-    labelWidth <- strwidth(positions, cex=cex)
-    
-    # Add a background polygon
-    polygon(x=c(coords[1] - (labelWidth * 0.52),
-                coords[1] - (labelWidth * 0.52),
-                coords[1] + (labelWidth * 0.52),
-                coords[1] + (labelWidth * 0.52)),
-            y=c(coords[2] - (labelHeight * 0.7),
-                coords[2] + (labelHeight * 0.7),
-                coords[2] + (labelHeight * 0.7),
-                coords[2] - (labelHeight * 0.7)), 
-            col=rgb(0,0,0, 0.8),
-            border=NA)
-    
-    # Add each position at the current node
-    text(x=coords[1], y=coords[2], labels=positions[1], col=rgb(1,1,1), cex=cex)
+    # Add the current index
+    indices[length(indices) + 1] <- i
   }
+  
+  # Add labels for each internal node
+  addTextLabels(xCoords=internalNodeCoords[indices, 1], yCoords=internalNodeCoords[indices, 2],
+                labels=tree$node.label[indices], cex=cex, col.label="white", col.background=rgb(0,0,0, 0.75), col.line="red")
 }
 
 getTipSequences <- function(fastaFile){

@@ -3,7 +3,7 @@
 ##########################
 
 # Open a PDF
-pdf(file="C:/Users/Joseph Crisp/Desktop/OverlayTextExample.pdf")
+pdf(file="/home/josephcrispell/Desktop/OverlayTextExample.pdf")
 
 # Create some random points
 n <- 50
@@ -15,6 +15,10 @@ plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xla
 # With basis labels
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
 text(coords$X, coords$Y, labels=coords$Name, xpd=TRUE)
+
+# Plot them with non-overlapping labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+overlayText(coords$X, coords$Y, coords$Name, cex=1, col.label="black")
 
 # Plot them with non-overlapping labels
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
@@ -69,6 +73,10 @@ overlayText <- function(xCoords, yCoords, labels, cex=1, col.label="red", col.li
         altX, altY, newLocationIndex, textHeights[i], textWidths[i])
       altX <- output[["X"]]
       altY <- output[["Y"]]
+      
+      # Change the X and Y coordinates to the alternate ones
+      xCoords[i] <- altX[newLocationIndex]
+      yCoords[i] <- altY[newLocationIndex]
       
     }else{
       
