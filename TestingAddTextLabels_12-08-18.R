@@ -15,19 +15,23 @@ abline(v = 1, col = "green")
 addTextLabels(xCoords=x, yCoords=y, labels=ShortSci, col.line="grey", cex=1,
               col.background=rgb(0,0,0, 0.5))
 
-x <- 1.1
-y <- 1.35
-label <- "!!!!!!!!!!ggggg"
-text(x=x, y=y, labels=label)
-xHalf <- strwidth(label) * 0.51
-yHalf <- strheight(label) * 0.75
-polygon(x=c(x - xHalf,
-            x - xHalf,
-            x + xHalf,
-            x + xHalf),
-        y=c(y - yHalf,
-            y + yHalf,
-            y + yHalf,
-            y - yHalf), 
-        col=rgb(0,0,0, 0.2),
-        border=NA, xpd=TRUE)
+
+
+# Create some random points
+n <- 50
+coords <- data.frame(X=runif(n), Y=runif(n), Name="Test Label")
+
+# Plot them without labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+
+# With potentially overlapping labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+text(coords$X, coords$Y, labels=coords$Name, xpd=TRUE)
+
+# Plot them with non-overlapping labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.label="black")
+
+# Plot them with non-overlapping labels
+plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
+addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.background=rgb(0,0,0, 0.75), col.label="white")
