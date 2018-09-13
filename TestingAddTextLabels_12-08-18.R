@@ -13,13 +13,15 @@ abline(h = 1, col = "green")
 abline(v = 1, col = "green")
 
 addTextLabels(xCoords=x, yCoords=y, labels=ShortSci, col.line="grey", cex=1,
-              col.background=rgb(0,0,0, 0.5))
+              col.background=rgb(0,0,0, 0.5), avoidPoints=TRUE)
 
 
 
 # Create some random points
 n <- 50
 coords <- data.frame(X=runif(n), Y=runif(n), Name="Test Label")
+
+pdf("/home/josephcrispell/Desktop/TestingAddTextLabels.pdf")
 
 # Plot them without labels
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
@@ -30,8 +32,11 @@ text(coords$X, coords$Y, labels=coords$Name, xpd=TRUE)
 
 # Plot them with non-overlapping labels
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
-addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.label="black")
+addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.label="black", avoidPoints=TRUE, col.line=rgb(0,0,0, 0.6))
 
 # Plot them with non-overlapping labels
 plot(x=coords$X, y=coords$Y, pch=19, bty="n", xaxt="n", yaxt="n", col="red", xlab="X", ylab="Y")
-addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.background=rgb(0,0,0, 0.75), col.label="white")
+addTextLabels(coords$X, coords$Y, coords$Name, cex=1, col.background=rgb(0,0,0, 0.75), col.label="white",
+              avoidPoints=TRUE, col.line=rgb(0,0,0, 0.6))
+
+dev.off()
