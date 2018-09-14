@@ -1,6 +1,7 @@
 #### Load libraries ####
 library("devtools")
-install_github("JosephCrispell/homoplasyFinder")
+#install_github("JosephCrispell/homoplasyFinder")
+#install_github("JosephCrispell/addTextLabels")
 library(homoplasyFinder)
 library(addTextLabels)
 
@@ -31,7 +32,7 @@ annotatedTree <- changeFastaPositionsToGenomePositions(annotatedTree, inconsiste
 truePositions <- fastaPositions$Position[inconsistentPositions]
 
 # Plot the annotated tree
-pdf(paste0(path, "HomoplasyFinder_AnnotatedTree_11-09-18.pdf"))
+pdf(paste0(path, "HomoplasyFinder_AnnotatedTree_14-09-18.pdf"))
 plotAnnotatedTree(annotatedTree, inconsistentPositions, fastaFile, addScale=FALSE, truePositions, nodeLabelCex=0.7)
 dev.off()
 
@@ -78,12 +79,12 @@ plotAnnotatedTree <- function(tree, inconsistentPositions, fastaFile, addScale=T
   
   # Add a scale bar if requested
   addScaleBar(addScale)
-  
-  # Add internal node labels indicating the inconsistent positions associated with each internal node
-  addInternalNodeLabels(tree, cex=nodeLabelCex)
-  
+
   # Add an alignment detailing the nucleotides for each inconsistent position
   addInconsistentPositionAlignment(tree, fastaFile, inconsistentPositions, truePositions)
+    
+  # Add internal node labels indicating the inconsistent positions associated with each internal node
+  addInternalNodeLabels(tree, cex=nodeLabelCex)
   
   # Revert the previous margin settings
   par("mar"= marginSettings)
@@ -134,7 +135,8 @@ addInternalNodeLabels <- function(tree, cex){
   
   # Add labels for each internal node
   addTextLabels(xCoords=internalNodeCoords[indices, 1], yCoords=internalNodeCoords[indices, 2],
-                labels=tree$node.label[indices], cex=cex, col.label="white", col.background=rgb(0,0,0, 0.75), col.line="red")
+                labels=tree$node.label[indices], cex=cex, col.label="white", 
+                col.background=rgb(0,0,0, 0.75), col.line="red")
 }
 
 getTipSequences <- function(fastaFile){
