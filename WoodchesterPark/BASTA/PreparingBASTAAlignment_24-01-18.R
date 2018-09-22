@@ -24,7 +24,9 @@ date <- format(Sys.Date(), "%d-%m-%y")
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read in the newick tree
+
 file <- paste(path, "vcfFiles/",  "mlTree_BASTAClade_DatedTips_27-03-18.tree", sep="")
+file <- paste(path, "vcfFiles/",  "mlTree_DatedTips_27-03-18.tree", sep="")
 isolatesInClade <- getIsolatesFromTree(file)
 
 ###############################
