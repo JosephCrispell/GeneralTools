@@ -23,7 +23,7 @@ nSites <- getNSitesInFASTA(fastaFile)
 
 # Run RAxML to produce a Maximum Likelihood phylogeny with bootstrap support values
 # TAKES AGES!!! - WP data ~5 hours
-treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path)
+treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path, alreadyRun=TRUE)
 
 # Convert the branch lengths to SNPs
 treeBS$edge.length <- treeBS$edge.length * nSites
@@ -69,6 +69,9 @@ plotTree(treeBS, plotBSValues=FALSE,
          nodes=nodesDefiningClades,
          colours=cladeColours)
 
+# Report the cluster support
+support <-treeBS$node.label[nodesDefiningClades - length(treeBS$tip.label)]
+cat("Clusters: ", paste(0:4, collapse=","), "\nBoostrap values: ", paste(support, collapse=", "))
 
 # Plot the isolate locations and colour by clade
 tipLabelsWithSamplingTimes <- 
@@ -300,7 +303,7 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
 }
 
 euclideanDistance <- function(x1, y1, x2, y2){
-  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+  return(sqrt((x1 - x2)^2 + (y1 - y2)^2))
 }
 
 calculateDistanceToBadgerCentre <- function(badgerCentre, isolateInfo){
@@ -403,31 +406,37 @@ viewRAxMLTree <- function(treeBS, filePath=path){
   par(mar=c(5.1, 4.1, 4.1, 2.1))
 }
 
-runRAXML <- function(fastaFile, date, nBootstraps, nThreads, path){
+runRAXML <- function(fastaFile, date, nBootstraps, nThreads, path, alreadyRun=FALSE){
   
-  # Create a directory for the output file
+  # Note the RAxML directory name
   directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
-  suppressWarnings(dir.create(directory))
-  
+
   # Set the Working directory - this will be where the output files are dumped
   setwd(directory)
-
+  
   # Build analysis name
   analysisName <- paste("RaxML-R_", date, sep="")
   
-  # Build the command
-  model <- "GTRCAT" # No rate heterogenity
-  seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
-  
-  command <- paste("raxmlHPC", 
-                   " -f a", # Algorithm: Rapid boostrap inference
-                   " -N ", nBootstraps,
-                   " -T ", nThreads,
-                   " -m ", model, " -V", # -V means no rate heterogenity
-                   " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
-                   " -n ", analysisName,
-                   " -s ", fastaFile, sep="")
-  system(command, intern=TRUE)
+  # Check if already run this
+  if(alreadyRun == FALSE){
+    
+    # Create the RAxML directory for the output file
+    suppressWarnings(dir.create(directory))
+
+    # Build the command
+    model <- "GTRCAT" # No rate heterogenity
+    seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
+    
+    command <- paste("raxmlHPC", 
+                     " -f a", # Algorithm: Rapid boostrap inference
+                     " -N ", nBootstraps,
+                     " -T ", nThreads,
+                     " -m ", model, " -V", # -V means no rate heterogenity
+                     " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
+                     " -n ", analysisName,
+                     " -s ", fastaFile, sep="")
+    system(command, intern=TRUE)
+  }
   
   # Get the tree and read it in
   treeBS <- getTreeFileWithSupportValues(analysisName)
