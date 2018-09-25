@@ -15,6 +15,9 @@ library(gplots)
 # Open the Genetic Vs Epidemiological distances table #
 #######################################################
 
+# Get the current date
+date <- format(Sys.Date(), "%d-%m-%y")
+
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
@@ -26,7 +29,7 @@ geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 # General settings #
 ####################
 
-selection <- "BB" # CC, BB, CB
+selection <- "CC" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 
@@ -49,7 +52,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 ###############
 
 ###### Open a PDF
-file <- paste(path, "ExamineEpiVariableCorrelation_", selection, "_05-04-18.pdf", sep="")
+file <- paste0(path, "ExamineEpiVariableCorrelation_", selection, "_", date, ".pdf")
 pdf(file, height=10, width=10)
 
 par(mfrow=c(1,1))
@@ -155,7 +158,7 @@ epiMetricImportance <- noteVariableImportance(importance=infoRF$importance,
                                               colToUse=colToUse)
 runRandomForestAnalysesIncrementallyRemovingMetricsWithMissingData(
   rSq=rSq, corr=corr, colsToIgnore=colsToIgnore,
-  importance=as.vector(infoRF$importance[, colToUse]),
+  importance=as.vector(infoRF$importance[, colToUse]),  
   trainRows=trainRows, colToUse=colToUse, geneticVsEpi=geneticVsEpi,
   epiMetricImportance=epiMetricImportance)
 
@@ -176,6 +179,64 @@ plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames,
 
 ###### Close PDF
 dev.off()
+
+# Save a copy of the R data generated - so I can come back and remake some plots if necessary
+save.image(file=paste0(path, "FittingRF_", selection, "_", date, ".RData"))
+
+############################################################
+# Create importance figures for each analysis (BB, CC, CB) #
+############################################################
+
+# Set the path
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
+
+# Note the column to use for the importance measure
+colToUse <- "%IncMSE"
+
+# Note the full names of metrics and assign them a colour
+fullNames <- noteFullNames()
+temporalCol="darkgoldenrod4"
+spatialCol="red"
+networkCol="blue"
+nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCol,
+                                   networkCol=networkCol)
+
+# Note the analyses types
+selections <- c("BB", "CC", "CB")
+
+# Set the date analyses were completed on
+dates <- c("25-09-18", "25-09-18", "25-09-18")
+
+# Examine the analysis for each selection
+for(i in seq_along(selections)){
+  
+  # Get the analysis info
+  selection <- selections[i]
+  date <- dates[i]
+  
+  # Attach the RData file and retrieve the infoRF object
+  attach(paste0(path, "FittingRF_", selection, "_", date, ".RData"))
+  infoRF <- infoRF
+  detach(paste0("file:", path, "FittingRF_", selection, "_", date, ".RData"), character.only=TRUE)
+  
+  print(infoRF$rsq[length(infoRF$rsq)])
+  
+  # Open a pdf
+  file <- paste0(path, "VariableImportance_", selection, "_", date, ".pdf")
+  pdf(file, height=10, width=10)
+  
+  # Plot the variable importance
+  plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
+                         nameColours=nameColours,
+                         temporalCol=temporalCol, spatialCol=spatialCol,
+                         networkCol=networkCol, showY=TRUE)
+  
+  # Remove the infoRF object
+  remove(list= c("infoRF"))
+  
+  # Close the PDF
+  dev.off()
+}
 
 
 #############
@@ -438,7 +499,7 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   
   marginSizes <- list(
     "BB" = 35,
-    "CC" = 40,
+    "CC" = 43,
     "CB" = 30
   )
   
@@ -458,8 +519,11 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   plot <- barplot(transpose[-2,], horiz=TRUE, beside=TRUE,
                   xaxt="n",
                   col=variableColours,
-                  main="Variable Importance",
+                  main="",
                   col.axis="white")
+  
+  # Add title
+  mtext("Variable\nImportance", side=3, line=-1, cex=1.25, font=2)
   
   at <- plot[,1]
   
@@ -664,9 +728,9 @@ noteFullNames <- function(){
     "TimeBetweenInfectionDetection" = "Number of days between infection detection dates",
     "TimeBetweenSampling" = "Number of days between sampling dates",                        
     "TimeBetweenBreakdown" = "Number of days between breakdown dates",
-    "DistanceBetweenMainGroups" = "Spatial distance (km) between main groups",
-    "DistanceBetweenSampledGroups" = "Spatial distance (km) between sampled groups",               
-    "DistanceBetweenInfectedGroups" = "Spatial distance (km) between infected groups",
+    "DistanceBetweenMainGroups" = "Spatial distance between main groups",
+    "DistanceBetweenSampledGroups" = "Spatial distance between sampled groups",               
+    "DistanceBetweenInfectedGroups" = "Spatial distance between infected groups",
     "NMovementsBetweenMainGroups" = "Number of recorded animal movements between main groups of sampled animals",                
     "NMovementsBetweenSampledGroups" = "Number of recorded animal movements between sampled groups of sampled animals",
     "NMovementsBetweenInfectedGroups" = "Number of recorded animal movements between infected groups of sampled animals",            
@@ -681,11 +745,11 @@ noteFullNames <- function(){
     "NSharedAnimalsBetweenSampledGroups" = "Number of animals recorded in both sampled groups of sampled animals",
     "NSharedAnimalsBetweenInfectedGroups" = "Number of animals recorded in both infected groups of sampled animals",
     "ShortestPathLengthEXCLMain" = "Shortest path length between main herds of sampled animals (Some Herds Excluded)",                     
-    "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = "Mean number of animals dispersing along edges of shortest path between main herds (Some Herds Excluded)",   
+    "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = "Mean number of animals dispersing along edges of shortest path between main herds (some herds excluded)",   
     "ShortestPathLengthEXCLSampled" = "Shortest path length between sampled herds of sampled animals (Some Herds Excluded)",               
-    "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = "Mean number of animals dispersing along edges of shortest path between sampled herds (Some Herds Excluded)",
+    "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = "Mean number of animals dispersing along edges of shortest path between sampled herds (some herds excluded)",
     "ShortestPathLengthEXCLInfected" = "Shortest path length between infected herds of sampled animals (Some Herds Excluded)",
-    "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals dispersing along edges of shortest path between main herds (Some Herds Excluded)",
+    "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals dispersing along edges of shortest path between main herds (some herds excluded)",
     "CentroidDistBetweenMain" = "Distance from centroid of closest land parcel to badgers main sett",
     "CentroidDistBetweenSamp" = "Distance from centroid of closest land parcel to badgers sampled sett",
     "HostRelatedness" = "Genetic relatedness of sampled badgers"
