@@ -193,8 +193,7 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 # Note the column to use for the importance measure
 colToUse <- "%IncMSE"
 
-# Note the full names of metrics and assign them a colour
-fullNames <- noteFullNames()
+# Assign each metric a colour
 temporalCol="darkgoldenrod4"
 spatialCol="red"
 networkCol="blue"
@@ -219,8 +218,9 @@ for(i in seq_along(selections)){
   infoRF <- infoRF
   detach(paste0("file:", path, "FittingRF_", selection, "_", date, ".RData"), character.only=TRUE)
   
-  print(infoRF$rsq[length(infoRF$rsq)])
-  
+  # Note the full names
+  fullNames <- noteFullNames(selection)
+
   # Open a pdf
   file <- paste0(path, "VariableImportance_", selection, "_", date, ".pdf")
   pdf(file, height=10, width=10)
@@ -498,8 +498,8 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   par(mfrow=c(1,1))
   
   marginSizes <- list(
-    "BB" = 35,
-    "CC" = 43,
+    "BB" = 37,
+    "CC" = 42.5,
     "CB" = 30
   )
   
@@ -532,10 +532,10 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
        col=variableColours,
        x=rep(xLabPosition,length(variableImportance)),
        y=at,
-       srt = 0, pos = 2, xpd = TRUE, cex=1)
+       srt = 0, pos = 2, xpd = TRUE, cex=1.1)
   
   if(showY == TRUE){
-    axis(side=1, line=-0.5, cex.axis=0.75, mgp=c(3, .25, 0))
+    axis(side=1, line=-0.5, cex.axis=0.85, mgp=c(3, .25, 0))
     mtext("% Increase MSE", side=1, line=0.75)
   }
   
@@ -717,43 +717,98 @@ assignMetricColours <- function(temporalCol, spatialCol, networkCol){
   return(nameColours)
 }
 
-noteFullNames <- function(){
+noteFullNames <- function(selection){
+  
+  # Define the fullnames for the epidemiological metrics
   fullNames <- list(
-    "SameMainGroup" = "Isolates taken from same main group (yes/no)",
-    "SameSampledGroup" = "Isolates taken from same sampled group (yes/no)",                           
-    "SameInfectedGroup" = "Isolates taken from same infected group (yes/no)",
-    "PeriodSpentAliveTogether" = "Number of days overlap between recorded lifespans of the sampled animals",                   
-    "PeriodSpentInfectedTogether" = "Number of days overlap between infected lifespans of the sampled animals",
-    "PeriodSpentInSameGroup" = "Number of days that sampled animals spent in same group",                     
+    "SameMainGroup" = "Same main group?",
+    "SameSampledGroup" = "Same sampled group?",                           
+    "SameInfectedGroup" = "Same infected group?",
+    "PeriodSpentAliveTogether" = "Number of days overlap between the recorded lifespans",                   
+    "PeriodSpentInfectedTogether" = "Number of days overlap between the infected lifespans",
+    "PeriodSpentInSameGroup" = "Number of days spent in same group",                     
     "TimeBetweenInfectionDetection" = "Number of days between infection detection dates",
     "TimeBetweenSampling" = "Number of days between sampling dates",                        
     "TimeBetweenBreakdown" = "Number of days between breakdown dates",
     "DistanceBetweenMainGroups" = "Spatial distance between main groups",
     "DistanceBetweenSampledGroups" = "Spatial distance between sampled groups",               
     "DistanceBetweenInfectedGroups" = "Spatial distance between infected groups",
-    "NMovementsBetweenMainGroups" = "Number of recorded animal movements between main groups of sampled animals",                
-    "NMovementsBetweenSampledGroups" = "Number of recorded animal movements between sampled groups of sampled animals",
-    "NMovementsBetweenInfectedGroups" = "Number of recorded animal movements between infected groups of sampled animals",            
-    "SameAnimal" = "Isolates taken from same badger (yes/no)",
-    "ShortestPathLengthMain" = "Shortest path length between main groups of sampled animals",                     
-    "MeanNMovementsOnEdgesOfShortestPathMain" = "Mean number of animals dispersing along edges of shortest path between main groups",
-    "ShortestPathLengthSampled" = "Shortest path length between sampled groups of sampled animals",                  
-    "MeanNMovementsOnEdgesOfShortestPathSampled" = "Mean number of animals dispersing along edges of shortest path between sampled groups",
-    "ShortestPathLengthInfected" = "Shortest path length between infected groups of sampled animals",                 
-    "MeanNMovementsOnEdgesOfShortestPathInfected" = "Mean number of animals dispersing along edges of shortest path between infected groups",
-    "NSharedAnimalsBetweenMainGroups" = "Number of animals recorded in both main groups of sampled animals",            
-    "NSharedAnimalsBetweenSampledGroups" = "Number of animals recorded in both sampled groups of sampled animals",
-    "NSharedAnimalsBetweenInfectedGroups" = "Number of animals recorded in both infected groups of sampled animals",
-    "ShortestPathLengthEXCLMain" = "Shortest path length between main herds of sampled animals (Some Herds Excluded)",                     
-    "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = "Mean number of animals dispersing along edges of shortest path between main herds (some herds excluded)",   
-    "ShortestPathLengthEXCLSampled" = "Shortest path length between sampled herds of sampled animals (Some Herds Excluded)",               
-    "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = "Mean number of animals dispersing along edges of shortest path between sampled herds (some herds excluded)",
-    "ShortestPathLengthEXCLInfected" = "Shortest path length between infected herds of sampled animals (Some Herds Excluded)",
-    "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals dispersing along edges of shortest path between main herds (some herds excluded)",
-    "CentroidDistBetweenMain" = "Distance from centroid of closest land parcel to badgers main sett",
-    "CentroidDistBetweenSamp" = "Distance from centroid of closest land parcel to badgers sampled sett",
-    "HostRelatedness" = "Genetic relatedness of sampled badgers"
+    "NMovementsBetweenMainGroups" = "Number of recorded animal movements between main groups",                
+    "NMovementsBetweenSampledGroups" = "Number of recorded animal movements between sampled groups",
+    "NMovementsBetweenInfectedGroups" = "Number of recorded animal movements between infected groups",            
+    "SameAnimal" = "Isolates from same animal?",
+    "ShortestPathLengthMain" = "Shortest path length between main groups",                     
+    "MeanNMovementsOnEdgesOfShortestPathMain" = "Mean number of animals traversing edges of shortest path between main groups",
+    "ShortestPathLengthSampled" = "Shortest path length between sampled groups",                  
+    "MeanNMovementsOnEdgesOfShortestPathSampled" = "Mean number of animals traversing edges of shortest path between sampled groups",
+    "ShortestPathLengthInfected" = "Shortest path length between infected groups",                 
+    "MeanNMovementsOnEdgesOfShortestPathInfected" = "Mean number of animals traversing edges of shortest path between infected groups",
+    "NSharedAnimalsBetweenMainGroups" = "Number of animals recorded in both main groups",            
+    "NSharedAnimalsBetweenSampledGroups" = "Number of animals recorded in both sampled groups",
+    "NSharedAnimalsBetweenInfectedGroups" = "Number of animals recorded in both infected groups",
+    "ShortestPathLengthEXCLMain" = "Shortest path length between main groups (some groups excluded)",                     
+    "MeanNMovementsOnEdgesOfShortestPathEXCLMain" = "Mean number of animals traversing edges of shortest path between main groups (some groups excluded)",   
+    "ShortestPathLengthEXCLSampled" = "Shortest path length between sampled groups (some groups excluded)",               
+    "MeanNMovementsOnEdgesOfShortestPathEXCLSampled" = "Mean number of animals traversing edges of shortest path between sampled groups (some groups excluded)",
+    "ShortestPathLengthEXCLInfected" = "Shortest path length between infected groups (some groups excluded)",
+    "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals traversing edges of shortest path between main groups (some groups excluded)",
+    "CentroidDistBetweenMain" = "Distance from closest land parcel to main group using centroids",
+    "CentroidDistBetweenSamp" = "Distance from closest land parcel to sampled group using centroids",
+    "HostRelatedness" = "Genetic relatedness of animals"
   )
+  
+  # Replace some words in full names depending on the selection
+  #   * group with herd/social group
+  #   * animals/animal with cattle/badgers
+  #   * animal movements with dispersal events
+  if(selection == "BB"){
+    
+    for(key in names(fullNames)){
+      
+      # Replace "group" with "social group"
+      fullNames[[key]] <- gsub("group", "social group", fullNames[[key]])
+      
+      # Replace "animal movements" with "dispersal events"
+      fullNames[[key]] <- gsub("animal movements", "dispersal events", fullNames[[key]])
+      
+      # Replace "animal" with "badger"
+      fullNames[[key]] <- gsub("animal", "badger", fullNames[[key]])
+    }
+    
+  }else if(selection == "CC"){
+    
+    for(key in names(fullNames)){
+      
+      # Skip cattle-badger metrics
+      if(grepl(fullNames[[key]], pattern="land parcel")){
+        next
+      }
+      
+      # Replace "group" with "herd" - check if comparing cattle and badgers - not really necessary since this metric never considered
+      fullNames[[key]] <- gsub("group", "herd", fullNames[[key]])
+      
+      # Replace "animal" with "cattle"
+      fullNames[[key]] <- gsub("animal", "cattle", fullNames[[key]])
+      
+      # Replace "cattles" with "cattle"
+      fullNames[[key]] <- gsub("cattles", "cattle", fullNames[[key]])
+    }
+    
+  }else{
+    
+    for(key in names(fullNames)){
+      
+      # Treat land parcel metrics slightly differently
+      if(grepl(fullNames[[key]], pattern="land parcel")){
+        fullNames[[key]] <- gsub("group", "social group", fullNames[[key]])
+        next
+      }
+      
+      # Replace "group" with "herd/social group" - check if comparing cattle and badgers - not really necessary since this metric never considered
+      fullNames[[key]] <- gsub("group", "herd/social group", fullNames[[key]])
+    }
+  }
+  
   return(fullNames)
 }
 
