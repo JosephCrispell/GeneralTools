@@ -4,6 +4,7 @@ library(phangorn)
 library(geiger) # For the tips function
 library(plotrix) # For drawing circles
 library(ips) # Using RAxML
+library(phytools) # For getDescendants function
 
 #~~~~~~~~~~~~~~~~~~~~~#
 #### Path and Date ####
@@ -23,7 +24,7 @@ nSites <- getNSitesInFASTA(fastaFile)
 
 # Run RAxML to produce a Maximum Likelihood phylogeny with bootstrap support values
 # TAKES AGES!!! - WP data ~5 hours
-treeBS <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path, alreadyRun=TRUE)
+treeBS <- runRAXML(fastaFile, date="27-03-18", nBootstraps=100, nThreads=6, path, alreadyRun=TRUE)
 
 # Convert the branch lengths to SNPs
 treeBS$edge.length <- treeBS$edge.length * nSites
@@ -158,6 +159,181 @@ writeBASTATree(treeBS, node=node, plot=TRUE, filePath=path,
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+projectCoordinatesOfPointOnLineFromOrigin <- function(x, y, radius){
+  
+  # Maths taken from: https://math.stackexchange.com/questions/175896/finding-a-point-along-a-line-a-certain-distance-away-from-another-point
+  
+  # Store the differences between x and y coordinates and the origin
+  differences <- c(x - 0, y - 0)
+  
+  # Normalise those differences 
+  normalised <- differences / sqrt(sum(differences^2))
+  
+  # Calculate the coordinates of the point on the outer circle
+  circleCoords <- c(0, 0) + (radius * normalised)
+  
+  return(circleCoords)
+}
+
+projectCoordinatesOntoSemiCircleAndCalculateAngle <- function(xCoords, yCoords, radius){
+  
+  # Initialise two arrays to store the coordinates of a semi circle to highlight current clade
+  circleXs <- c()
+  circleYs <- c()
+  
+  # Initialise an array to store the angles of the lines back to the origin
+  angles <- c()
+  
+  # Examine each of the coordinates and calculate point on semi-circle around clade
+  for(i in seq_along(xCoords)){
+    
+    # Calculate the coordinates of the current point projected onto the semi-circle
+    circleCoords <- projectCoordinatesOfPointOnLineFromOrigin(xCoords[i], yCoords[i], radius)
+    
+    # Store the coordinates
+    circleXs[i] <- circleCoords[1]
+    circleYs[i] <- circleCoords[2]
+    
+    # Calculate the angle of the line back to the origin
+    # Nice video: https://www.youtube.com/watch?v=kME3XP_F6vU
+    # The arc-tangent of two arguments atan2(y, x) returns the angle 
+    # between the x-axis and the vector from the origin to (x, y)
+    # returns the angle in radians. 1 radian = 180 / pi
+    angles[i] <- atan2(circleXs[i], circleYs[i]) * (180 / pi)
+    
+    # Note that if angles are negative, add 2*180 to keep on scale from 0 to 360
+    if(angles[i] < 0){
+      angles[i] <- 180 + (180 + angles[i])
+    }
+  }
+  
+  return(list("Angles"=angles, "Xs"=circleXs, "Ys"=circleYs))
+}
+
+calculateRadiusForSemiCicle <- function(xCoords, yCoords, padProp){
+  
+  # Calculate the distance of each point to the origin (c(0,0))
+  distances <- c()
+  for(i in seq_along(xCoords)){
+    distances[i] <- sqrt(xCoords[i]^2 + yCoords[i]^2)
+  }
+  
+  # Calculate the distance to the furthest point - the radius of out semi-circle bar
+  radius <- max(distances)
+  radius <- radius + (padProp * radius)
+  
+  return(radius)
+}
+
+plotSemiCircleToHighlightClade <- function(node, colour, label, labelPadProp=0.05, 
+                                           padProp=0.02, lwd=4){
+  
+  # Get the plotting information from the previously plotted phylogeny
+  plotInfo <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  
+  # Get the descendant nodes for this clade
+  descendants <- getDescendants(treeBS, node)
+  
+  # Get the descendant node coordinates
+  xCoords <- plotInfo$xx[descendants]
+  yCoords <- plotInfo$yy[descendants]
+  
+  # Calculate the radius of the semi-circle
+  radius <- calculateRadiusForSemiCicle(xCoords, yCoords, padProp)
+  
+  # Project coordinates onto semi circle and calculate angles
+  output <- projectCoordinatesOntoSemiCircleAndCalculateAngle(xCoords, yCoords, radius)
+  angles <- output[["Angles"]]
+  circleXs <- output[["Xs"]]
+  circleYs <- output[["Ys"]]
+  
+  # Plot the semi circle around the clade
+  plotSemiCircle(circleXs, circleYs, angles, colour, radius, label, labelPadProp, lwd)
+}
+
+calculateLabelCoords <- function(circleXs, circleYs, radius, angles, labelPadProp, stepIndex){
+  
+  # Note index of median angle
+  index <- which.min(abs(angles - median(angles)))
+  
+  # Check if there is large step change in angles - use the location of that instead of median
+  if(stepIndex != -1){
+    index = stepIndex
+  }
+  
+  # Calculate the coordinates of the label coordinates - slightly increase radius
+  coords <- projectCoordinatesOfPointOnLineFromOrigin(circleXs[index], circleYs[index], 
+                                                      radius + (labelPadProp * radius))
+  
+  return(coords)
+}
+
+plotSemiCircle <- function(circleXs, circleYs, angles, colour, radius, label, labelPadProp, lwd){
+  
+  
+  # Sort the points on the circle
+  orderOfPointsOnCircle <- order(angles)
+  
+  # Check if there is a large step change in the angles - clade may cross the 360/0 origin
+  stepIndex <- searchForLargeStep(angles[orderOfPointsOnCircle])
+  
+  # Plot semi-circle around clade - if doesn't cross origin
+  if(stepIndex == -1){
+    
+    # Calculate the coordinates for the clade label
+    labelCoords <- calculateLabelCoords(circleXs, circleYs, radius, angles, labelPadProp, stepIndex)
+    
+    # Plot semi-circle
+    points(x=circleXs[orderOfPointsOnCircle], 
+           y=circleYs[orderOfPointsOnCircle], type="l", lwd=lwd, col=colour, xpd=TRUE)
+    
+    # Add label
+    text(x=labelCoords[1], y=labelCoords[2], labels=label, col=colour, cex=2, xpd=TRUE)
+    
+    # If crosses origin
+  }else{
+    
+    # Calculate the coordinates for the clade label
+    labelCoords <- calculateLabelCoords(circleXs, circleYs, radius, angles, labelPadProp, stepIndex)
+    
+    # Plot the semi-cricle on the right of the origin
+    points(x=circleXs[orderOfPointsOnCircle][1:stepIndex], 
+           y=circleYs[orderOfPointsOnCircle][1:stepIndex],
+           type="l", lwd=4, col=colour, xpd=TRUE)
+    
+    # Plot the semi-cricle on the left
+    points(x=circleXs[orderOfPointsOnCircle][(stepIndex + 1):length(circleXs)],
+           y=circleYs[orderOfPointsOnCircle][(stepIndex + 1):length(circleXs)],
+           type="l", lwd=4, col=colour, xpd=TRUE)
+    
+    # Connect the semi circles
+    points(x=c(circleXs[orderOfPointsOnCircle][1], circleXs[orderOfPointsOnCircle][length(circleXs)]), 
+           y=c(circleYs[orderOfPointsOnCircle][1], circleYs[orderOfPointsOnCircle][length(circleXs)]),
+           type="l", lwd=4, col=colour, xpd=TRUE)
+    
+    # Add label
+    text(x=labelCoords[1], y=labelCoords[2], labels=label, col=colour, cex=2, xpd=TRUE)
+  }
+}
+
+searchForLargeStep <- function(sortedAngles){
+  
+  # Calculate the standard deviation
+  standardDeviation <- sd(sortedAngles)
+  
+  # Search for large step (0.5 standard deviations)
+  found <- -1
+  for(i in 2:length(sortedAngles)){
+    
+    if(abs(sortedAngles[i] - sortedAngles[i - 1]) > 0.5 * standardDeviation){
+      found <- i - 1
+      break
+    }
+  }
+  
+  return(found)
+}
 
 getIsolateIDFromFileNames <- function(fileNames){
   isolates <- c()
@@ -789,7 +965,7 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
   # Add bootstrap values
   if(plotBSValues == TRUE){
     nodelabels(pch=20, frame="none",
-               col=rgb(0,0,0, treeBS$node.label/max(treeBS$node.label)))
+               col=rgb(0,0,0, treeBS$node.label/max(treeBS$node.label)), cex=1.5)
     
     legend("bottomright", title="Boostrap values", legend=c(100, 75, 50), pch=20, 
            col=c(rgb(0,0,0, 1), rgb(0,0,0, 0.75), rgb(0,0,0, 0.5)), bty="n")
@@ -808,12 +984,11 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
   points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3, xpd=TRUE)
   text(x=5, y=-135, labels="50 SNPs", cex=1, xpd=TRUE)
   
-  # Add Clade labels
-  text(x=-103, y=-55, labels="0", col=colours[1], cex=2)
-  text(x=-80, y=-95, labels="1", col=colours[2], cex=2)
-  text(x=0, y=-120, labels="2", col=colours[3], cex=2)
-  text(x=-65, y=95, labels="3", col=colours[4], cex=2)
-  text(x=90, y=-80, labels="4", col=colours[5], cex=2)
+  # Add Clade labels - and highlighting semicircles
+  for(i in seq_along(nodesDefiningClades)){ #  c(528, 539, 638, 497, 630)
+    
+    plotSemiCircleToHighlightClade(nodesDefiningClades[i], colour=colours[i], label=i)
+  }
 
   # Reset margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))
