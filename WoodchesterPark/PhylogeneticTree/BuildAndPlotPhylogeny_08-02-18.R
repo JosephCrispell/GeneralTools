@@ -4,7 +4,7 @@ library(phangorn)
 library(geiger) # For the tips function
 library(plotrix) # For drawing circles
 library(ips) # Using RAxML
-library(phytools) # For getDescendants function
+library(phytools) # For getDescendants function and ancestral state estimation
 
 #~~~~~~~~~~~~~~~~~~~~~#
 #### Path and Date ####
@@ -65,9 +65,8 @@ nodesDefiningClades <- c(528, 539, 638, 497, 630)
 cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
-         colours=cladeColours)
-plotTree(treeBS, plotBSValues=FALSE,
-         nodes=nodesDefiningClades,
+         colours=cladeColours, addAncestralStates=TRUE)
+plotTree(treeBS, nodes=nodesDefiningClades,
          colours=cladeColours)
 
 # Report the cluster support
@@ -159,6 +158,77 @@ writeBASTATree(treeBS, node=node, plot=TRUE, filePath=path,
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+estimateAncestralStatesOfCladeRootsAndPieChartLocations <- function(nodesDefiningClades, treeBS, model,
+                                                                    radiusProp=0.025, propAwayFromRoot=0.8){
+  
+  # Get the plotting information from the previously plotted phylogeny
+  plotInfo <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  
+  # Initialise a data.frame to store the coordinates and ancestral state estimations of the nodes
+  nodeStateInfo <- data.frame(X=plotInfo$xx[nodesDefiningClades],
+                              Y=plotInfo$yy[nodesDefiningClades],
+                              BagderStateProp=NA, CattleStateProp=NA,
+                              pieX=NA, pieY=NA)
+  
+  # Examine each clade
+  for(i in seq_along(nodesDefiningClades)){
+    
+    # Get the clade as its own tree
+    clade <- extract.clade(treeBS, node=nodesDefiningClades[i])
+    
+    # Note tip species
+    species <- getTipSpecies(clade$tip.label)
+    
+    # Estimate ancestral states
+    fit <- ace(species, clade, model=model, type="discrete")
+    
+    # Store the state probabilities
+    nodeStateInfo[i, c("BagderStateProp", "CattleStateProp")] <- as.numeric(fit$lik.anc[1,])
+    
+    # Calculate the distance of clade root location to actual root on plot
+    distToMainRoot <- sqrt(nodeStateInfo[i, "X"]^2 + nodeStateInfo[i, "Y"]^2)
+    
+    # Change X and Y coordinates - project back towards root
+    nodeStateInfo[i, c("pieX", "pieY")] <- projectCoordinatesOfPointOnLineFromOrigin(
+      x=nodeStateInfo[i, "X"], y=nodeStateInfo[i, "Y"], radius=propAwayFromRoot*distToMainRoot)
+    
+    # Draw a line between these points
+    points(x=c(nodeStateInfo[i, "X"], nodeStateInfo[i, "pieX"]), 
+           y=c(nodeStateInfo[i, "Y"], nodeStateInfo[i, "pieY"]), type="l", lty=2)
+  }
+  
+  # Draw the piecharts
+  drawPieCharts(nodeStateInfo, plotInfo, radiusProp)
+}
+
+drawPieCharts <- function(nodeStateInfo, plotInfo, radiusProp){
+  
+  # Calculate the radius of the piecharts as a proportion of the plot radius
+  yRange <- range(plotInfo$yy)
+  radius <- radiusProp * (yRange[2] - yRange[1])
+  
+  # Draw the pie charts
+  draw.pie(x=nodeStateInfo$pieX, y=nodeStateInfo$pieY, 
+           z=as.matrix(nodeStateInfo[, c("BagderStateProp", "CattleStateProp")]), 
+           radius=radius, col=c("red", "blue"))
+}
+
+getTipSpecies <- function(tipLabels){
+  
+  # Initialise a vector to contain the sequences - assume all cattle
+  species <- rep("COW", length(tipLabels))
+  
+  # Examine each tip
+  for(i in seq_along(tipLabels)){
+    
+    if(grepl(tipLabels[i], pattern="WB")){
+      species[i] <- "BADGER"
+    }
+  }
+  
+  return(species)
+}
 
 projectCoordinatesOfPointOnLineFromOrigin <- function(x, y, radius){
   
@@ -948,8 +1018,12 @@ noteBadgerIsolateSamplingLocations <- function(metadata){
   return(isolates)
 }
 
-plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
+plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE, addAncestralStates=FALSE){
   
+  # Set the margins
+  par(mar=c(0, 0, 0, 0))
+  
+  # Define the branch colours - branches in clades are coloured by clade
   branchColours <- defineBranchColoursOfClades(treeBS, nodes,
                                                colours, "lightgrey")
   
@@ -968,7 +1042,7 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
                col=rgb(0,0,0, treeBS$node.label/max(treeBS$node.label)), cex=1.5)
     
     legend("bottomright", title="Boostrap values", legend=c(100, 75, 50), pch=20, 
-           col=c(rgb(0,0,0, 1), rgb(0,0,0, 0.75), rgb(0,0,0, 0.5)), bty="n")
+           col=c(rgb(0,0,0, 1), rgb(0,0,0, 0.75), rgb(0,0,0, 0.5)), bty="n", pt.cex=1.5)
   }
   
   # Add node labels
@@ -988,6 +1062,11 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE){
   for(i in seq_along(nodesDefiningClades)){ #  c(528, 539, 638, 497, 630)
     
     plotSemiCircleToHighlightClade(nodesDefiningClades[i], colour=colours[i], label=i)
+  }
+  
+  # Add ancestral state estimation for clades
+  if(addAncestralStates){
+    estimateAncestralStatesOfCladeRootsAndPieChartLocations(nodesDefiningClades, treeBS, model="ARD")
   }
 
   # Reset margins

@@ -67,25 +67,28 @@ fullNames <- list(
   "ProportionShortestPathsBetweenSampledGroupsThatExist" = "Proportion of shortest paths that exist between sampled social groups",
   "ProportionShortestPathsBetweenSampledHerdsThatExist" = "Proportion of shortest paths that exist between herds",
   "NumberSampledGroups" = "Number of social groups sampled",
-  "NumberSampledHerds" = "Number of herds sampled"
+  "NumberSampledHerds" = "Number of herds sampled",
+  "PropInContactBadgersPositive" = "Proportion of in-contact badgers that tested positive", 
+  "PropInContactCattlePositive" = "Proportion of in-contact cattle that tested positive"
 )
 
 colNames <- c(
-  "Cluster-0",
-  "Cluster-1",
-  "Cluster-2",
-  "Cluster-3",
-  "Cluster-4"
+  "-",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5"
 )
 
 outputTable <- buildOutputTable(summaryTable, fullNames, colNames)
 
 # Replace the row names
-rownames(outputTable) <- replaceFromList(rownames(outputTable), fullNames)
+outputTable[, 1] <- replaceFromList(rownames(outputTable), fullNames)
 
 # Save the output table as csv
 file <- paste(path, "ClusterSummaryWithBoundsOfNulls_24-07-2018.txt", sep="")
-write.table(file, x=outputTable, quote=FALSE, row.names=TRUE, sep="\t")
+write.table(file, x=outputTable, quote=FALSE, row.names=FALSE, sep="\t")
 
 
 #############
@@ -96,6 +99,10 @@ replaceFromList <- function(array, list){
   
   output <- c()
   for(i in 1:length(array)){
+    if(is.null(list[[array[i]]])){
+      print(array[i])
+      next
+    }
     output[i] <- list[[array[i]]]
   }
   
@@ -104,19 +111,26 @@ replaceFromList <- function(array, list){
 
 buildOutputTable <- function(summaryTable, fullNames, colNames){
 
-  outputTable <- data.frame(matrix(nrow=length(names(fullNames)), ncol=length(colNames)))
-  colnames(outputTable) <- colNames
+  # Create the output
+  outputTable <- data.frame(matrix(nrow=length(names(fullNames)), ncol=length(colNames)),
+                            check.names=FALSE)
+  outputTable[, 1] <- names(fullNames)
   rownames(outputTable) <- names(fullNames)
-  
+  colnames(outputTable) <- colNames
+
   # Fill in the output table
-  for(cluster in 0:(nrow(summaryTable)-1)){
+  for(cluster in 1:nrow(summaryTable)){
     for(metric in names(fullNames)){
       
+      # Skip the proportion in-contact positive metrics
+      if(grepl(x=metric, pattern="PropInContact") == TRUE){
+        
+       next 
       # Check if current cell is dealing with a date
-      if(grepl(x=metric, pattern="Date") == TRUE){
+      }else if(grepl(x=metric, pattern="Date") == TRUE){
         
         # Split the current cell into its parts
-        values <- as.Date(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]],
+        values <- as.Date(strsplit(summaryTable[cluster, metric], split=",")[[1]],
                           format="%d-%m-%Y")
         
         # Find the bounds of the null distribution
@@ -130,7 +144,7 @@ buildOutputTable <- function(summaryTable, fullNames, colNames){
                grepl(x=metric, pattern="SeqQual") == TRUE){
         
         # Split the current cell into its parts
-        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        values <- as.numeric(strsplit(summaryTable[cluster, metric], split=",")[[1]])
         
         # Put cell info into output table
         outputTable[metric, cluster + 1] <- paste(
@@ -140,7 +154,7 @@ buildOutputTable <- function(summaryTable, fullNames, colNames){
       }else if(metric == "NBadgersSampled" || metric == "NCattleSampled"){
         
         # Split the current cell into its parts
-        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        values <- as.numeric(strsplit(summaryTable[cluster, metric], split=",")[[1]])
         
         # Put cell info into output table
         outputTable[metric, cluster + 1] <- values[1]
@@ -149,7 +163,7 @@ buildOutputTable <- function(summaryTable, fullNames, colNames){
       }else{
         
         # Split the current cell into its parts
-        values <- as.numeric(strsplit(summaryTable[cluster + 1, metric], split=",")[[1]])
+        values <- as.numeric(strsplit(summaryTable[cluster, metric], split=",")[[1]])
         
         # If spatial dists - divide by 1000 - convert to km
         if(metric == "MeanSpatialDist"){
@@ -166,6 +180,29 @@ buildOutputTable <- function(summaryTable, fullNames, colNames){
                                                   " (", bounds[[1]], ", ", bounds[[2]], ")", sep="")
       }
     }
+  }
+  
+  # Calculate the proportion in-contact badgers and cattle testing positive
+  for(cluster in 1:nrow(summaryTable)){
+    nPositiveInContactBadgers <- as.numeric(strsplit(outputTable["NUnSampledDetectedBadgers", cluster + 1],
+                                                     split="[(|,|)]")[[1]])
+    nPositiveInContactCattle <- as.numeric(strsplit(outputTable["NUnSampledDetectedCattle", cluster + 1],
+                                                    split="[(|,|)]")[[1]])
+    nNegativeInContactBadgers <- as.numeric(strsplit(outputTable["NNegativeBadgers", cluster + 1],
+                                                     split="[(|,|)]")[[1]])
+    nNegativeInContactCattle <- as.numeric(strsplit(outputTable["NNegativeCattle", cluster + 1],
+                                                    split="[(|,|)]")[[1]])
+    propInContactBadgersPositive <- nPositiveInContactBadgers / 
+      (nPositiveInContactBadgers + nNegativeInContactBadgers)
+    propInContactCattlePositive <- nPositiveInContactCattle / 
+      (nPositiveInContactCattle + nNegativeInContactCattle)
+  
+    outputTable["PropInContactBadgersPositive", cluster + 1] <- 
+      paste(round( propInContactBadgersPositive[1], digits=2),
+            " (", (nPositiveInContactBadgers[1] + nNegativeInContactBadgers[1]),")", sep="")
+    outputTable["PropInContactCattlePositive", cluster + 1] <- 
+      paste(round( propInContactCattlePositive[1], digits=2),
+            " (", (nPositiveInContactCattle[1] + nNegativeInContactCattle[1]),")", sep="")
   }
   
   return(outputTable)
