@@ -3,7 +3,7 @@
 ###################################
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Load the life history summaries
 file <- paste(path, "sampledAnimalsLifeHistories_05-04-2018.txt", sep="")
@@ -21,8 +21,8 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 xLim <- as.Date(c("1988-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
-file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_06-04-18.pdf", sep="")
-pdf(file)
+file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_08-09-18.pdf", sep="")
+pdf(file, height=10)
 
 # Get an array of all the clusters
 clusters <- sort(names(clusterTables))[-length(names(clusterTables))] # Remove last cluster (all isolates)
@@ -52,9 +52,6 @@ roundToNearestMultiple <- function(value, multiple){
 plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, cluster,
                                                             xLim){
 
-  # Create plotting window for 3 stacked plots
-  par(mfrow=c(3,1))
-  
   # Note the dates within range of interest
   datesInRange <- seq(xLim[1], xLim[2], 1)
   indexedDates <- indexArrayOfDates(datesInRange)
@@ -91,7 +88,8 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
   
   if(unSampledBadgersPresent == TRUE && unSampledCattlePresent == TRUE){
     
-    par(mfrow=c(3,1))
+    # Set the layout of the plots within the plotting window
+    layout(matrix(c(1, 2, 3, 3, 3), nrow=5, ncol=1, byrow=TRUE))
     
     # Plot the badger counts
     plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE)
@@ -102,8 +100,8 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
     # Plot the lifespans of the sampled animals
     plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
     
-    if(cluster == "3" || cluster == "1"){
-      
+    if(cluster == "4" || cluster == "2"){
+
       par(mfrow=c(1,1))
       # Plot the lifespans of the sampled animals
       plotSampledAnimalLifespans(sampled, datesInRange, cluster, TRUE)
@@ -141,7 +139,7 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
                                        addCluster){
   
   # Set the plotting margins
-  par(mar = c(4.1,4.1,1.1,4.1)) # bottom left top right
+  par(mar = c(4.1,4.1,1.2,4.1)) # bottom left top right
   if(addCluster == TRUE){
     par(mar = c(4.1,4.1,3.1,4.1)) # bottom left top right
   }
@@ -165,7 +163,7 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
   axis(side=2, at=seq(1, nrow(sampled)), labels=FALSE)
   xLabPosition <- xLim[1] - (0.05 * (xLim[2] - xLim[1]))
   text(labels=sampled$Species, 
-       col=ifelse(sampled$Species == "BADGER", "red", "blue"),
+       col=ifelse(sampled$Species == "BADGER", rgb(0,0,0, 0.5), "black"),
        x=rep(xLabPosition,length(sampled$Species)),
        y=1:length(sampled$Species),
        srt = 0, pos = 2, xpd = TRUE, cex=0.5)
@@ -177,13 +175,13 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
   legend("topleft", legend=c("Isolate Obtained", "Detection/Breakdown",
                              "Positive Test", "Inconclusive Test"),
          pch=c(18, 16, 16, 16, 16), 
-         col=c("blue", "green", "red", "orange"),
-         text.col=c("blue", "green", "red", "orange"),
+         col=c("blue", "cyan", "red", "orange"),
+         text.col=c("blue", "cyan", "red", "orange"),
          bty="n", cex=1)
   
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", cluster), side=3, 
+    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
@@ -235,7 +233,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
 
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", cluster), side=3, 
+    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
@@ -245,8 +243,8 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
                                       addCluster){
   
   # Set the plot margins
-  par(mar = c(0.1,4.1,1.1,4.1)) # bottom left top right
-  
+  par(mar = c(0.1,4.1,1.2,4.1)) # bottom left top right
+
   # Get the counts
   negativeCounts <- cattleCounts[["Negative"]]
   inconclusiveCounts <- cattleCounts[["Inconclusive"]]
@@ -274,7 +272,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   axis(side=4, at=at, las=1,labels=round(labels, digits=0))
   mtext(side=4, text="Number Animals Present", line=3, cex=0.75)
   
-  legend("topright", legend="N. Present", 
+  legend("topright", legend="Total", 
          text.col=rgb(0,0,0, 0.5), bty="n", cex=1)
   
   # Add the points for test reactors
@@ -294,7 +292,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", cluster), side=3, 
+    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
@@ -310,7 +308,7 @@ countNegativeAndPositiveBadgersDuringPeriod <- function(unSampled, datesInRange,
     
     # Indicate progress
     if(row %% 100 == 0){
-      print(paste("Reading row ", row, " of ", nrow(unSampled), sep=""))
+      cat(paste("\rReading row ", row, " of ", nrow(unSampled), sep=""))
     }
     
     # Skip animals for which there are no movements
@@ -383,7 +381,7 @@ countNegativeAndTestReactingCattleDuringPeriod <- function(unSampled, datesInRan
     
     # Indicate progress
     if(row %% 100 == 0){
-      print(paste("Reading row ", row, " of ", nrow(unSampled), sep=""))
+      cat(paste("\rReading row ", row, " of ", nrow(unSampled), sep=""))
     }
     
     # Skip animals for which there are no movements
@@ -417,11 +415,23 @@ countNegativeAndTestReactingCattleDuringPeriod <- function(unSampled, datesInRan
       # Was the current test an Inconclusive?
       if(testResults[i] == "IR"){
         
-        inconclusiveCounts[indexedDates[[as.character(testDates[i])]]] <- 
-          inconclusiveCounts[indexedDates[[as.character(testDates[i])]]] + 1
-        
-        negativeCounts[indexedDates[[as.character(testDates[i])]]] <- 
-          negativeCounts[indexedDates[[as.character(testDates[i])]]] - 1
+        if(i < length(testDates)){
+          inconclusiveDateIndex <- indexedDates[[as.character(testDates[i])]]
+          endOfPeriodIndex <- indexedDates[[as.character(testDates[i+1])]]
+          
+          inconclusiveCounts[inconclusiveDateIndex:endOfPeriodIndex] <- 
+            inconclusiveCounts[inconclusiveDateIndex:endOfPeriodIndex] + 1
+          
+          negativeCounts[inconclusiveDateIndex:endOfPeriodIndex] <- 
+            negativeCounts[inconclusiveDateIndex:endOfPeriodIndex] - 1
+        }else{
+          inconclusiveCounts[indexedDates[[as.character(testDates[i])]]] <- 
+            inconclusiveCounts[indexedDates[[as.character(testDates[i])]]] + 1
+          
+          negativeCounts[indexedDates[[as.character(testDates[i])]]] <- 
+            negativeCounts[indexedDates[[as.character(testDates[i])]]] - 1
+        }
+
       }else{
         positiveCounts[indexedDates[[as.character(testDates[i])]]] <- 
           positiveCounts[indexedDates[[as.character(testDates[i])]]] + 1
@@ -479,7 +489,7 @@ addPointsForAnimals <- function(table, cluster){
     if(is.na(table[row, "DetectionDate"]) == FALSE){
       
       points(x=as.Date(table[row, "DetectionDate"], "%d-%m-%Y"), y=row, pch=16,
-             col="green")
+             col="cyan")
     }
     
     ## Sampling Events - note those from different clusters
