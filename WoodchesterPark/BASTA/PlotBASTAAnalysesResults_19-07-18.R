@@ -63,14 +63,38 @@ migrationRateEstimates <- summarisePosteriorLogTables(path, logTables, code=2,
                                                       arrowFactor=20, nBootstraps,
                                                       genomeSize, date)
 
+#################################################################################################
+# Examine the transition counts recorded on the posterior tree distributions from each analysis #
+#################################################################################################
+
+# Read in the transition counts for all the trees
+file <- paste0(path, "TransitionCounts_", date, ".txt")
+transitionCounts <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
+
+# Remove the burn-in period from each analysis
+transitionCountsWithoutBurnIn <- removeBurnIn(transitionCounts, burnInProp=0.1)
+
+# Note each model's AICM score
+aicmScores <- getAICMScores(migrationRateEstimates)
+
+# Sample the transition counts and associated branch length sums based on the AICM model scores
+weightedSampleOfTransitionRates <- getWeightedSampleOfTransitionCountsBasedOnAICMScores(transitionCountsWithoutBurnIn,
+                                                                                        aicmScores)
+
 #################################
 # Plot Model comparison results #
 #################################
 
 # Open a PDF
 file <- paste(path, "SummaryFiguresOfModelEstimations_", date, ".pdf", sep="")
-pdf(file, height=14, width=7)
-par(mfrow=c(2,1))
+pdf(file, height=11, width=10)
+
+# Define the plotting window layout
+layout(matrix(c(1,1,1,2,2,2,
+                1,1,1,2,2,2,
+                1,1,1,2,2,2,
+                4,4,3,3,4,4,
+                4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
 
 # Examine the model likelihoods
 plotModelAICMScores(migrationRateEstimates, nBootstraps)
@@ -85,10 +109,20 @@ weightedMeanEstimates <-
   calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
     migrationRateEstimates)
 
+
+##################################################################
+# Plot a summary of the transition counts on the posterior trees #
+##################################################################
+plotSummaryOfTransitionRatesBasedOnPosteriorTrees(weightedSampleOfTransitionRates)
+
+# Reset the plotting window dimensions
+par(mfrow=c(1,1))
+
 # Plot the rates
-plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
-                                       cowToBadger=weightedMeanEstimates[2],
-                                       code=2, arrowFactor=20)
+# plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
+#                                        cowToBadger=weightedMeanEstimates[2],
+#                                        code=2, arrowFactor=20)
+
 
 # Close the pdf
 dev.off()
@@ -96,6 +130,179 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+plotSummaryOfTransitionRatesBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates){
+  
+  # Calculate the transition rates (counts/sum of branch lengths)
+  weightedSampleOfTransitionRates$TransitionRate_BB <- weightedSampleOfTransitionRates$Count_BB / 
+    weightedSampleOfTransitionRates$SumBranchLengths_BB
+  weightedSampleOfTransitionRates$TransitionRate_BC <- weightedSampleOfTransitionRates$Count_BC / 
+    weightedSampleOfTransitionRates$SumBranchLengths_BC
+  weightedSampleOfTransitionRates$TransitionRate_CB <- weightedSampleOfTransitionRates$Count_CB / 
+    weightedSampleOfTransitionRates$SumBranchLengths_CB
+  weightedSampleOfTransitionRates$TransitionRate_CC <- weightedSampleOfTransitionRates$Count_CC / 
+    weightedSampleOfTransitionRates$SumBranchLengths_CC
+  
+  # Replace the NaN values with zeros
+  for(row in 1:nrow(weightedSampleOfTransitionRates)){
+    for(col in c("TransitionRate_BB", "TransitionRate_BC", "TransitionRate_CB", "TransitionRate_CC")){
+      
+      if(is.nan(weightedSampleOfTransitionRates[row, col])){
+        weightedSampleOfTransitionRates[row, col] <- 0
+      }
+    }
+  }
+  
+  # Set the margin sizes
+  currentMar <- par("mar")
+  par(mar=c(10, 5.5, 4, 0.1)) # bottom, left, top, right
+  
+  # Note the columns of interest
+  columns <- c("Count_BB", "Count_BC", "Count_CB", "Count_CC")
+  
+  # Calculate the range of the transition rates
+  yLim <- range(weightedSampleOfTransitionRates[, columns])
+
+  # Create an empty plot
+  plot(x=NULL, y=NULL, bty="n", 
+       xlim=c(1, 4), ylim=yLim, las=2, xaxt="n", ylab="Number of transitions", xlab="",
+       main="Counting transitions on\n phylogenies", cex.main=2, cex.lab=2, cex.axis=1.25)
+  axis(side=1, at=1:4, labels=c("Badger-to-badger", "Badger-to-cow", "Cow-to-badger", "Cow-to-cow"), las=2, cex.axis=1.25)
+  
+  # Add the bars
+  for(i in 1:length(columns)){
+
+    # Calculate the quantiles for the current rate
+    quantiles <- quantile(weightedSampleOfTransitionRates[, columns[i]], probs=c(0.025, 0.975))
+    
+    # Plot a line from the lower to the upper thresholds
+    lines(x=c(i, i), y=c(quantiles[1], quantiles[2]))
+    points(x=i, y=median(weightedSampleOfTransitionRates[, columns[i]]), pch=19, col="black")
+  }
+  
+  # Add a plot label
+  mtext("C", side=3, line=1, at=-0.35, cex=2.5)
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+}
+
+getWeightedSampleOfTransitionCountsBasedOnAICMScores <- function(transitionCountsWithoutBurnIn, aicmScores){
+  
+  # Calculating the weighted mean rates of transitions between badger and cattle demes
+  # across BASTA models
+  # Weighting is by the AICM score
+  #
+  # 1. Each model: Get the posterior distributions for each rate
+  # 2. Each model: Calculate sum of posteriors between cattle and badger demes
+  #                   sum of cattle -> badger posteriors
+  #                   sum of badger -> cattle posteriors
+  # 3. Each Model: Calculate AICM
+  # 4. Convert model AICM scores to weights:
+  #       weight = exp((AIC_min - AIC_i)/2)
+  # 5. Normalise weights to sum to 1: 
+  #       normalisedWeights = weight / sum(weights)
+  # 6. Calculate weighted average rates:
+  #      - Sample the posterior sums for cattle->badgers relative to AICM weight
+  #      - Sample the posterior sums for badgers->cattle relative to AICM weight
+  #       c->b = median(sampleCB, na.rm=TRUE)
+  #       b->c = median(sampleBC, na.rm=TRUE)
+  #      - NOTE: NAs introduced when flag = 0, these are removed after relative sampling
+  #
+  # Above method for weighting AICM suggested by Paul Johnson
+  # I think this is equivalent to Ensemble Bayesian Model Averaging
+  # AICM weights calculating described in: Wagenmakers and Farrell - 2004 - AIC model selection using Akaike weights
+  
+  # Get the analyses names
+  analyses <- names(aicmScores)
+  names <- c()
+  
+  # Get the AICM values
+  scores <- c()
+  shortenedNames <- c()
+  for(i in 1:length(analyses)){
+    scores[i] <- aicmScores[[analyses[i]]][1]
+    
+    parts <- strsplit(analyses[i], split="_")[[1]]
+    shortenedNames[i] <- paste(parts[1], parts[2], parts[3], sep="_")
+  }
+  
+  # Convert the AICM scores into weights
+  # Exponential penalises those that are bad
+  # Flips the score
+  modelAICMWeights <- exp((min(scores) - scores)/2)
+  
+  # Normalise the AICM weights
+  normalisedModelAICMWeights <- modelAICMWeights / sum(modelAICMWeights)                           
+  
+  # Initialise a table to store the weighted samples of the transition counts and associated branch length sums
+  weightedSampleOfTransitionRates <- data.frame("Count_BB"=NA, "Count_BC"=NA, "Count_CB"=NA, "Count_CC"=NA,
+                                                "SumBranchLengths_BB"=NA, "SumBranchLengths_BC"=NA,
+                                                "SumBranchLengths_CB"=NA, "SumBranchLengths_CC"=NA)
+  
+  # Examine each analysis
+  for(i in seq_along(analyses)){
+    
+    # Get the current analysis name
+    name <- shortenedNames[i]
+    
+    # Get the subset of the transition counts table associated with the current analysis (all replicates)
+    analysisTransitionInfo <- transitionCountsWithoutBurnIn[transitionCountsWithoutBurnIn$Analysis == name, ]
+    
+    # Randomly select row indices based upon the AICM weight associated with the current analysis
+    sampledIndices <- sample(1:nrow(analysisTransitionInfo),
+                            size=round(normalisedModelAICMWeights[i] * nrow(analysisTransitionInfo), digits=0))
+    
+    # Store the sample
+    weightedSampleOfTransitionRates <- rbind(weightedSampleOfTransitionRates,
+                                             analysisTransitionInfo[sampledIndices, 6:13])
+  }
+  
+  # Remove first empty row
+  weightedSampleOfTransitionRates <- weightedSampleOfTransitionRates[-1, ]
+  
+  return(weightedSampleOfTransitionRates)
+}
+
+getAICMScores <- function(migrationRateEstimates){
+  
+  # Initialise a list to store the analysis AICM scores
+  scores <- list()
+  
+  # Examine each analysis
+  for(key in names(migrationRateEstimates)){
+    
+    scores[[key]] <- migrationRateEstimates[[key]]$AICM
+  }
+  
+  return(scores)
+}
+
+removeBurnIn <- function(transitionCounts, burnInProp=0.1, nReplicates=3){
+  
+  # Note the names of the analyses considered
+  analyses <- unique(transitionCounts$Analysis)
+  
+  # Examine each analysis
+  for(analysis in analyses){
+    
+    # Examine each replicate
+    for(rep in 1:nReplicates){
+      
+      # Get the indices assocated with the current analysis
+      rows <- which(transitionCounts$Analysis == analysis & transitionCounts$Replicate == rep)
+      
+      # Note the first burn-in indices
+      burnIn <- round(burnInProp * length(rows), digits=0)
+      indicesToRemove <- rows[1:burnIn]
+      
+      # Remove the burn-in rows from the transition counts
+      transitionCounts <- transitionCounts[-indicesToRemove, ]
+    }
+  }
+  
+  return(transitionCounts)
+}
 
 getNSitesInFASTA <- function(fastaFile){
   
@@ -328,11 +535,13 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     
     ## Plot the interspecies transmission rates for each model
     currentMar <- par("mar")
-    par(mar=c(10, 7, 4, 0.1))
+    par(mar=c(17, 5.5, 5, 0.1)) # bottom, left, top, right
     plot(x=NULL, y=NULL, xlim=c(1, length(analyses) + 1), 
          ylim=c(0, max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper), na.rm=TRUE)),
-         ylab="Per lineage transition rate per year", main="Estimated inter-species transition rates",
-         las=1, xaxt="n", xlab="", bty="n", cex.lab=1.5, cex.main=1.5)
+         ylab="", main="Estimated inter-species transition rates",
+         las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
+    mtext(side=2, text="Per lineage transition rate per year", line=3.5, cex=1.25)
+    
     for(i in 1:length(analyses)){
 
       # Badgers to cattle
@@ -357,35 +566,35 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     points(x=length(analyses) + 1.1, y=median, pch=19, col=rgb(0,0,1, 0.75))
     
     # Axis
-    axis(side=1, at=1:(length(analyses)+1), labels=c(names, ""), las=2, cex.axis=0.75)
-    axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=0.9, col.axis="black", tick=FALSE)
-    legend("top", legend=c("Badgers -> Cattle", "Cattle -> Badgers"), text.col=c("red", "blue"), bty="n")
+    axis(side=1, at=1:(length(analyses)+1), labels=c(names, ""), las=2, cex.axis=1.25)
+    axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=1.5, col.axis="black", tick=FALSE)
+    legend("top", legend=c("Badgers-to-Cattle", "Cattle-to-Badgers"), text.col=c("red", "blue"), bty="n")
     
     # Add a plot label
-    mtext("B", side=3, line=1, at=-2, cex=3)
+    mtext("B", side=3, line=1, at=-2, cex=2.5)
     
-    ## Plot badger -> cattle versus cattle -> badger
-    par(mar=c(5.1, 4.1, 0.5, 2.1))
-    max <- max(c(modelBadgerToCowRateMedians, modelCowToBadgerRateMedians), na.rm=TRUE)
-    plot(x=modelBadgerToCowRateMedians, y=modelCowToBadgerRateMedians, las=1,
-         ylim=c(0, max), xlim=c(0, max), pch=19, bty="n",
-         col=rgb(1,0,0, 0.75), cex=normalisedModelAICMWeights * 10,
-         xlab="Badgers -> Cattle lineage transition rate per year",
-         ylab="Cattle -> Badgers lineage transition rate per year")
-    points(x=c(0, max), y=c(0, max), type="l", lty=2, col="blue")
-    overlayText(x=modelBadgerToCowRateMedians, y=modelCowToBadgerRateMedians,
-                labels=names, cex=0.5)
-    legend("topleft", legend=c("High", "", "", "Low"), pch=19,
-           title="AICM Weight", bty="n",
-           pt.cex=c(2.5, 1.5, 0.5, 0.1))
-    
-    # Calculate the weighted means for the rate sums between badgers and cattle
+    # ## Plot badger -> cattle versus cattle -> badger
+    # par(mar=c(5.1, 4.1, 0.5, 2.1))
+    # max <- max(c(modelBadgerToCowRateMedians, modelCowToBadgerRateMedians), na.rm=TRUE)
+    # plot(x=modelBadgerToCowRateMedians, y=modelCowToBadgerRateMedians, las=1,
+    #      ylim=c(0, max), xlim=c(0, max), pch=19, bty="n",
+    #      col=rgb(1,0,0, 0.75), cex=normalisedModelAICMWeights * 10,
+    #      xlab="Badgers -> Cattle lineage transition rate per year",
+    #      ylab="Cattle -> Badgers lineage transition rate per year")
+    # points(x=c(0, max), y=c(0, max), type="l", lty=2, col="blue")
+    # overlayText(x=modelBadgerToCowRateMedians, y=modelCowToBadgerRateMedians,
+    #             labels=names, cex=0.5)
+    # legend("topleft", legend=c("High", "", "", "Low"), pch=19,
+    #        title="AICM Weight", bty="n",
+    #        pt.cex=c(2.5, 1.5, 0.5, 0.1))
+    # 
+    # # Calculate the weighted means for the rate sums between badgers and cattle
     weightedMedianBadgerToCow <- median(badgerToCowRatePosteriorSumSamples, na.rm=TRUE)
     weightedMedianCowToBadger <- median(cowToBadgerRatePosteriorSumSamples, na.rm=TRUE)
-    points(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger,
-           pch=15, col=rgb(0,0,0, 0.5), cex=2)
-    text(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger, 
-         labels="Weighted Median", cex=0.75, pos=2, offset=0.6, col=rgb(0,0,0, 0.75))
+    # points(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger,
+    #        pch=15, col=rgb(0,0,0, 0.5), cex=2)
+    # text(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger,
+    #      labels="Weighted Median", cex=0.75, pos=2, offset=0.6, col=rgb(0,0,0, 0.75))
     
     par(mar=currentMar)
 
@@ -422,7 +631,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
             range[2] + (0.1 * (range[2] - range[1])))
   
   # Set the margins
-  par(mar=c(10, 7, 5, 0.1))
+  par(mar=c(17, 8, 5, 0)) # bottom, left, top, right
   
   # Set bar colours to highlight min
   colours <- rep("black", length(aicmScores))
@@ -432,12 +641,12 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   
   # Create an empty plot
   plot(x=NULL, y=NULL, bty="n", 
-       xlim=c(1, length(analyses) + 1), ylim=yLim,
-       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=1.5)
-  axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2)
-  mtext(side=2, text="AICM score", line=5.5, cex=1.5)
+       xlim=c(1, length(analyses)), ylim=yLim,
+       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=2)
+  axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2, cex.axis=1.25)
+  mtext(side=2, text="AICM score", line=6, cex=1.5)
   axis(side=1, at=1:length(analyses),
-       labels=names, las=2, cex.axis=0.75)
+       labels=names, las=2, cex.axis=1.25)
   
   # Add the bars
   for(i in 1:length(analyses)){
@@ -460,7 +669,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
          lty=2, col=rgb(0,0,0, 0.5), type="l")
 
   # Add a plot label
-  mtext("A", side=3, line=1, at=-2, cex=3)
+  mtext("A", side=3, line=1, at=-2, cex=2.5)
   
   # Reset the margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))

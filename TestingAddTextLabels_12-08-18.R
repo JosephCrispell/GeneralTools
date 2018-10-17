@@ -1,7 +1,7 @@
 #library(addTextLabels)
 
 # Create some random points
-n <- 50
+n <- 45
 testLabels <- c("short", "mediummm", "looooonnnnnnngggggg", "0090292002", "9", "A Different label")
 coords <- data.frame(X=runif(n), Y=runif(n, min=0, max=100), Name=sample(testLabels, size=n, replace=TRUE),
                      stringsAsFactors = FALSE)
@@ -39,3 +39,4 @@ abline(h = 1, col = "green")
 abline(v = 1, col = "green")
 
 addTextLabels(x, y, ShortSci, cex=0.9, col.background=rgb(0,0,0, 0.75), col.label="white")
+addTextLabels(x, y, ShortSci, cex=0.9, col.background=rgb(0,0,0, 0.75), col.label="white", keepLabelsInside = FALSE)

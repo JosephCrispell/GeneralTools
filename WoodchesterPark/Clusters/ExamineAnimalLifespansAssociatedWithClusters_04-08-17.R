@@ -22,7 +22,7 @@ xLim <- as.Date(c("1988-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
 file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_08-09-18.pdf", sep="")
-pdf(file, height=10)
+pdf(file, height=11, width=8)
 
 # Get an array of all the clusters
 clusters <- sort(names(clusterTables))[-length(names(clusterTables))] # Remove last cluster (all isolates)
@@ -89,7 +89,10 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
   if(unSampledBadgersPresent == TRUE && unSampledCattlePresent == TRUE){
     
     # Set the layout of the plots within the plotting window
-    layout(matrix(c(1, 2, 3, 3, 3), nrow=5, ncol=1, byrow=TRUE))
+    layout(matrix(c(1, 2, 3, 3), nrow=4, ncol=1, byrow=TRUE))
+    if((as.numeric(cluster) + 1) == 4){
+      layout(matrix(c(1, 2, 3, 3, 3, 3), nrow=6, ncol=1, byrow=TRUE))
+    }
     
     # Plot the badger counts
     plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE)
@@ -100,7 +103,7 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
     # Plot the lifespans of the sampled animals
     plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
     
-    if(cluster == "4" || cluster == "2"){
+    if((as.numeric(cluster) + 1) %in% c(2, 4)){
 
       par(mfrow=c(1,1))
       # Plot the lifespans of the sampled animals
@@ -166,7 +169,7 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
        col=ifelse(sampled$Species == "BADGER", rgb(0,0,0, 0.5), "black"),
        x=rep(xLabPosition,length(sampled$Species)),
        y=1:length(sampled$Species),
-       srt = 0, pos = 2, xpd = TRUE, cex=0.5)
+       srt = 0, pos = 2, xpd = TRUE, cex=0.7)
   
   # Add lines to highlight years
   addLinesForYears(datesInRange)
@@ -181,7 +184,7 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
   
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
+    mtext(paste("Clade: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
@@ -233,7 +236,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
 
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
+    mtext(paste("Clade: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
@@ -292,7 +295,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   
   # Add the cluster number to plot
   if(addCluster == TRUE){
-    mtext(paste("Cluster: ", (as.numeric(cluster) + 1)), side=3, 
+    mtext(paste("Clade: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
