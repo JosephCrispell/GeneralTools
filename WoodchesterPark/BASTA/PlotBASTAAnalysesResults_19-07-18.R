@@ -133,26 +133,6 @@ dev.off()
 
 plotSummaryOfTransitionRatesBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates){
   
-  # Calculate the transition rates (counts/sum of branch lengths)
-  weightedSampleOfTransitionRates$TransitionRate_BB <- weightedSampleOfTransitionRates$Count_BB / 
-    weightedSampleOfTransitionRates$SumBranchLengths_BB
-  weightedSampleOfTransitionRates$TransitionRate_BC <- weightedSampleOfTransitionRates$Count_BC / 
-    weightedSampleOfTransitionRates$SumBranchLengths_BC
-  weightedSampleOfTransitionRates$TransitionRate_CB <- weightedSampleOfTransitionRates$Count_CB / 
-    weightedSampleOfTransitionRates$SumBranchLengths_CB
-  weightedSampleOfTransitionRates$TransitionRate_CC <- weightedSampleOfTransitionRates$Count_CC / 
-    weightedSampleOfTransitionRates$SumBranchLengths_CC
-  
-  # Replace the NaN values with zeros
-  for(row in 1:nrow(weightedSampleOfTransitionRates)){
-    for(col in c("TransitionRate_BB", "TransitionRate_BC", "TransitionRate_CB", "TransitionRate_CC")){
-      
-      if(is.nan(weightedSampleOfTransitionRates[row, col])){
-        weightedSampleOfTransitionRates[row, col] <- 0
-      }
-    }
-  }
-  
   # Set the margin sizes
   currentMar <- par("mar")
   par(mar=c(10, 5.5, 4, 0.1)) # bottom, left, top, right

@@ -11,6 +11,9 @@
 # Requires SRA Toolkit
 # Downloaded from here: https://trace.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?view=software
 
+# Note on my computer fasterq-dump is here. It's in the sratoolkit.
+#		- /home/josephcrispell/Desktop/Research/sratoolkit.2.9.2-ubuntu64/bin/
+
 # Get the command line arguments
 ACCESSIONSFILE=$1
 FASTERQDUMP=$2
