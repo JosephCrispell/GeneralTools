@@ -30,7 +30,12 @@ createAnnotatedNewickTree <- TRUE
 if(is.na(args[6]) == FALSE){
   createAnnotatedNewickTree <- as.logical(args[6])
 }
+includeConsistentSitesInReport <- FALSE
+if(is.na(args[7]) == FALSE){
+  includeConsistentSitesInReport <- as.logical(args[6])
+}
 
 #### Calculate the consistency index of each site ####
 result <- runHomoplasyFinderInJava(treeFile, fastaFile, path, createFasta,
-                                   createReport, createAnnotatedNewickTree, verbose=FALSE)
+                                   createReport, createAnnotatedNewickTree, 
+                                   includeConsistentSitesInReport, verbose=FALSE)

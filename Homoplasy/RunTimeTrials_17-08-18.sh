@@ -18,7 +18,7 @@
 ####################################################################
 
 # Initialise an output file
-OUTPUT="timeTaken_03-09-18.csv"
+OUTPUT="timeTaken_24-10-18.csv"
 echo "NSequences	Replicate	NSites	Java	R	Phangorn	TreeTime" > $OUTPUT
 
 # Set the date the datasets were created
@@ -53,7 +53,7 @@ do
 
 		# Run HomoplasyFinder Java tool
 		START="$(date -u +%s.%N)"
-		java -Xmx8000m -jar ../HomoplasyFinder.jar 0 $FASTA $TREE
+		java -Xmx8000m -jar ../../Java/ExecutableJarFiles/HomoplasyFinder.jar --fasta $FASTA --tree $TREE
 		END="$(date -u +%s.%N)"
 		JAVATIME="$(bc <<<"$END-$START")"
 

@@ -6,13 +6,13 @@ path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TimeTrial/"
 #### Read in data ####
 
 # Read in the table with the times
-file <- paste(path, "timeTaken_03-09-18.csv", sep="")
+file <- paste(path, "timeTaken_24-10-18.csv", sep="")
 table <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Plot ####
 
 # Open a PDF
-file <- paste(path, "timeTaken_03-09-18.pdf", sep="")
+file <- paste(path, "timeTaken_24-10-18.pdf", sep="")
 pdf(file)
 
 # Create an empty plot on a log scale
