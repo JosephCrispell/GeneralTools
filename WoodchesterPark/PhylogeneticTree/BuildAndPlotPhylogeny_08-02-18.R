@@ -5,6 +5,7 @@ library(geiger) # For the tips function
 library(plotrix) # For drawing circles
 library(ips) # Using RAxML
 library(phytools) # For getDescendants function and ancestral state estimation
+library(mapplots) # For plotting pie charts
 
 #~~~~~~~~~~~~~~~~~~~~~#
 #### Path and Date ####
@@ -68,6 +69,9 @@ plotTree(treeBS, plotBSValues=TRUE,
          colours=cladeColours, addAncestralStates=TRUE)
 plotTree(treeBS, nodes=nodesDefiningClades,
          colours=cladeColours)
+
+# Plot each clade separately
+plotClades(treeBS, nodesDefiningClades, cladeColours)
 
 # Report the cluster support
 support <-treeBS$node.label[nodesDefiningClades - length(treeBS$tip.label)]
@@ -158,6 +162,84 @@ writeBASTATree(treeBS, node=node, plot=TRUE, filePath=path,
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+plotClades <- function(tree, nodesDefiningClades, cladeColours){
+  
+  # Set the plotting window dimensions
+  layout(matrix(c(1,2,4,3,5,4), nrow=2, ncol=3, byrow=TRUE))
+  
+  # Get and set the margins
+  currentMar <- par("mar")
+  par(mar=c(1, 1, 4.1, 1))
+  
+  # Examine each clade
+  for(cladeNumber in seq_along(nodesDefiningClades)){
+    
+    # Get the current clade
+    clade <- extract.clade(tree, nodesDefiningClades[cladeNumber])
+    
+    # Define the characteristics of the tips based on species
+    tipShapes <- defineTipShapesForSpecies(clade$tip.label, 24, 21)
+    tipColour <- defineTipColourBySpeciesForClade(clade, "blue", "red")
+    
+    # Plot the phylogenetic tree
+    plot.phylo(clade, show.tip.label=FALSE, type="phylogram",
+               edge.color="grey", edge.width=4, 
+               main=paste0("Clade: ", cladeNumber), cex.main=1.5)
+    
+    # Add node labels
+    if(cladeNumber == 4){
+      tiplabels(pch=tipShapes, bg=tipColour, col="dimgrey", cex=1)
+    }else{
+      tiplabels(pch=tipShapes, bg=tipColour, col="dimgrey", cex=1.5)
+    }
+    
+    # Add Scale bar
+    axisLimits <- par("usr")
+    yRange <- axisLimits[4] - axisLimits[3]
+    yPosition <- axisLimits[4] - (0.1 * yRange)
+    if(cladeNumber == 4){
+      yPosition <- axisLimits[4] - (0.05 * yRange)
+    }
+    points(x=c(axisLimits[2]-2, axisLimits[2]-1), y=c(yPosition, yPosition), type="l", lwd=4, xpd=TRUE)
+    
+    # Add scale bar label and legend if on first tree
+    if(cladeNumber == 1){
+      text(x=axisLimits[2]-1.5, y=axisLimits[4] - 0.05*yRange, labels="1 SNP", cex=1.5, xpd=TRUE)
+      
+      legend("bottomleft", legend=c("Cow", "Badger"),
+             pch=c(17, 16), cex=1.5, col=c("blue", "red"), 
+             text.col=c("blue", "red"), bty='n')
+    }
+    
+    # Draw a box around the plot
+    box(col=cladeColours[cladeNumber], lwd=2)
+  }
+
+  # Reset margins
+  par(mar=currentMar)
+  
+  # Reset window dimensions
+  par(mfrow=c(1,1))
+}
+
+defineTipColourBySpeciesForClade <- function(clade, cow, badger){
+  
+  # Initialise a vector to store the tip colours
+  tipColours <- rep("black", length(clade$tip.label))
+  
+  # Examine each tip label
+  for(tipIndex in 1:length(clade$tip.label)){
+    
+    if(grepl(pattern="TB|HI-|AF-", x=clade$tip.label[tipIndex]) == TRUE){
+      tipColours[tipIndex] <- cow
+    }else if(grepl(pattern="WB", x=clade$tip.label[tipIndex]) == TRUE){
+      tipColours[tipIndex] <- badger
+    }
+  }
+  
+  return(tipColours)
+}
 
 estimateAncestralStatesOfCladeRootsAndPieChartLocations <- function(nodesDefiningClades, treeBS, model,
                                                                     radiusProp=0.025, propAwayFromRoot=0.8){
