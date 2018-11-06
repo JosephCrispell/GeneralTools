@@ -1,16 +1,27 @@
+#### Load libraries ####
+
+library(rgdal) # Converting from latlongs to eastings and northings -installation requires: sudo apt-get install gdal-bin proj-bin libgdal-dev libproj-dev
+
 #### Read in the simulation output ####
 
 # Set the path variable
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/Daniel_SimulationOutput/"
 
 # Read in a simulation output table
-file <- paste0(path, "sim_05-01.csv")
+file <- paste0(path, "05-11-18/", "sim_14-01.csv")
 simOutput <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
-# Read in the herd and sett coordinates
-something needs to be here!!!!
-  
-  
+# Read in the herd and sett coordinates - NOTE: latlongs are actually eastings and northings
+herdFile <- paste0(path, "coordinates_unit-ID_HERDS_01-11-18.csv")
+herdCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+colnames(herdCoords)[c(3,4)] <- c("X", "Y")
+settFile <- paste0(path, "coordinates_unit-ID_SETTS_01-11-18.csv")
+settCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+colnames(settCoords)[c(3,4)] <- c("X", "Y")
+
+# Add the unit coordinate data into the simulation output table
+simOutput <- addUnitCoords(simOutput, herdCoords, settCoords)
+
 #### Examine the simulation output ####
 
 # Convert the date columns to dates
@@ -34,13 +45,23 @@ countSeeds(simOutput)
 # Plot the infection dynamics over time
 simulationDynamics <- plotInfectionDynamics(simOutput)
 
-# Examine spatial sampling
-something needs to be here!!!!
+# Plot the spatial locations of the herds and setts in simulation
+badgerCentre <- c(381761.7, 200964.3)
+plotSimulationLocations(herdCoords, settCoords, badgerCentre, expand=10000, inner=3500)
+
+# Plot the spatial locations of the recorded herds and setts
+plotSpatialLocations(simOutput, badgerCentre, main="Recorded herd and sett locations", expand=10000, inner=3500)
+
+# Plot the spatial locations of the sampled herds and setts
+sampled <- simOutput[is.na(simOutput$DetectionDate) == FALSE, ]
+plotSpatialLocations(sampled, badgerCentre, main="Sampled herd and sett locations", expand=10000, inner=3500)
 
 #### Build the sequences ####
 
 # Add a nucleotide sequence, based on the SNPs, for each individual
 simOutput <- generateSequences(simOutput)
+
+# Calculate the distance to the badger centre
 
 #### Build BASTA xml file ####
 
@@ -49,6 +70,246 @@ simOutput <- generateSequences(simOutput)
 #############
 # FUNCTIONS #
 #############
+
+plotSimulationLocations <- function(herdCoords, settCoords, badgerCentre, expand=10000, inner=3500){
+
+  # Calculate the range of the X and Y axes
+  xRange <- c(badgerCentre[1] - expand, badgerCentre[1] + expand)
+  yRange <- c(badgerCentre[2] - expand, badgerCentre[2] + expand)
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, bty="n", asp=1, xlim=xRange, ylim=yRange, 
+       xlab="", xaxt="n", ylab="", yaxt="n", 
+       main="Simulated herd and sett locations")
+  
+  # Add central point
+  points(x=badgerCentre[1], y=badgerCentre[2], pch=15, cex=2)
+  
+  # Add the herds
+  points(x=herdCoords$X, y=herdCoords$Y, pch=17, col=rgb(0,0,1, 0.5))
+  
+  # Add the setts
+  points(x=settCoords$X, y=settCoords$Y, pch=19, col=rgb(1,0,0, 0.5))
+  
+  # Add inner and outer circles
+  draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=inner,
+              border="black")
+  draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=expand,
+              border="black")
+  text(x=badgerCentre[1], y=(badgerCentre[2] - inner) - 400,
+       labels=paste("Inner: ", paste(inner / 1000, "km radius", sep="")))
+  text(x=badgerCentre[1], y=(badgerCentre[2] - expand) - 400,
+       labels=paste("Outer: ", paste(expand / 1000, "km radius", sep="")))
+  
+  # Add legend
+  legend("bottomright", legend=c("Sett", "Herd"), pch=c(19, 17), col=c("red", "blue"),
+         text.col=c("red", "blue"), bty="n")
+}
+
+addUnitCoords <- function(simOutput, herdCoords, settCoords){
+  
+  # Note the coordinates of each herd and sett - convert to list
+  herdUnitCoords <- noteCoordinates(herdCoords)
+  settUnitCoords <- noteCoordinates(settCoords)
+  
+  # Add empty columns into the simulation output to store the unit coordinates
+  simOutput$X <- NA
+  simOutput$Y <- NA
+  
+  # Examine the simulation output
+  for(row in seq_len(nrow(simOutput))){
+    
+    # Get the unit ID of the last unit animal inhabited
+    unit <- strsplit(simOutput[row, "unit_ID"], split=";")[[1]]
+    unit <- unit[length(unit)]
+    
+    # Check if cow and unit coordinates exist
+    if(simOutput[row, "isCow"] && is.null(herdUnitCoords[[unit]]) == FALSE){
+      simOutput[row, c("X", "Y")] <- herdUnitCoords[[unit]]
+    }else if(is.null(settUnitCoords[[unit]]) == FALSE){
+      simOutput[row, c("X", "Y")] <- settUnitCoords[[unit]]
+    }else{
+      cat(paste0("Coordinate data not found for unit: ", unit, " in row: ", row, " ID: ", simOutput[row, "animal_ID"], "\n"))
+    }
+  }
+  
+  return(simOutput)
+}
+
+noteCoordinates <- function(coords){
+  
+  # Initialise a list to store the coordinates associated with each unit
+  unitCoords <- list()
+  
+  # Examine the coords
+  for(row in seq_len(nrow(coords))){
+    
+    unitCoords[[as.character(coords[row, "ID"])]] <- c(coords[row, "X"], coords[row, "Y"])
+  }
+  
+  return(unitCoords)
+}
+
+countUnits <- function(simOutput){
+  
+  # Initialise two lists - one for the badgers and one for the cattle
+  counts <- list("SettCounts"=list(), "HerdCounts"=list())
+  
+  # Examine the simulation output
+  for(row in seq_len(nrow(simOutput))){
+    
+    # Skip animal if no location data available
+    if(is.na(simOutput[row, "X"])){
+      next
+    }
+    
+    # Build a key using the X and Y coordinates
+    key <- paste0(simOutput[row, "X"], ":", simOutput[row, "Y"])
+    
+    # Check if cow
+    if(simOutput[row, "isCow"]){
+      
+      # Check if key exists
+      if(is.null(counts[["HerdCounts"]][[key]])){
+        counts[["HerdCounts"]][[key]] <- 1
+      }else{
+        counts[["HerdCounts"]][[key]] <- counts[["HerdCounts"]][[key]] + 1
+      }
+      
+    }else{
+      
+      # Check if key exists
+      if(is.null(counts[["SettCounts"]][[key]])){
+        counts[["SettCounts"]][[key]] <- 1
+      }else{
+        counts[["SettCounts"]][[key]] <- counts[["SettCounts"]][[key]] + 1
+      }
+    }
+  }
+  
+  return(counts)
+}
+
+getRangeOfCounts <- function(counts){
+  
+  # Initialise a vector to store the maximum counts for the setts and herds
+  rangeOfCounts <- c(-Inf, Inf, -Inf, Inf)
+  
+  # Examine the sett counts
+  for(key in names(counts$SettCounts)){
+    
+    # Check for new maximum
+    if(counts$SettCounts[[key]] > rangeOfCounts[1]){
+      rangeOfCounts[1] <- counts$SettCounts[[key]]
+    }
+    
+    # Check for new minimum
+    if(counts$SettCounts[[key]] < rangeOfCounts[2]){
+      rangeOfCounts[2] <- counts$SettCounts[[key]]
+    }
+  }
+  
+  # Examine the herd counts
+  for(key in names(counts$HerdCounts)){
+    
+    # Check for new maximum
+    if(counts$HerdCounts[[key]] > rangeOfCounts[3]){
+      rangeOfCounts[3] <- counts$HerdCounts[[key]]
+    }
+    
+    # Check for new minimum
+    if(counts$HerdCounts[[key]] < rangeOfCounts[4]){
+      rangeOfCounts[4] <- counts$HerdCounts[[key]]
+    }
+  }
+  
+  return(rangeOfCounts)
+}
+
+plotSpatialLocations <- function(simOutput, badgerCentre, main, expand=10000, inner=3500){
+  
+  # Count the numbers of animals associated with each unit ID
+  counts <- countUnits(simOutput)
+  
+  # Get the range of counts for the setts and herds
+  rangeOfCounts <- getRangeOfCounts(counts)
+  
+  # Calculate the range of the X and Y axes
+  xRange <- c(badgerCentre[1] - expand, badgerCentre[1] + expand)
+  yRange <- c(badgerCentre[2] - expand, badgerCentre[2] + expand)
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, bty="n", asp=1, xlim=xRange, ylim=yRange, 
+       xlab="", xaxt="n", ylab="", yaxt="n", main=main)
+  
+  # Add central point
+  points(x=badgerCentre[1], y=badgerCentre[2], pch=15, cex=2)
+  
+  # Add inner and outer circles
+  draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=inner,
+              border="black")
+  draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=expand,
+              border="black")
+  text(x=badgerCentre[1], y=(badgerCentre[2] - inner) - 400,
+       labels=paste("Inner: ", paste(inner / 1000, "km radius", sep="")))
+  text(x=badgerCentre[1], y=(badgerCentre[2] - expand) - 400,
+       labels=paste("Outer: ", paste(expand / 1000, "km radius", sep="")))
+  
+  # Add the herds
+  for(key in names(counts$HerdCounts)){
+    
+    coords <- as.numeric(strsplit(key, split=":")[[1]])
+    
+    points(x=coords[1], y=coords[2], pch=17, col=rgb(0,0,1, 0.5),
+           cex=(counts$HerdCounts[[key]] / max(rangeOfCounts)) * 10)
+  }
+  
+  # Add the setts
+  for(key in names(counts$SettCounts)){
+    coords <- as.numeric(strsplit(key, split=":")[[1]])
+    
+    points(x=coords[1], y=coords[2], pch=19, col=rgb(1,0,0, 0.5),
+           cex=(counts$SettCounts[[key]] / max(rangeOfCounts)) * 10)
+  }
+  
+  # Get the axis limits
+  axisLimits <- par("usr") 
+  
+  # Define positions for legend
+  yLength <- axisLimits[4] - axisLimits[3]
+  xLength <- axisLimits[2] - axisLimits[1]
+  positions <- seq(from=axisLimits[3], to=axisLimits[3] + 0.8* yLength, 
+                   by=(0.8*yLength)/5)
+  counts <- seq(from=min(rangeOfCounts), to=max(rangeOfCounts), 
+                by=(max(rangeOfCounts) - min(rangeOfCounts))/5)
+  for(i in seq_along(positions)){
+    
+    yPosition <- positions[i]
+    count <- counts[i]
+    points(x=axisLimits[1] + 0.9*xLength, y=yPosition, pch=19, 
+           cex=(count / max(rangeOfCounts)) * 10, col=rgb(1,0,0, 0.5), xpd=TRUE)
+    text(x=axisLimits[1] + 0.9*xLength, y=yPosition, labels=round(count, digits=0))
+    points(x=axisLimits[1] + 0.1*xLength, y=yPosition, pch=17, 
+           cex=(count / max(rangeOfCounts)) * 10, col=rgb(0,0,1, 0.5), xpd=TRUE)
+    text(x=axisLimits[1] + 0.1*xLength, y=yPosition, labels=round(count, digits=0))
+  }
+  text(x=c(axisLimits[1] + 0.1*xLength, axisLimits[1] + 0.9*xLength),
+       y=c(axisLimits[3] + 0.95* yLength, axisLimits[3] + 0.95* yLength),
+       labels=c("Number/herd", "Number/sett"),
+       col=c("blue", "red"), xpd=TRUE)
+
+}
+
+calculateCentralLocation <- function(herdXs, herdYs, settXs, settYs){
+  
+  # Calculate the centre point
+  centreCoords <- c(
+    mean(c(herdXs, settXs)),
+    mean(c(herdYs, settYs))
+  )
+  
+  return(centreCoords)
+}
 
 plotInfectionDynamics <- function(simOutput){
   
@@ -132,7 +393,7 @@ countDaysInfectedAndSampled <- function(simulationDynamics, infectionDate, sampl
     simulationDynamics[end:nrow(simulationDynamics), "NumberBadgersSampled"] <- 
       simulationDynamics[end:nrow(simulationDynamics), "NumberBadgersSampled"] + 1
   }
-
+  
   return(simulationDynamics)
 }
 
@@ -190,7 +451,7 @@ summariseSimulationOutput <- function(simOutput){
   # Report the sampling date range
   cat(paste0("Sampled badgers available from: ", min(sampledBadgers$DateSampleTaken), " to ", max(sampledBadgers$DateSampleTaken),
              "\nSampled cattle available from: ", min(sampledCattle$DateSampleTaken), " to ", max(sampledCattle$DateSampleTaken), "\n"))
-
+  
   # Count the number of animals in each infection status category
   statusCounts <- countAnimalStatuses(badgers, cattle, sampledBadgers, sampledCattle)
 }

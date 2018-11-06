@@ -26,8 +26,7 @@ coords <- cbind(Easting = as.numeric(as.character(spatialInfo$Mapx)),
                 Northing = as.numeric(as.character(spatialInfo$Mapy)))
 
 # Create a SpatialPointsDataFrame
-spatialDF <- SpatialPointsDataFrame(coords, data=data.frame(spatialInfo$StrainId,
-                                                            spatialInfo$ID),
+spatialDF <- SpatialPoints(coords, data=data.frame(spatialInfo$StrainId,spatialInfo$ID),
                                     proj4string = CRS(ukGrid))
 
 # Plot the Eastings and Northings
@@ -50,3 +49,26 @@ write.csv(table, file=file, quote=FALSE, row.names=FALSE)
 
 plot(table$Latitude, table$Longitude)
 plot(table$Mapx, table$Mapy)
+
+#############
+# FUNCTIONS #
+#############
+
+convertLatLongsToEastingsNorthings <- function(latitudes, longitudes){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  ukGrid <- "+init=epsg:27700"
+  latLong <- "+init=epsg:4326"
+  
+  # Create a matrix to store the latitude and longitude points
+  coords <- cbind(Latitude = latitudes,
+                  Longitude = longitudes)
+  
+  # Create a SpatialPointsDataFrame that will store the coordinates
+  spatialDFLatLongs <- SpatialPoints(coords, proj4string = CRS(latLong))
+  
+  # Transform the latlongs to eastings and northings
+  spatialDFEastingsNorthings <- spTransform(spatialDFLatLongs, CRS(ukGrid))
+}
+
