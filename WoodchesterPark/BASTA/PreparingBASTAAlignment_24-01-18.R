@@ -758,7 +758,6 @@ addSequenceBlock <- function(fileLines, isolateInfo, sampleFromPrior){
     fileLines[length(fileLines) + 1] <- "\t<data id=\"alignment\" dataType=\"nucleotide\">"
   }
   
-  
   for(row in 1:nrow(isolateInfo)){
     
     name <- paste(isolateInfo[row, "IsolateID"], isolateInfo[row, "Deme"], sep="_")
@@ -1022,7 +1021,7 @@ getIsolatesFromTree <- function(treeFile){
 }
 
 euclideanDistance <- function(x1, y1, x2, y2){
-  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+  return(sqrt((x1 - x2)^2 + (y1 - y2)^2))
 }
 
 getIsolateIDFromFileNames <- function(fileNames){
