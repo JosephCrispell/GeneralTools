@@ -1062,6 +1062,10 @@ getRangeOfCounts <- function(counts){
 
 plotSpatialLocations <- function(simOutput, badgerCentre, main, expand=10000, inner=3500){
   
+  # Get and set the margins
+  currentMargins <- par("mar")
+  par(mar=c(1,1,4,1))
+  
   # Count the numbers of animals associated with each unit ID
   counts <- countUnits(simOutput)
   
@@ -1120,17 +1124,20 @@ plotSpatialLocations <- function(simOutput, badgerCentre, main, expand=10000, in
     
     yPosition <- positions[i]
     count <- counts[i]
-    points(x=axisLimits[1] + 0.9*xLength, y=yPosition, pch=19, 
+    points(x=axisLimits[1] + 0.95*xLength, y=yPosition, pch=19, 
            cex=(count / max(rangeOfCounts)) * 10, col=rgb(1,0,0, 0.5), xpd=TRUE)
-    text(x=axisLimits[1] + 0.9*xLength, y=yPosition, labels=round(count, digits=0))
-    points(x=axisLimits[1] + 0.1*xLength, y=yPosition, pch=17, 
+    text(x=axisLimits[1] + 0.95*xLength, y=yPosition, labels=round(count, digits=0))
+    points(x=axisLimits[1] + 0.05*xLength, y=yPosition, pch=17, 
            cex=(count / max(rangeOfCounts)) * 10, col=rgb(0,0,1, 0.5), xpd=TRUE)
-    text(x=axisLimits[1] + 0.1*xLength, y=yPosition, labels=round(count, digits=0))
+    text(x=axisLimits[1] + 0.05*xLength, y=yPosition, labels=round(count, digits=0))
   }
-  text(x=c(axisLimits[1] + 0.1*xLength, axisLimits[1] + 0.9*xLength),
+  text(x=c(axisLimits[1] + 0.05*xLength, axisLimits[1] + 0.95*xLength),
        y=c(axisLimits[3] + 0.95* yLength, axisLimits[3] + 0.95* yLength),
        labels=c("Number/herd", "Number/sett"),
        col=c("blue", "red"), xpd=TRUE)
+  
+  # Reset the margins
+  par(mar=currentMargins)
 
 }
 
@@ -1320,7 +1327,7 @@ countAnimalStatuses <- function(badgers, cattle, sampledBadgers, sampledCattle, 
                         "Cattle - I", "Sampled Cattle - I",
                         "Cattle - T", "Sampled Cattle - T"), 
             horiz=TRUE, las=1, xlab="Number recorded", main="Numbers of samples from infection categories",
-            col=c("red", "red", "blue", "blue", "blue", "blue", "blue", "blue"))
+            col=c("red", rgb(1,0,0, 0.5), "blue", rgb(0,0,1, 0.5), "blue", rgb(0,0,1, 0.5), "blue", rgb(0,0,1, 0.5)))
     par(mar=currentMar)
   }
   
