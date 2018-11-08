@@ -1,6 +1,4 @@
-#-------------------#
 #### Preparation ####
-#-------------------#
 
 # Packages
 library(ape) # Used by phangorn and ladderise() - orders nodes in phylogeny
@@ -8,6 +6,7 @@ library(phangorn) # Maximum likelihood phylogeny
 library(gplots)
 library(geiger) # For the tips function
 library(grid) # Used to plot lines between plot panels
+library(homoplasyFinder)
 
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/"
@@ -15,9 +14,7 @@ path <- "/home/josephcrispell/Desktop/Research/Homoplasy/TestingHomoplasyFinder/
 # Current date
 date <- format(Sys.Date(), "%d-%m-%y")
 
-#-----------------------#
 #### Run simulations ####
-#-----------------------#
 
 # Simulation settings
 popSize <- 200
@@ -115,8 +112,6 @@ for(nHomoplasies in nHomoplasiesValues){
   }
 }
 
-# Java error -> simulation 474 of 1000 inserting 12 homoplasies
-
 # Write the results to file
 file <- paste(path, "TestingHomoplasyFinder_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
@@ -207,10 +202,91 @@ for(replicate in 1:10){
   }
 }
 
-  
+#### Effect of recombination on identifying homoplasies ####
+
+# Simulation settings
+popSize <- 200
+mutationRate <- 0.5
+infectiousness <- 0.001
+samplingProb <- 0.05
+nToSample <- 100
+nHomoplasies <- 100
+
+# Set the working directory
+setwd(path)
+
+# Set the seed
+set.seed(975879574)
+    
+# Generate the sequences
+simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                  samplingProb, nToSample)
+    
+# Build the sequences based upon the mutation events
+sequences <- buildSequences(simulationOutput, nToSample)
+sequences[["REF"]] <- NULL
+    
+# Build phylogeny
+treeBefore <- buildPhylogeny(sequences, maximumLikelihood=TRUE)
+    
+# Insert homoplasies
+homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
+sequences <- homoplasyInsertionInfo[["sequences"]]
+    
+# Build FASTA
+fastaFile <- paste("example_", date, ".fasta", sep="")
+writeFasta(sequences, fastaFile)
+    
+# Build phylogeny
+treeFile <- paste("example_", date, ".tree", sep="")
+buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+    
+# Run HomoplasyFinder
+inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+                                                  fastaFile=paste0(path, fastaFile),
+                                                  path, verbose=FALSE)
+
+# Check how many homoplasies HomoplasyFinder found
+results <- checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
+
+# Add recombination events into the alignment
+
+# Rebuild the phylogeny
+
+# Run HomoplasyFinder
+
+# Check how many homoplasies HomoplasyFinder found
+
+
+
+
 #############
 # FUNCTIONS #
 #############
+
+simulateRecombination <- function(sequences, segmentSize, nEvents){
+  
+}
+
+checkHomoplasyFinderOutput <- function(inconsistentPositions, homoplasyInsertionInfo){
+  
+  # Get a vector of positions that homoplasies were inserted at
+  homoplasyPositions <- c()
+  for(key in names(homoplasyInsertionInfo)){
+    
+    if(key %in% c("sequences", "tree")){
+      next
+    }
+    
+    homoplasyPositions[length(homoplasyPositions) + 1] <- homoplasyInsertionInfo[[key]]$position
+  }
+  
+  # Count how many were found by HomoplasyFinder
+  nFound <- length(which(homoplasyPositions %in% inconsistentPositions))
+  nNonInsertedHomoplasies <- length(which(inconsistentPositions %in% homoplasyPositions == FALSE))
+
+  return(c(nFound, nNonInsertedHomoplasies))
+}
 
 plotProportionOfSimulationsWithValueInColumn <- function(nHomoplasiesValues, nSimulations, results, column, colours, title, legendTitle,
                                                          plotLabel, colourAlpha, spline=TRUE){
