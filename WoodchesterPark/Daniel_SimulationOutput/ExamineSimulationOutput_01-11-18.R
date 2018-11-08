@@ -1249,8 +1249,8 @@ indexArrayOfDates <- function(array){
 
 countSeeds <- function(simOutput){
   
-  nBadgerSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Badger_seed") == TRUE))
-  nCattleSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Cow_seed") == TRUE))
+  nBadgerSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Badger-seed") == TRUE))
+  nCattleSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Cow-seed") == TRUE))
   
   cat(paste("Number of badger seeds =", nBadgerSeeds, 
             "\nNumber of cattle seeds =", nCattleSeeds, "\n"))

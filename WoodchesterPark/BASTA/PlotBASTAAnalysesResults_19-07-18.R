@@ -68,6 +68,7 @@ migrationRateEstimates <- summarisePosteriorLogTables(path, logTables, code=2,
 #################################################################################################
 
 # Read in the transition counts for all the trees
+#   Counts created by Java: MyWork:examineBASTAPosterior:CountTransitions.java
 file <- paste0(path, "TransitionCounts_", date, ".txt")
 transitionCounts <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 
