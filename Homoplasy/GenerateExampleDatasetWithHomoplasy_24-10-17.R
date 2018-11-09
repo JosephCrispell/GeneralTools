@@ -80,7 +80,6 @@ for(nHomoplasies in nHomoplasiesValues){
     treeFile <- paste("example-AFTER_", date, ".tree", sep="")
     buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
     
-    #######
     ## Run HomoplasyFinder using the TRUE tree
     system(paste("java -jar HomoplasyFinder.jar", 0, fastaFile, trueTreeFile, sep=" "),
            ignore.stdout=FALSE)
@@ -92,7 +91,6 @@ for(nHomoplasies in nHomoplasiesValues){
     results[row, c("NFoundTrue","NIncorrectTrue")] <- 
       reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
     
-    #######
     ## Run HomoplasyFinder using the TRUE tree
     system(paste("java -jar HomoplasyFinder.jar", 0, fastaFile, treeFile, sep=" "),
            ignore.stdout=FALSE)
@@ -104,7 +102,6 @@ for(nHomoplasies in nHomoplasiesValues){
     results[row, c("NFoundAfter","NIncorrectAfter")] <- 
       reportHowManyHomoplasiesWereFound(homoplasyFinderOutput, homoplasyInsertionInfo)
     
-    #######
     ## Save progress - keeps crashing!!!
     if(i == nSimulations){
       save.image(file=paste("testHomoplasyFinder_", date, ".RData", sep=""))
@@ -227,19 +224,20 @@ sequences <- buildSequences(simulationOutput, nToSample)
 sequences[["REF"]] <- NULL
     
 # Build phylogeny
-treeBefore <- buildPhylogeny(sequences, maximumLikelihood=TRUE)
+treeFile <- paste("example_", date, ".tree", sep="")
+treeOriginal <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
     
 # Insert homoplasies
 homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
 sequences <- homoplasyInsertionInfo[["sequences"]]
     
 # Build FASTA
-fastaFile <- paste("example_", date, ".fasta", sep="")
+fastaFile <- paste("example_AfterHomoplasies_", date, ".fasta", sep="")
 writeFasta(sequences, fastaFile)
     
 # Build phylogeny
-treeFile <- paste("example_", date, ".tree", sep="")
-buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+treeFile <- paste("example_AfterHomoplasies_", date, ".tree", sep="")
+treeAfterHomoplasies <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
     
 # Run HomoplasyFinder
 inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
@@ -250,22 +248,116 @@ inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile
 results <- checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
 
 # Add recombination events into the alignment
+recombinationEventInfo <- simulateRecombination(seuqneces, treeAfterHomoplasies, segmentSize=100, nEvents=10)
+
+# Build FASTA
+fastaFile <- paste("example_AfterRecombination_", date, ".fasta", sep="")
+writeFasta(sequences, fastaFile)
 
 # Rebuild the phylogeny
+treeFile <- paste("example_AfterRecombination_", date, ".tree", sep="")
+treeAfterRecombination <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
 
 # Run HomoplasyFinder
+inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+                                                  fastaFile=paste0(path, fastaFile),
+                                                  path, verbose=FALSE)
 
 # Check how many homoplasies HomoplasyFinder found
+results <- checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
 
 
 
 
-#############
-# FUNCTIONS #
-#############
 
-simulateRecombination <- function(sequences, segmentSize, nEvents){
+#### FUNCTIONS ####
+
+simulateRecombination <- function(sequences, tree, segmentSize, nEvents){
   
+  # Get the isolates associated with each node in the phylogeny
+  nodes <- getNodes(tree)
+  
+  # Initialise a list to store the recombination event information
+  output <- list()
+  
+  # Create the recombination events
+  for(i in 1:nEvents){
+    
+    # Initialise variables
+    source <- NULL
+    sink <- NULL
+    
+    # Select a pair of nodes - note that they can't be nested within one another
+    while(is.null(source) == TRUE || is.null(sink) == TRUE){
+      
+      # Randomly select a node to act as source
+      source <- sample(names(nodes), size=1)
+      
+      # Randomly select a node to act as a sink - as long as it isn't on the path to the root
+      sink <- randomlySelectSinkNode(nodes, source)
+    }
+    
+    # Randomly choose region on sequences to recombine
+    start <- sample(1:(length(sequences[[1]]) - segmentSize), size=1)
+    end <- start + segmentSize - 1
+    
+    # Get the consensus sequence from the source
+    sourceConsensus <- getConsensusSequenceForSourceNode(nodes[[source]], tree, sequences, start, end)
+    
+    # Send consensus to the sink individuals
+    for(sinkTip in nodes[[sink]]){
+      sequences[[sinkTip]][start:end] <- sourceConsensus
+    }
+    
+    # Record the information about the recombination event
+    output[[as.character(i)]] <- list(
+      "sourceNode" = source,
+      "sinkNode" = sink,
+      "start" = start,
+      "end" = end,
+      "allele" = allele,
+      "sourceIsolates"=nodes[[source]],
+      "sinkIsolates"=nodes[[sink]])
+  }
+    
+  # Add the sequences to the output
+  output[["sequences"]] <- sequences
+
+  return(output)
+}
+
+getConsensusSequenceForSourceNode <- function(tipIDs, tree, sequences, start, end){
+  
+  # Note the indices of the nucleotides
+  nucleotideIndices <- list("A"=1, "C"=2, "G"=3, "T"=4)
+  
+  # Initialise an array to store the consensus sequence for the region of interest
+  consensus <- sequences[[tipIDs[1]]][start:end]
+  
+  # If there is more than one tip then find most frequent allele at each position
+  if(length(tipIDs) > 1){
+    
+    # Examine each position in the region of interest
+    for(position in start:end){
+      
+      # Initialise an array to store the allele counts
+      counts <- c(0,0,0,0)
+      
+      # Examine each of the tip sequences
+      for(id in tipIDs){
+        counts[nucleotideIndices[[sequences[[id]][position]]]] <- 
+          counts[nucleotideIndices[[sequences[[id]][position]]]] + 1
+      }
+      
+      # Identify the maximum
+      maxCountIndex <- sample(which(counts == max(counts)), size=1)
+      
+      # Assign the allele
+      consensus[(position - start) + 1] <- names(nucleotideIndices)[maxCountIndex]
+    }
+  }
+  
+  return(consensus)
 }
 
 checkHomoplasyFinderOutput <- function(inconsistentPositions, homoplasyInsertionInfo){
