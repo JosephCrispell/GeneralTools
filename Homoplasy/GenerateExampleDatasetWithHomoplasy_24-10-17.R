@@ -140,15 +140,15 @@ results$NMissed <- results$NHomoplasies - results$NFoundAfter
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
                                              results=results, 
                                              column="NMissed", colours=colours, 
-                                             title="Number inserted homoplasies NOT found by HomoplasyFinder",
-                                             legendTitle="N. NOT present",
+                                             title="Number inserted homoplasies not present",
+                                             legendTitle="N. not present",
                                              plotLabel="A.", colourAlpha=0.75, spline=FALSE)
 
 ### Plot the number non-inserted homoplasies found by homoplasyFinder
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
                                              results=results, 
                                              column="NIncorrectAfter", colours=colours, 
-                                             title="Number non-inserted homoplasies found by HomoplasyFinder",
+                                             title="Number non-inserted homoplasies present",
                                              legendTitle="N. present",
                                              plotLabel="B.", colourAlpha=0.75, spline=FALSE)
 
@@ -208,22 +208,22 @@ infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 100
 nHomoplasies <- 100
-nSimulations <- 100
-nEventsValues <- seq(from=0, to=100, by=10)
+nSimulations <- 1000
+nEventsValues <- c(0, 1, 10, 100, 1000, 10000)
 
 # Initialise a table to store the results of HomoplasyFinder on simulated data
-results <- data.frame("NFound"=rep(NA, nSimulations * length(nEventValues)), 
-                      "NNonInserted"=rep(NA, nSimulations * length(nEventValues)),
-                      "NFoundAfterRecombination"=rep(NA, nSimulations * length(nEventValues)), 
-                      "NNonInsertedAfterRecombination"=rep(NA, nSimulations * length(nEventValues)),
-                      "Seed"=rep(NA, nSimulations * length(nEventValues)),
-                      "NEvents"=rep(NA, nSimulations * length(nEventValues)))
+results <- data.frame("NFound"=rep(NA, nSimulations * length(nEventsValues)), 
+                      "NNonInserted"=rep(NA, nSimulations * length(nEventsValues)),
+                      "NFoundAfterRecombination"=rep(NA, nSimulations * length(nEventsValues)), 
+                      "NNonInsertedAfterRecombination"=rep(NA, nSimulations * length(nEventsValues)),
+                      "Seed"=rep(NA, nSimulations * length(nEventsValues)),
+                      "NEvents"=rep(NA, nSimulations * length(nEventsValues)))
 
 # Set the working directory
 setwd(path)
 
 # Get the seeds for each simulation
-seeds <- sample(1:100000000, size=nSimulations, replace=FALSE)
+seeds <- sample(1:100000000, size=nSimulations*length(nEventsValues), replace=FALSE)
 
 # Run the simulations
 row <- 0
@@ -231,74 +231,77 @@ for(nEvents in nEventsValues){
   for(i in seq_len(nSimulations)){
     row <- row + 1
     
+    # Note the number of recbomination events
+    results[row, "NEvents"] <- nEvents
+    
     # Get the current date
     date <- format(Sys.Date(), "%d-%m-%y")
-    
+
     # Progress
     cat(paste0("\rRunning simulations for ", nEvents, " recombination events (", i, " of ", nSimulations, ")"))
-    
+
     # Get the current seed
-    results[i, "Seed"] <- seeds[row]
+    results[row, "Seed"] <- seeds[row]
     set.seed(results[row, "Seed"])
-    
+
     # Set the seed
     set.seed(results[row, "Seed"])
-    
+
     # Generate the sequences
     simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
                                       samplingProb, nToSample)
-    
+
     # Build the sequences based upon the mutation events
     sequences <- buildSequences(simulationOutput, nToSample)
     sequences[["REF"]] <- NULL
-    
+
     # Build phylogeny
     treeFile <- paste("example_", date, ".tree", sep="")
     treeOriginal <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-    
+
     # Insert homoplasies
     homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeOriginal)
     sequences <- homoplasyInsertionInfo[["sequences"]]
-    
+
     # Build FASTA
     fastaFile <- paste("example_AfterHomoplasies_", date, ".fasta", sep="")
     writeFasta(sequences, fastaFile)
-    
+
     # Build phylogeny
     treeFile <- paste("example_AfterHomoplasies_", date, ".tree", sep="")
     treeAfterHomoplasies <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-    
+
     # Run HomoplasyFinder
-    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile),
                                                       fastaFile=paste0(path, fastaFile),
                                                       path, verbose=FALSE)
-    
+
     # Check how many homoplasies HomoplasyFinder found
-    results[row, c("NFound", "NNonInserted")] <- checkHomoplasyFinderOutput(inconsistentPositions, 
+    results[row, c("NFound", "NNonInserted")] <- checkHomoplasyFinderOutput(inconsistentPositions,
                                                                           homoplasyInsertionInfo)
-    
+
     # Add recombination events into the alignment
-    recombinationEventInfo <- simulateRecombination(sequences, treeAfterHomoplasies, segmentSize=100, nEvents=10)
+    recombinationEventInfo <- simulateRecombination(sequences, treeAfterHomoplasies, segmentSize=100, nEvents=nEvents)
     sequences <- recombinationEventInfo[["sequences"]]
-    
+
     # Build FASTA
     fastaFile <- paste("example_AfterRecombination_", date, ".fasta", sep="")
     writeFasta(sequences, fastaFile)
-    
+
     # Rebuild the phylogeny
     treeFile <- paste("example_AfterRecombination_", date, ".tree", sep="")
     treeAfterRecombination <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-    
-    
+
+
     # Run HomoplasyFinder
-    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile),
                                                       fastaFile=paste0(path, fastaFile),
                                                       path, verbose=FALSE)
-    
+
     # Check how many homoplasies HomoplasyFinder found
-    results[row, c("NFoundAfterRecombination", "NNonInsertedAfterRecombination")] <- 
+    results[row, c("NFoundAfterRecombination", "NNonInsertedAfterRecombination")] <-
       checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
-    
+
     ## Save progress - keeps crashing!!!
     if(i == nSimulations){
       save.image(file=paste("HomoplasyFinderTesting_recombination_", date, ".RData", sep=""))
@@ -306,10 +309,73 @@ for(nEvents in nEventsValues){
   }
 }
     
+# Write the results to file
+file <- paste(path, "TestingHomoplasyFinder_Recombination_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              nEventsValues[1], "-", nEventsValues[length(nEventsValues)], "_", nSimulations, "_", date, ".csv", sep="")
+write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
-boxplot(results$NFound, results$NFoundAfterRecombination)
+# Plot the results
+plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), ylim=c(0,1), bty="n", las=1, 
+     ylab="Proportion 100 homoplasies found", xaxt="n", xlab="Number of simulated recombination events",
+     main="The effect of recombination on identifying simulated homoplasies")
 
-boxplot(results$NNonInserted, results$NNonInsertedAfterRecombination)
+for(i in seq_along(nEventsValues)){
+  
+  # Get a subset of the results
+  subset <- results[results$NEvents == nEventsValues[i], ]
+  
+  # Plot the points from BEFORE
+  points(x=rep(i-0.15, nrow(subset)), y=subset$NFound / nHomoplasies,
+         pch=19, col=rgb(1,0,0, 0.1), cex=0.5)
+  bounds <- quantile(subset$NFound / nHomoplasies, probs=c(0.025, 0.975))
+  points(x=c(i-0.15, i-0.15), y=c(bounds[1], bounds[2]), type="l", col="red", lwd=3)
+  points(x=c(i-0.1, i-0.2), y=c(bounds[1], bounds[1]), type="l", col="red", lwd=3)
+  points(x=c(i-0.1, i-0.2), y=c(bounds[2], bounds[2]), type="l", col="red", lwd=3)
+  
+  # Plot the points from AFTER
+  points(x=rep(i+0.15, nrow(subset)), y=subset$NFoundAfterRecombination / nHomoplasies,
+         pch=19, col=rgb(0,0,1, 0.1), cex=0.5)
+  bounds <- quantile(subset$NFoundAfterRecombination / nHomoplasies, probs=c(0.025, 0.975))
+  points(x=c(i+0.15, i+0.15), y=c(bounds[1], bounds[2]), type="l", col="blue", lwd=3)
+  points(x=c(i+0.1, i+0.2), y=c(bounds[1], bounds[1]), type="l", col="blue", lwd=3)
+  points(x=c(i+0.1, i+0.2), y=c(bounds[2], bounds[2]), type="l", col="blue", lwd=3)
+}
+
+# Add X axis labels
+axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
+
+
+plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), 
+     ylim=c(0,max(results$NNonInsertedAfterRecombination)), bty="n", las=1, 
+     ylab="Number non-inserted homoplasies", xaxt="n", xlab="Number of simulated recombination events",
+     main="The effect of recombination on identifying simulated homoplasies")
+
+for(i in seq_along(nEventsValues)){
+  
+  # Get a subset of the results
+  subset <- results[results$NEvents == nEventsValues[i], ]
+  
+  # Plot the points from BEFORE
+  points(x=rep(i-0.15, nrow(subset)), y=subset$NNonInserted,
+         pch=19, col=rgb(1,0,0, 0.1), cex=0.5)
+  bounds <- quantile(subset$NNonInserted, probs=c(0.025, 0.975))
+  points(x=c(i-0.15, i-0.15), y=c(bounds[1], bounds[2]), type="l", col="red", lwd=3)
+  points(x=c(i-0.1, i-0.2), y=c(bounds[1], bounds[1]), type="l", col="red", lwd=3)
+  points(x=c(i-0.1, i-0.2), y=c(bounds[2], bounds[2]), type="l", col="red", lwd=3)
+  
+  # Plot the points from AFTER
+  points(x=rep(i+0.15, nrow(subset)), y=subset$NNonInsertedAfterRecombination,
+         pch=19, col=rgb(0,0,1, 0.1), cex=0.5)
+  bounds <- quantile(subset$NNonInsertedAfterRecombination, probs=c(0.025, 0.975))
+  points(x=c(i+0.15, i+0.15), y=c(bounds[1], bounds[2]), type="l", col="blue", lwd=3)
+  points(x=c(i+0.1, i+0.2), y=c(bounds[1], bounds[1]), type="l", col="blue", lwd=3)
+  points(x=c(i+0.1, i+0.2), y=c(bounds[2], bounds[2]), type="l", col="blue", lwd=3)
+}
+
+# Add X axis labels
+axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
+
 
 
 
@@ -326,7 +392,7 @@ simulateRecombination <- function(sequences, tree, segmentSize, nEvents){
   output <- list()
   
   # Create the recombination events
-  for(i in 1:nEvents){
+  for(i in seq_len(nEvents)){
     
     # Initialise variables
     source <- NULL

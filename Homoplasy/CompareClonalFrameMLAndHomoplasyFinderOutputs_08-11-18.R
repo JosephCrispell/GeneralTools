@@ -19,6 +19,7 @@ coresites_list <- paste0(path, "Saureus_core-sites.txt")
 treefile <- paste(prefix,".labelled_tree.newick",sep="")
 xreffile <- paste(prefix,".position_cross_reference.txt",sep="")
 ML_seqfile <- paste(prefix,".ML_sequence.fasta",sep="")
+istatefile <- paste(prefix,".importation_status.txt",sep="")
 
 # Get a vector of the core sites
 coresites <- scan(coresites_list)
@@ -28,6 +29,9 @@ xref <- scan(xreffile,sep=",")
 
 # Count the patterns in the output sequences on the phylogeny
 n.mut <- countPatternsOnPhylogeny(ML_seqfile, treefile)
+
+# Read in the recombination information
+recombinationRegions <- read.table(istatefile, header=TRUE,sep="\t", stringsAsFactors=FALSE)
 
 #### Compare ClonalFrameML and HomoplasyFinder outputs ####
 
@@ -40,6 +44,7 @@ n.mut <- countPatternsOnPhylogeny(ML_seqfile, treefile)
 
 # Compare the ClonalFrameML and HomoplasyFinder outputs
 output <- compareClonalFrameMLAndHomoplasyFinderOutputs(n.mut, homoplasyFinderResults)
+homoplasyFinderResults$FoundByClonalFrameML <- output$HomoplasyFinderPositionsFound
 
 # Summarise the comparison
 table(output$HomoplasyFinderPositionsFound)
@@ -50,7 +55,41 @@ table(n.mut > 1)
 # 19810/34364 (~58%) of homoplasies identified by HomoplasyFinder were identified by ClonalFrameML
 #       Possibly some of these homoplasies are actually recombination events that ClonalFrameML has discounted
 
+# Check how many of the homoplasies identified by HomoplasyFinder were within recombination regions
+homoplasyFinderResults <- checkIfHomoplasiesAreInRecombinationRegions(homoplasyFinderResults, recombinationRegions)
+
+subset <- homoplasyFinderResults[homoplasyFinderResults$FoundByClonalFrameML == FALSE, ]
+table(subset$InRecombinationRegion)
+
+subset <- homoplasyFinderResults[homoplasyFinderResults$FoundByClonalFrameML == TRUE, ]
+table(subset$InRecombinationRegion)
+
 #### FUNCTIONS ####
+
+checkIfHomoplasiesAreInRecombinationRegions <- function(homoplasyFinderResults, recombinationRegions){
+  
+  # Add an additional column onto the homoplasyFinder results table to record whether within recombination region
+  homoplasyFinderResults$InRecombinationRegion <- FALSE
+  
+  # Examine each homoplasy
+  for(row in seq_len(nrow(homoplasyFinderResults))){
+    
+    # Progress
+    cat(paste0("\rExamining ", row, " of ", nrow(homoplasyFinderResults), " homoplasies"))
+    
+    # Examine each recombination region
+    for(i in seq_len(nrow(recombinationRegions))){
+      
+      if(homoplasyFinderResults[row, "Position"] > recombinationRegions[i, "Beg"] &&
+         homoplasyFinderResults[row, "Position"] < recombinationRegions[i, "End"]){
+        homoplasyFinderResults[row, "InRecombinationRegion"] <- TRUE
+        break
+      }
+    }
+  }
+  
+  return(homoplasyFinderResults)
+}
 
 compareClonalFrameMLAndHomoplasyFinderOutputs <- function(n.mut, homoplasyFinderResults){
   
