@@ -208,63 +208,108 @@ infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 100
 nHomoplasies <- 100
+nSimulations <- 100
+nEventsValues <- seq(from=0, to=100, by=10)
+
+# Initialise a table to store the results of HomoplasyFinder on simulated data
+results <- data.frame("NFound"=rep(NA, nSimulations * length(nEventValues)), 
+                      "NNonInserted"=rep(NA, nSimulations * length(nEventValues)),
+                      "NFoundAfterRecombination"=rep(NA, nSimulations * length(nEventValues)), 
+                      "NNonInsertedAfterRecombination"=rep(NA, nSimulations * length(nEventValues)),
+                      "Seed"=rep(NA, nSimulations * length(nEventValues)),
+                      "NEvents"=rep(NA, nSimulations * length(nEventValues)))
 
 # Set the working directory
 setwd(path)
 
-# Set the seed
-set.seed(975879574)
-    
-# Generate the sequences
-simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
-                                  samplingProb, nToSample)
-    
-# Build the sequences based upon the mutation events
-sequences <- buildSequences(simulationOutput, nToSample)
-sequences[["REF"]] <- NULL
-    
-# Build phylogeny
-treeFile <- paste("example_", date, ".tree", sep="")
-treeOriginal <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-    
-# Insert homoplasies
-homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
-sequences <- homoplasyInsertionInfo[["sequences"]]
-    
-# Build FASTA
-fastaFile <- paste("example_AfterHomoplasies_", date, ".fasta", sep="")
-writeFasta(sequences, fastaFile)
-    
-# Build phylogeny
-treeFile <- paste("example_AfterHomoplasies_", date, ".tree", sep="")
-treeAfterHomoplasies <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-    
-# Run HomoplasyFinder
-inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
-                                                  fastaFile=paste0(path, fastaFile),
-                                                  path, verbose=FALSE)
+# Get the seeds for each simulation
+seeds <- sample(1:100000000, size=nSimulations, replace=FALSE)
 
-# Check how many homoplasies HomoplasyFinder found
-results <- checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
+# Run the simulations
+row <- 0
+for(nEvents in nEventsValues){
+  for(i in seq_len(nSimulations)){
+    row <- row + 1
+    
+    # Get the current date
+    date <- format(Sys.Date(), "%d-%m-%y")
+    
+    # Progress
+    cat(paste0("\rRunning simulations for ", nEvents, " recombination events (", i, " of ", nSimulations, ")"))
+    
+    # Get the current seed
+    results[i, "Seed"] <- seeds[row]
+    set.seed(results[row, "Seed"])
+    
+    # Set the seed
+    set.seed(results[row, "Seed"])
+    
+    # Generate the sequences
+    simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                      samplingProb, nToSample)
+    
+    # Build the sequences based upon the mutation events
+    sequences <- buildSequences(simulationOutput, nToSample)
+    sequences[["REF"]] <- NULL
+    
+    # Build phylogeny
+    treeFile <- paste("example_", date, ".tree", sep="")
+    treeOriginal <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+    
+    # Insert homoplasies
+    homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeOriginal)
+    sequences <- homoplasyInsertionInfo[["sequences"]]
+    
+    # Build FASTA
+    fastaFile <- paste("example_AfterHomoplasies_", date, ".fasta", sep="")
+    writeFasta(sequences, fastaFile)
+    
+    # Build phylogeny
+    treeFile <- paste("example_AfterHomoplasies_", date, ".tree", sep="")
+    treeAfterHomoplasies <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+    
+    # Run HomoplasyFinder
+    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+                                                      fastaFile=paste0(path, fastaFile),
+                                                      path, verbose=FALSE)
+    
+    # Check how many homoplasies HomoplasyFinder found
+    results[row, c("NFound", "NNonInserted")] <- checkHomoplasyFinderOutput(inconsistentPositions, 
+                                                                          homoplasyInsertionInfo)
+    
+    # Add recombination events into the alignment
+    recombinationEventInfo <- simulateRecombination(sequences, treeAfterHomoplasies, segmentSize=100, nEvents=10)
+    sequences <- recombinationEventInfo[["sequences"]]
+    
+    # Build FASTA
+    fastaFile <- paste("example_AfterRecombination_", date, ".fasta", sep="")
+    writeFasta(sequences, fastaFile)
+    
+    # Rebuild the phylogeny
+    treeFile <- paste("example_AfterRecombination_", date, ".tree", sep="")
+    treeAfterRecombination <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+    
+    
+    # Run HomoplasyFinder
+    inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
+                                                      fastaFile=paste0(path, fastaFile),
+                                                      path, verbose=FALSE)
+    
+    # Check how many homoplasies HomoplasyFinder found
+    results[row, c("NFoundAfterRecombination", "NNonInsertedAfterRecombination")] <- 
+      checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
+    
+    ## Save progress - keeps crashing!!!
+    if(i == nSimulations){
+      save.image(file=paste("HomoplasyFinderTesting_recombination_", date, ".RData", sep=""))
+    }
+  }
+}
+    
 
-# Add recombination events into the alignment
-recombinationEventInfo <- simulateRecombination(seuqneces, treeAfterHomoplasies, segmentSize=100, nEvents=10)
+boxplot(results$NFound, results$NFoundAfterRecombination)
 
-# Build FASTA
-fastaFile <- paste("example_AfterRecombination_", date, ".fasta", sep="")
-writeFasta(sequences, fastaFile)
-
-# Rebuild the phylogeny
-treeFile <- paste("example_AfterRecombination_", date, ".tree", sep="")
-treeAfterRecombination <- buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
-
-# Run HomoplasyFinder
-inconsistentPositions <- runHomoplasyFinderInJava(treeFile=paste0(path, treeFile), 
-                                                  fastaFile=paste0(path, fastaFile),
-                                                  path, verbose=FALSE)
-
-# Check how many homoplasies HomoplasyFinder found
-results <- checkHomoplasyFinderOutput(inconsistentPositions, homoplasyInsertionInfo)
+boxplot(results$NNonInserted, results$NNonInsertedAfterRecombination)
 
 
 
@@ -315,7 +360,7 @@ simulateRecombination <- function(sequences, tree, segmentSize, nEvents){
       "sinkNode" = sink,
       "start" = start,
       "end" = end,
-      "allele" = allele,
+      "consensus"=sourceConsensus,
       "sourceIsolates"=nodes[[source]],
       "sinkIsolates"=nodes[[sink]])
   }
