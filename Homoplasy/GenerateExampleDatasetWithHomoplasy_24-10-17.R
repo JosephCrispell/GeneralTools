@@ -315,7 +315,15 @@ file <- paste(path, "TestingHomoplasyFinder_Recombination_", popSize, "-", mutat
               nEventsValues[1], "-", nEventsValues[length(nEventsValues)], "_", nSimulations, "_", date, ".csv", sep="")
 write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
-# Plot the results
+#### Plot the results ####
+
+# Open a pdf
+file <- paste(path, "TestingHomoplasyFinder_Recombination_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              nEventsValues[1], "-", nEventsValues[length(nEventsValues)], "_", nSimulations, "_", date, ".pdf", sep="")
+pdf(file)
+
+# Plot the proportion of inserted homoplasies found against the number of simulated recombination events
 plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), ylim=c(0,1), bty="n", las=1, 
      ylab="Proportion 100 homoplasies found", xaxt="n", xlab="Number of simulated recombination events",
      main="The effect of recombination on identifying simulated homoplasies")
@@ -345,7 +353,10 @@ for(i in seq_along(nEventsValues)){
 # Add X axis labels
 axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
 
+# Add a legend
+legend("bottomleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
 
+## Plot the number of non-inserted homoplasies found against the number of simulated recombination events
 plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), 
      ylim=c(0,max(results$NNonInsertedAfterRecombination)), bty="n", las=1, 
      ylab="Number non-inserted homoplasies", xaxt="n", xlab="Number of simulated recombination events",
@@ -376,10 +387,10 @@ for(i in seq_along(nEventsValues)){
 # Add X axis labels
 axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
 
+# Add a legend
+legend("bottomleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
 
-
-
-
+dev.off()
 
 #### FUNCTIONS ####
 
