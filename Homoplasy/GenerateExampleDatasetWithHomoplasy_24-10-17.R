@@ -388,7 +388,7 @@ for(i in seq_along(nEventsValues)){
 axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
 
 # Add a legend
-legend("bottomleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
+legend("topleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
 
 dev.off()
 
