@@ -3,6 +3,8 @@
 library(rgdal) # Converting from latlongs to eastings and northings -installation requires: sudo apt-get install gdal-bin proj-bin libgdal-dev libproj-dev
 library(plotrix) # For drawing circles
 library(lubridate) # Convert dates to decimal numbers
+library(ape) # Calculating genetic distances
+library(phangorn) # NJ() function
 
 #### Read in the simulation output ####
 
@@ -18,96 +20,137 @@ badgerCentre <- c(381761.7, 200964.3)
 # NOTE the INNER threshold distance
 inner <- 3500
 
-# Read in a simulation output table
-simFile <- paste0(path, "05-11-18/", "sim_14-01.csv")
-simOutput <- read.table(simFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
-simOutput$animal_ID <- gsub("_", "-", simOutput$animal_ID)
-
-
-# Read in the herd and sett coordinates - NOTE: latlongs are actually eastings and northings
-herdFile <- paste0(path, "coordinates_unit-ID_HERDS_01-11-18.csv")
-herdCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
-colnames(herdCoords)[c(3,4)] <- c("X", "Y")
-settFile <- paste0(path, "coordinates_unit-ID_SETTS_01-11-18.csv")
-settCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
-colnames(settCoords)[c(3,4)] <- c("X", "Y")
-
-# Add the unit coordinate data into the simulation output table
-simOutput <- addUnitCoords(simOutput, herdCoords, settCoords, badgerCentre)
-
-# Convert the date columns to dates
-simOutput$DateSampleTaken <- as.Date(simOutput$DateSampleTaken, format="%Y-%m-%d")
-simOutput$InfectionDate <- as.Date(simOutput$InfectionDate, format="%Y-%m-%d")
-simOutput$DetectionDate <- as.Date(simOutput$DetectionDate, format="%Y-%m-%d")
-simOutput$LastSnpGeneration <- as.Date(simOutput$LastSnpGeneration, format="%Y-%m-%d")
-
-#### Examine the simulation output ####
-
-# Open a pdf file
-plotsFile <- paste0(substr(simFile,1,nchar(simFile)-3), "pdf")
-pdf(plotsFile)
-
-# Set expand distance for plotting - 10km
-expand <- 10000
-
-# Briefly summarise the data
-summariseSimulationOutput(simOutput)
-
-# Plot the temporal sampling range
-plotTemporalRange(simOutput)
-
-# Check that the dates in the simulation output make sense
-checkSimulationOutputDates(simOutput)
-
-# Report how many seeds were used in simulation
-countSeeds(simOutput)
-
-# Plot the infection dynamics over time
-simulationDynamics <- plotInfectionDynamics(simOutput)
-
-# Plot the spatial locations of the herds and setts in simulation
-plotSimulationLocations(herdCoords, settCoords, badgerCentre, expand=expand, inner=inner)
-
-# Plot the spatial locations of the recorded herds and setts
-plotSpatialLocations(simOutput, badgerCentre, main="Recorded herd and sett locations", expand=expand, inner=inner)
-
-# Plot the spatial locations of the sampled herds and setts
-sampled <- simOutput[is.na(simOutput$DetectionDate) == FALSE, ]
-plotSpatialLocations(sampled, badgerCentre, main="Sampled herd and sett locations", expand=expand, inner=inner)
-
-#### Build the sequences ####
-
-# Add a nucleotide sequence, based on the SNPs, for each individual
-simOutput <- generateSequences(simOutput)
-
-#### Build BASTA xml file ####
-
-# Select the sequences
-selected <- randomlySelectBadgerAndCattleSamples(simOutput, nBadgers=50, nCattle=50, inner=inner)
-plotSpatialLocations(selected, badgerCentre, main="Selected herd and sett locations", expand=expand, inner=inner)
-plotTemporalRange(selected, main="Temporal range of selected samples")
-
-# Set parameters for the BASTA analysis
-equalOrVaryingPopSizes <- "varying"
-relaxedOrStrict <- "strict"
-demeStructures <- c("2Deme", "4Deme")
-chainLength <- 300000000
-
-# Examine each deme structure
-for(demeStructure in demeStructures){
+# Examine all of the simulation outputs
+for(fileName in c("sim_48-01.csv", "sim_48-02.csv", "sim_48-03.csv",
+                  "sim_52-01.csv", "sim_52-02.csv", "sim_52-03.csv",
+                  "sim_54-01.csv", "sim_54-04.csv", "sim_54-05.csv",
+                  "sim_57-01.csv", "sim_57-02.csv", "sim_57-03.csv",
+                  "sim_62-01.csv", "sim_62-02.csv", "sim_62-03.csv")){
   
-  # Assign the isolates to Demes
-  selected <- assignIsolatesToDemes(demeStructure, selected=selected, innerThreshold=inner,
-                                    badgerCentre=badgerCentre, verbose=TRUE)
+  # Note which file we working on
+  cat(paste0("\n\nExamining: ", fileName, "\n"))
   
-  # Build the XML file
-  buildXMLFile(demeStructure, equalOrVaryingPopSizes, path, date, selected, chainLength, relaxedOrStrict, 
-               sampleFromPrior=FALSE, estimateKappa=FALSE, addingConstantSites=FALSE)
+  # Create a directory specific to the current file
+  simulationDirectory <- paste0(path, substr(fileName,1,nchar(fileName)-4), "/")
+  dir.create(simulationDirectory)
   
+  # Read in a simulation output table
+  simFile <- paste0(path, "sequences/", fileName)
+  simOutput <- read.table(simFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  simOutput$animal_ID <- gsub("_", "-", simOutput$animal_ID)
+  
+  # REMOVE ROOT individual
+  simOutput <- simOutput[simOutput$animal_ID != "ROOT", ]
+  
+  # Read in the herd and sett coordinates - NOTE: latlongs are actually eastings and northings
+  herdFile <- paste0(path, "coordinates_unit-ID_HERDS_01-11-18.csv")
+  herdCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  colnames(herdCoords)[c(3,4)] <- c("X", "Y")
+  settFile <- paste0(path, "coordinates_unit-ID_SETTS_01-11-18.csv")
+  settCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  colnames(settCoords)[c(3,4)] <- c("X", "Y")
+  
+  # Add the unit coordinate data into the simulation output table
+  simOutput <- addUnitCoords(simOutput, herdCoords, settCoords, badgerCentre)
+  
+  # Convert the date columns to dates
+  simOutput$DateSampleTaken <- as.Date(simOutput$DateSampleTaken, format="%Y-%m-%d")
+  simOutput$InfectionDate <- as.Date(simOutput$InfectionDate, format="%Y-%m-%d")
+  simOutput$DetectionDate <- as.Date(simOutput$DetectionDate, format="%Y-%m-%d")
+  simOutput$LastSnpGeneration <- as.Date(simOutput$LastSnpGeneration, format="%Y-%m-%d")
+  
+  #### Examine the simulation output ####
+  
+  # Open a pdf file
+  plotsFile <- paste0(simulationDirectory, substr(fileName,1,nchar(fileName)-3), "pdf")
+  pdf(plotsFile)
+  
+  # Set expand distance for plotting - 10km
+  expand <- 10000
+  
+  # Briefly summarise the data
+  summariseSimulationOutput(simOutput)
+  
+  # Plot the temporal sampling range
+  plotTemporalRange(simOutput)
+  
+  # Check that the dates in the simulation output make sense
+  checkSimulationOutputDates(simOutput)
+  
+  # Plot the infection dynamics over time
+  simulationDynamics <- plotInfectionDynamics(simOutput)
+  
+  # Plot the spatial locations of the herds and setts in simulation
+  plotSimulationLocations(herdCoords, settCoords, badgerCentre, expand=expand, inner=inner)
+  
+  # Plot the spatial locations of the recorded herds and setts
+  plotSpatialLocations(simOutput, badgerCentre, main="Recorded herd and sett locations", expand=expand, inner=inner)
+  
+  # Plot the spatial locations of the sampled herds and setts
+  sampled <- simOutput[is.na(simOutput$DetectionDate) == FALSE, ]
+  plotSpatialLocations(sampled, badgerCentre, main="Sampled herd and sett locations", expand=expand, inner=inner)
+  
+  #### Build the sequences ####
+  
+  # Identify the SNPs associated with each seed
+  seedSNPs <- getSeedSNPs(simOutput)
+ 
+  # Add a nucleotide sequence, based on the SNPs, for each individual
+  simOutput <- generateSequences(simOutput)
+  
+  # Identify the non-seed SNPs
+  nonSeedSNPs <- c(1:nchar(simOutput[1, "Sequence"]))[-as.numeric(seedSNPs)]
+  
+  # Examine the genetic distances between the sequences
+  geneticDistancesOnlySeedSNPs <- generateGeneticDistances(simOutput, sitesToIgnore=nonSeedSNPs)
+  geneticDistancesWithoutSeedSNPs <- generateGeneticDistances(simOutput, sitesToIgnore=as.numeric(seedSNPs))
+  geneticDistances <- generateGeneticDistances(simOutput)
+  
+  # Plot the genetic distance distribution
+  hist(getLowerTriangle(geneticDistances), las=1,
+       xlab="Number of SNPs", main="Genetic distances between animals")
+  hist(getLowerTriangle(geneticDistancesWithoutSeedSNPs), las=1,
+       xlab="Number of SNPs", main="Genetic distances between animals (without seed SNPs)")
+  seedIndices <- which(grepl(colnames(geneticDistances), pattern="seed"))
+  hist(getLowerTriangle(geneticDistancesOnlySeedSNPs[seedIndices, seedIndices]), las=1,
+       xlab="Number of SNPs", main="Genetic distances between seed animals")
+  
+  # Build and plot a phylogenetic tree
+  plotPhylogeny(geneticDistances)
+  
+  #### Build BASTA xml file ####
+  
+  # Select the sequences
+  selected <- randomlySelectBadgerAndCattleSamples(simOutput, nBadgers=25, nCattle=25, inner=inner, propCattleInside=0.5)
+  plotSpatialLocations(selected, badgerCentre, main="Selected herd and sett locations", expand=expand, inner=inner)
+  plotTemporalRange(selected, main="Temporal range of selected samples")
+  
+  # Plot the phylogeny
+  plotPhylogeny(generateGeneticDistances(selected))
+  
+  # Set parameters for the BASTA analysis
+  equalOrVaryingPopSizes <- "varying"
+  relaxedOrStrict <- "strict"
+  demeStructures <- c("2Deme", "4Deme")
+  chainLength <- 300000000
+  
+  # Examine each deme structure
+  for(demeStructure in demeStructures){
+    
+    # Assign the isolates to Demes
+    selected <- assignIsolatesToDemes(demeStructure, selected=selected, innerThreshold=inner,
+                                      badgerCentre=badgerCentre, verbose=TRUE)
+    
+    # Build the XML file
+    buildXMLFile(demeStructure, equalOrVaryingPopSizes, path=simulationDirectory, date, selected, chainLength, relaxedOrStrict, 
+                 sampleFromPrior=FALSE, estimateKappa=FALSE, addingConstantSites=FALSE)
+    
+  }
+  
+  # Close the pdf
+  dev.off()
+
 }
-
-# Close the pdf
-dev.off()
 
 #############
 # FUNCTIONS #
@@ -176,7 +219,7 @@ buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes="varying", path, 
   # Add Beast settings block
   fileLines <- addBeastSettingsBlock(fileLines, demeStructure,
                                      equalOrVaryingPopSizes == "varying", outputFileName,
-                                     initialValue = 0.1, chainLength, relaxedOrStrict)
+                                     initialValue = 0.1, chainLength, relaxedOrStrict, estimateKappa)
   
   # Add the end to the XML file
   fileLines <- addEnd(fileLines)
@@ -664,7 +707,7 @@ addMigrationRateLikelihoodBlock <- function(fileLines){
 }
 
 addBeastSettingsBlock <- function(fileLines, demeStructure, varyingPopSizes, outputFileName,
-                                  initialValue, chainLength, relaxedOrStrict){
+                                  initialValue, chainLength, relaxedOrStrict, estimateKappa){
   
   # Get the migration rate values
   migrationRateValues <- getMigrationModelValues(demeStructure, initialValue)
@@ -871,25 +914,123 @@ writeXMLFile <- function(fileLines, outputFileName){
 
 
 # Processing and examining data
+plotPhylogeny <- function(geneticDistances){
+  
+  # Get and set the margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,0,0))
+  
+  # Build neighbour joining tree
+  tree <- NJ(geneticDistances)
+  
+  # Plot the tree
+  plot.phylo(tree, show.tip.label=FALSE, type="fan",
+             edge.color="grey", edge.width=2,
+             show.node.label=FALSE,
+             tip.color="black", cex=0.5)
+  
+  # Add node circles to highlight seeds
+  tiplabels(pch=ifelse(grepl(tree$tip.label, pattern="Badger"), 19, 17),
+            col=ifelse(grepl(tree$tip.label, pattern="seed"), rgb(1,0,0, 0.8), rgb(0,0,0, 0.8)), cex=0.75)
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add scale
+  xPos <- axisLimits[2] - (0.1 * (axisLimits[2] - axisLimits[1]))
+  yPos <- axisLimits[3] + (0.075 * (axisLimits[4] - axisLimits[3]))
+  lines(x=c(xPos,xPos+1), y=c(yPos, yPos), lwd=4, xpd=TRUE)
+  text(x=xPos+0.5, y=axisLimits[3], labels="1 SNP", pos=3, xpd=TRUE)
+  
+  # Add legend
+  legend("bottomleft", 
+         legend=c("seed", 
+                  paste0("badger (", length(which(grepl(tree$tiplabels, pattern="badger") == TRUE)), ")"),
+                  paste0("cattle (", length(which(grepl(tree$tiplabels, pattern="cattle") == TRUE)), ")")),
+         pch=c(1, 19, 17), bty="n",
+         text.col=c("red", "black", "black"), col=c("white", "black", "black"))
+  
+  # Reset the margins
+  par(mar=currentMar)
+
+}
+
+getLowerTriangle <- function(distances){
+  
+  # Initialise a vector to the the distances in the lower triangle
+  output <- c()
+  
+  # Examine each row
+  for(row in seq_len(nrow(distances))){
+    
+    # Examine each column
+    for(col in seq_len(ncol(distances))){
+      
+      # Skip the upper and diagonal
+      if(row >= col){
+        next
+      }
+      
+      # Store the current distance
+      output[length(output) + 1] <- distances[row, col]
+    }
+  }
+  
+  return(output)
+}
+
+generateGeneticDistances <- function(simOutput, sitesToIgnore=NULL){
+  
+  # Initialise a list for the sequences
+  sequences <- list()
+  
+  # Put each sequence into the list
+  for(row in seq_len(nrow(simOutput))){
+    
+    if(is.null(sitesToIgnore)){
+      sequences[[simOutput[row, "animal_ID"]]] <- strsplit(simOutput[row, "Sequence"], split="")[[1]]
+    }else{
+      sequences[[simOutput[row, "animal_ID"]]] <- strsplit(simOutput[row, "Sequence"], split="")[[1]][-sitesToIgnore]
+    }
+    
+  }
+  
+  # Calculate the genetic distances
+  geneticDistances <- dist.dna(as.DNAbin.alignment(as.alignment(sequences)), model="N", as.matrix=TRUE)
+  
+  return(geneticDistances)
+}
 
 randomlySelectBadgerAndCattleSamples <- function(simOutput, nBadgers, nCattle, propCattleInside=0.25, inner=3500){
-  
-  # Select only the sampled animals
-  sampled <- simOutput[is.na(simOutput$DetectionDate) == FALSE, ]
   
   # Randomly sample nBadgers and nCattle
   # Only sample badgers from within threshold inner distance
   # Sample half cattle 25% inside and 75% outside
-  selectedBadgerRows <- sample(which(is.na(simOutput$DetectionDate) == FALSE & 
-                                     simOutput$isCow == FALSE & simOutput$Distance <= inner),
-                               size=nBadgers, replace=FALSE)
-  selectedCattleRows <- c(sample(which(is.na(simOutput$DetectionDate) == FALSE & 
-                                       simOutput$isCow == TRUE & simOutput$Distance <= inner), 
-                                 size=nCattle * propCattleInside, replace=FALSE),
-                          sample(which(is.na(simOutput$DetectionDate) == FALSE & 
-                                 simOutput$isCow == TRUE & simOutput$Distance > inner), 
-                                 size=nCattle * (1-propCattleInside), replace=FALSE))
   
+  # Sample from the inner badgers
+  innerBadgerIndices <- which(is.na(simOutput$DetectionDate) == FALSE & simOutput$isCow == FALSE & simOutput$Distance <= inner)
+  if(nBadgers < length(innerBadgerIndices)){
+    selectedBadgerRows <- sample(innerBadgerIndices, size=nBadgers, replace=FALSE)
+  }else{
+    selectedBadgerRows <- innerBadgerIndices
+  }
+  cat(paste0("Selected ", length(selectedBadgerRows), " inner badgers\n"))
+  
+  # Sample from the inner and outer cattle separately according how many inner and outer are requested 
+  innerCattleIndices <- which(is.na(simOutput$DetectionDate) == FALSE & simOutput$isCow == TRUE & simOutput$Distance <= inner)
+  outerCattleIndices <- which(is.na(simOutput$DetectionDate) == FALSE & simOutput$isCow == TRUE & simOutput$Distance > inner)
+  if(nCattle * propCattleInside < length(innerCattleIndices)){
+    selectedCattleRows <- sample(innerCattleIndices, size=nCattle * propCattleInside, replace=FALSE)
+  }else{
+    selectedCattleRows <- innerCattleIndices
+  }
+  if(nCattle * (1-propCattleInside) < length(outerCattleIndices)){
+    selectedCattleRows <- c(selectedCattleRows, sample(outerCattleIndices, size=nCattle * (1-propCattleInside), replace=FALSE))
+  }else{
+    selectedCattleRows <- c(selectedCattleRows, outerCattleIndices)
+  }
+  cat(paste0("Selected ", length(selectedCattleRows), " cattle\n"))
+
   return(simOutput[c(selectedBadgerRows, selectedCattleRows), ])
 }
 
@@ -1247,13 +1388,59 @@ indexArrayOfDates <- function(array){
   return(output)
 }
 
-countSeeds <- function(simOutput){
+getSeedSNPs <- function(simOutput){
   
-  nBadgerSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Badger-seed") == TRUE))
-  nCattleSeeds <- length(which(grepl(simOutput$animal_ID, pattern="Cow-seed") == TRUE))
+  # Initialise variables to count how many seeds are present
+  nBadgerSeeds <- 0
+  nCattleSeeds <- 0
   
+  # Initialise a vector to the seed SNPs
+  seedSNPs <- c()
+  
+  # Initialise a vector to record how many SNPs each seed had
+  nSeedSNPs <- c()
+  
+  # Examine the information for each simulated animal
+  for(row in seq_len(nrow(simOutput))){
+    
+    # Skip non-seeds
+    if(grepl(simOutput[row, "animal_ID"], pattern="seed") != TRUE){
+      next
+    }
+    
+    # Add to seed counts
+    if(grepl(simOutput[row, "animal_ID"], pattern="Badger")){
+      nBadgerSeeds <- nBadgerSeeds + 1
+    }else{
+      nCattleSeeds <- nCattleSeeds + 1
+    }
+    
+    # Get the set of SNPs for the current seed
+    snps <- strsplit(simOutput[row, "SNPs_infected"], split=";")[[1]]
+    
+    # Count the snps
+    nSeedSNPs[row] <- length(snps)
+    
+    # Examine each snp
+    for(snp in snps){
+      
+      # Add to growing vector
+      if(snp %in% seedSNPs == FALSE){
+        seedSNPs[length(seedSNPs) + 1] <- snp
+      }else{
+        cat("ERROR! SNP in seed: ", simOutput[row, "animal_ID"], " already found in a different seed.\n")
+      }
+    }
+  }
+  
+  # Report the number of seeds
   cat(paste("Number of badger seeds =", nBadgerSeeds, 
             "\nNumber of cattle seeds =", nCattleSeeds, "\n"))
+  
+  # Plot the number of SNPs found in each seed
+  hist(nSeedSNPs, las=1, xlab="Number of SNPs", main="Number of SNPs in seeds at start")
+  
+  return(seedSNPs)
 }
 
 checkSimulationOutputDates <- function(simOutput){

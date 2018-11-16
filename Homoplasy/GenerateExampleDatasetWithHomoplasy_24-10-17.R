@@ -317,6 +317,13 @@ write.table(results, file, row.names=FALSE, quote=FALSE, sep=",")
 
 #### Plot the results ####
 
+# Read in the results table
+date <- "13-11-18"
+file <- paste(path, "TestingHomoplasyFinder_Recombination_", popSize, "-", mutationRate,
+              "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
+              nEventsValues[1], "-", nEventsValues[length(nEventsValues)], "_", nSimulations, "_", date, ".csv", sep="")
+results <- read.table(file, header=TRUE, sep=",")
+
 # Open a pdf
 file <- paste(path, "TestingHomoplasyFinder_Recombination_", popSize, "-", mutationRate,
               "-", infectiousness, "-", samplingProb, "-", nToSample, "_",
@@ -325,7 +332,7 @@ pdf(file)
 
 # Plot the proportion of inserted homoplasies found against the number of simulated recombination events
 plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), ylim=c(0,1), bty="n", las=1, 
-     ylab="Proportion 100 homoplasies found", xaxt="n", xlab="Number of simulated recombination events",
+     ylab="Proportion of 100 homoplasies identified", xaxt="n", xlab="Number of simulated recombination events",
      main="The effect of recombination on identifying simulated homoplasies")
 
 for(i in seq_along(nEventsValues)){
@@ -356,39 +363,39 @@ axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
 # Add a legend
 legend("bottomleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
 
-## Plot the number of non-inserted homoplasies found against the number of simulated recombination events
-plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), 
-     ylim=c(0,max(results$NNonInsertedAfterRecombination)), bty="n", las=1, 
-     ylab="Number non-inserted homoplasies", xaxt="n", xlab="Number of simulated recombination events",
-     main="The effect of recombination on identifying simulated homoplasies")
-
-for(i in seq_along(nEventsValues)){
-  
-  # Get a subset of the results
-  subset <- results[results$NEvents == nEventsValues[i], ]
-  
-  # Plot the points from BEFORE
-  points(x=rep(i-0.15, nrow(subset)), y=subset$NNonInserted,
-         pch=19, col=rgb(1,0,0, 0.1), cex=0.5)
-  bounds <- quantile(subset$NNonInserted, probs=c(0.025, 0.975))
-  points(x=c(i-0.15, i-0.15), y=c(bounds[1], bounds[2]), type="l", col="red", lwd=3)
-  points(x=c(i-0.1, i-0.2), y=c(bounds[1], bounds[1]), type="l", col="red", lwd=3)
-  points(x=c(i-0.1, i-0.2), y=c(bounds[2], bounds[2]), type="l", col="red", lwd=3)
-  
-  # Plot the points from AFTER
-  points(x=rep(i+0.15, nrow(subset)), y=subset$NNonInsertedAfterRecombination,
-         pch=19, col=rgb(0,0,1, 0.1), cex=0.5)
-  bounds <- quantile(subset$NNonInsertedAfterRecombination, probs=c(0.025, 0.975))
-  points(x=c(i+0.15, i+0.15), y=c(bounds[1], bounds[2]), type="l", col="blue", lwd=3)
-  points(x=c(i+0.1, i+0.2), y=c(bounds[1], bounds[1]), type="l", col="blue", lwd=3)
-  points(x=c(i+0.1, i+0.2), y=c(bounds[2], bounds[2]), type="l", col="blue", lwd=3)
-}
-
-# Add X axis labels
-axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
-
-# Add a legend
-legend("topleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
+# ## Plot the number of non-inserted homoplasies found against the number of simulated recombination events
+# plot(x=NULL, y=NULL, xlim=c(1, length(nEventsValues)), 
+#      ylim=c(0,max(results$NNonInsertedAfterRecombination)), bty="n", las=1, 
+#      ylab="Number non-inserted homoplasies", xaxt="n", xlab="Number of simulated recombination events",
+#      main="The effect of recombination on identifying simulated homoplasies")
+# 
+# for(i in seq_along(nEventsValues)){
+#   
+#   # Get a subset of the results
+#   subset <- results[results$NEvents == nEventsValues[i], ]
+#   
+#   # Plot the points from BEFORE
+#   points(x=rep(i-0.15, nrow(subset)), y=subset$NNonInserted,
+#          pch=19, col=rgb(1,0,0, 0.1), cex=0.5)
+#   bounds <- quantile(subset$NNonInserted, probs=c(0.025, 0.975))
+#   points(x=c(i-0.15, i-0.15), y=c(bounds[1], bounds[2]), type="l", col="red", lwd=3)
+#   points(x=c(i-0.1, i-0.2), y=c(bounds[1], bounds[1]), type="l", col="red", lwd=3)
+#   points(x=c(i-0.1, i-0.2), y=c(bounds[2], bounds[2]), type="l", col="red", lwd=3)
+#   
+#   # Plot the points from AFTER
+#   points(x=rep(i+0.15, nrow(subset)), y=subset$NNonInsertedAfterRecombination,
+#          pch=19, col=rgb(0,0,1, 0.1), cex=0.5)
+#   bounds <- quantile(subset$NNonInsertedAfterRecombination, probs=c(0.025, 0.975))
+#   points(x=c(i+0.15, i+0.15), y=c(bounds[1], bounds[2]), type="l", col="blue", lwd=3)
+#   points(x=c(i+0.1, i+0.2), y=c(bounds[1], bounds[1]), type="l", col="blue", lwd=3)
+#   points(x=c(i+0.1, i+0.2), y=c(bounds[2], bounds[2]), type="l", col="blue", lwd=3)
+# }
+# 
+# # Add X axis labels
+# axis(side=1, at=seq_along(nEventsValues), labels=nEventsValues)
+# 
+# # Add a legend
+# legend("topleft", legend=c("Before recombination", "After recombination"), text.col=c("red", "blue"), bty="n")
 
 dev.off()
 
