@@ -945,8 +945,8 @@ plotPhylogeny <- function(geneticDistances){
   # Add legend
   legend("bottomleft", 
          legend=c("seed", 
-                  paste0("badger (", length(which(grepl(tree$tiplabels, pattern="badger") == TRUE)), ")"),
-                  paste0("cattle (", length(which(grepl(tree$tiplabels, pattern="cattle") == TRUE)), ")")),
+                  paste0("badger (", length(which(grepl(tree$tip.label, pattern="Badger") == TRUE)), ")"),
+                  paste0("cattle (", length(which(grepl(tree$tip.label, pattern="Cow") == TRUE)), ")")),
          pch=c(1, 19, 17), bty="n",
          text.col=c("red", "black", "black"), col=c("white", "black", "black"))
   
