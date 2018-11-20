@@ -38,6 +38,7 @@ do
 	  cd $DIR
 	  
 	  # Unzip all the files for the current lane
+	  # pigz --decompress *
 	  gunzip *
 	  	  
 	  # Send the FORWARD reads into the FORWARD output file
@@ -49,6 +50,7 @@ do
 	  cat $FILE >> "../"$FILEREVERSE
 	  
 	  # Zip up the original files and exit the directory
+	  # pigz *
 	  gzip *
 	  cd ..
    done
@@ -57,6 +59,7 @@ do
    echo "  Zipping up output files..."
    
    # Zip up the output files
+   # pigz *fastq
    gzip *fastq
    
 done
