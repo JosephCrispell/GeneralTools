@@ -47,7 +47,7 @@ for(fileName in c("sim_48-01.csv", "sim_48-02.csv", "sim_48-03.csv",
   herdCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
   colnames(herdCoords)[c(3,4)] <- c("X", "Y")
   settFile <- paste0(path, "coordinates_unit-ID_SETTS_01-11-18.csv")
-  settCoords <- read.table(herdFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
+  settCoords <- read.table(settFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
   colnames(settCoords)[c(3,4)] <- c("X", "Y")
   
   # Add the unit coordinate data into the simulation output table
