@@ -10,8 +10,12 @@ table <- read.table(file, header=TRUE, sep=",")
 
 #### Examine spatial clustering ####
 
+# Open the pdf
+pdf("/home/josephcrispell/Desktop/Research/LiliAnalyses/ExaminingSpatialClustering_20-11-18.pdf")
+
 # Define colours for the clusters 
 colours <- c(rgb(1,0,0, 0.75), rgb(0,1,0, 0.75), rgb(0,0,1, 0.75), rgb(0,0,0, 0.75))
+table$Colour <- colours[table$Clade]
 
 # Plot the locations and colour by clade
 plotDataWithPolygons(table, colours)
@@ -22,25 +26,63 @@ differencesPermutedClades <- calculateDistancesBetweenRandomSamples(table, nComp
 plotDifferences(differences, differencesPermutedClades)
 
 # Kmeans clustering
+runKMeansClustering(table, colours)
 
+# Principle components analysis
+runPCA(table, colours, scale=TRUE)
 
 # Run a Logistic regression
 # POINT_X:POINT_Y - adds an interaction term
 results <- glm(as.factor(Clade) ~ POINT_X + POINT_Y + POINT_X:POINT_Y  + table$Year, data=table, family="binomial")
 summary(results)
 
-# A spatial logistic regression
-results <- logistic.regression(table, y="Clade", x="Year", coords=matrix)
+# Close the PDF
+dev.off()
 
 #### FUNCTIONS ####
 
+runPCA <- function(table, colours, scale=TRUE){
+  
+  # Run the principle components analysis
+  pcaResults <- prcomp(table[, c("Year", "POINT_X", "POINT_Y")], center = TRUE, scale. = scale)
+  
+  # Print summary
+  print(pcaResults)
+  
+  # Plot the importance of each component
+  plot(pcaResults, type="l", main="Variation explained by Principle Components")
+  
+  ## Plot the components against one another
+  # 1 vs. 2
+  plot(x=pcaResults$x[, "PC1"], y=pcaResults$x[, "PC2"], pch=19, col=table$Colour, cex=2,
+       xlab="Principle Component 1", ylab="Principle Component 2", las=1, bty="n",
+       cex.axis=0.75)
+  
+  # Add a legend
+  legend("topleft", legend=c("Clade: ", unique(table$Clade)), text.col=c("black", colours[unique(table$Clade)]), bty="n")
+  
+  # 1 vs. 3
+  plot(x=pcaResults$x[, "PC1"], y=pcaResults$x[, "PC3"], pch=19, col=table$Colour, cex=2,
+       xlab="Principle Component 1", ylab="Principle Component 3", las=1, bty="n",
+       cex.axis=0.75)
+  
+  # Add a legend
+  legend("topleft", legend=c("Clade: ", unique(table$Clade)), text.col=c("black", colours[unique(table$Clade)]), bty="n")
+  
+  # 2 vs. 3
+  plot(x=pcaResults$x[, "PC2"], y=pcaResults$x[, "PC3"], pch=19, col=table$Colour, cex=2,
+       xlab="Principle Component 2", ylab="Principle Component 3", las=1, bty="n",
+       cex.axis=0.75)
+  
+  # Add a legend
+  legend("topleft", legend=c("Clade: ", unique(table$Clade)), text.col=c("black", colours[unique(table$Clade)]), bty="n")
+}
+
 plotDataWithPolygons <- function(table, colours){
   
-  # Assign the colours
-  table$Colour <- colours[table$Clade]
-  
   # Plot the points
-  plot(table$POINT_X, table$POINT_Y, col=table$Colour, pch=19, bty="n")
+  plot(table$POINT_X, table$POINT_Y, col=table$Colour, pch=19, bty="n", xlab="X", ylab="Y", 
+       main="Locations of isolates within clades")
   
   # Add a polygon for each clade
   for(clade in unique(table$Clade)){
@@ -56,10 +98,10 @@ plotDataWithPolygons <- function(table, colours){
   }
   
   # Add a legend
-  legend("topright", legend=unique(table$Clade), text.col=colours[unique(table$Clade)], bty="n")
+  legend("topright", legend=c("Clade:", unique(table$Clade)), text.col=c("black", colours[unique(table$Clade)]), bty="n")
 }
 
-findOptimalK <- function(table, colours){
+runKMeansClustering <- function(table, colours){
   # Code mostly taken from: http://gsp.humboldt.edu/OLM/R/03_02_ClusterAnalysis.html
   
   # Create a matrix to store the coordinate data
@@ -70,13 +112,13 @@ findOptimalK <- function(table, colours){
   
   # Plot the kmeans clusters and 
   plot(matrix, col=colours[matrix[, "clade"]], pch=c(21, 22, 23, 24)[clusterInfo$cluster], 
-       bg=colours[matrix[, "clade"]])
+       bg=colours[matrix[, "clade"]], bty="n", las=1)
   
   # Add legend
   legend("topright", legend=c("Clade", unique(table$Clade)), 
          text.col=c("black", colours[unique(table$Clade)]), bty="n")
-  legend("top", legend=c("Cluster", unique(clusterInfo$cluster)), 
-         pch=c(19, c(21, 22, 23, 24)[clusterInfo$cluster]), bty="n",
+  legend("top", legend=c("K-means cluster", sort(unique(clusterInfo$cluster))), 
+         pch=c(19, c(21, 22, 23, 24)[sort(unique(clusterInfo$cluster))]), bty="n",
          col=c("white", "black", "black", "black", "black"))
   
   
@@ -106,7 +148,7 @@ plotDifferences <- function(differences, differencesPermutedClades){
   # Build an initial empty plot
   plot(x=NULL, y=NULL, xlim=c(0.75, 6), ylim=yLim, bty="n", xaxt="n", xlab="",
        ylab="Spatial difference (m)", las=1,
-       main="Comparing the spatial distributions of the clades")
+       main="Comparing spatial distances between clades using random samples")
   
   # Add an X axis
   axis(side=1, at=1:6, labels=colnames(differences))
@@ -131,6 +173,8 @@ plotDifferences <- function(differences, differencesPermutedClades){
     points(x=c(i+0.1, i+0.2), y=c(bounds[2], bounds[2]), type="l", col="blue", lwd=3)
     points(x=i+0.15, y=median(differencesPermutedClades[, column]), pch=19)
   }
+  
+  legend("top", legend=c("Before permutation", "After permutation"), text.col=c("red", "blue"), bty="n")
 }
 
 calculateDistancesBetweenRandomSamples <- function(table, nComparisons=100, permute=FALSE){
