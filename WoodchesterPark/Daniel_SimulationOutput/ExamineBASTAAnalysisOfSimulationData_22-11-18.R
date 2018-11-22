@@ -28,6 +28,11 @@ counts <- read.table(countsFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Plot the results ####
 
+# Open a pdf
+outputFile <- paste0(path, substr(logFile, 1, nchar(logFile)-4), "_summary.pdf")
+pdf(outputFile, width=14)
+par(mfrow=c(1,2))
+
 # Remove the burn-in
 burnInProp <- 0.1
 log <- log[round(0.1 * nrow(log), digits=0):nrow(log), ]
@@ -38,6 +43,8 @@ plotInterSpeciesTransitionRateEstimates(log, logFile)
 
 # Plot the transition counts
 plotTransitionCounts(counts)
+
+dev.off()
 
 #### FUNCTIONS ####
 
