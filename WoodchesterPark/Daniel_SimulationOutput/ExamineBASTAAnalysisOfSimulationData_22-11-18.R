@@ -23,13 +23,13 @@ pathToJarFile <- "/home/josephcrispell/Desktop/Research/Java/ExecutableJarFiles/
 countTransitionsOnPosteriorTrees(pathToJarFile, treesFile, logFile)
 
 # Load the transition counts file
-countsFile <- paste0(path, "2Deme_equal_relaxed_10-04-18_TransitionCounts.txt")
+countsFile <- paste0(substr(logFile, 1, nchar(logFile)-4), "_TransitionCounts.txt")
 counts <- read.table(countsFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Plot the results ####
 
 # Open a pdf
-outputFile <- paste0(path, substr(logFile, 1, nchar(logFile)-4), "_summary.pdf")
+outputFile <- paste0(substr(logFile, 1, nchar(logFile)-4), "_summary.pdf")
 pdf(outputFile, width=14)
 par(mfrow=c(1,2))
 
@@ -48,7 +48,7 @@ dev.off()
 
 #### FUNCTIONS ####
 
-plotTransitionCounts <- function(counts){
+plotTransitionCounts <- function(counts, withoutPoints=FALSE){
   
   # Note the column names
   columns <- c("Count_BB", "Count_BC", "Count_CB", "Count_CC")
@@ -56,20 +56,23 @@ plotTransitionCounts <- function(counts){
   # Plot a boxplot of the inter-species transition rates
   boxplot(counts[, columns], pch=19, outcol=rgb(0,0,0, 0.75), frame=FALSE, xaxt="n", las=1,
           ylab="Number of transitions", ylim=c(0, max(counts[, columns])),
-          outline=FALSE, main="Number of estimate transitions on posterior trees")
+          outline=withoutPoints, main="Number of estimate transitions on posterior trees")
   
   # Add an X axis
   axis(side=1, at=1:length(columns), labels=columns, tick=TRUE)
   
   # Add jittered points on top of boxplot
-  stripchart(counts[, "Count_BB"], at=1, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
-  stripchart(counts[, "Count_BC"], at=2, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
-  stripchart(counts[, "Count_CB"], at=3, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
-  stripchart(counts[, "Count_CC"], at=4, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
+  if(withoutPoints == FALSE){
+    stripchart(counts[, "Count_BB"], at=1, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
+    stripchart(counts[, "Count_BC"], at=2, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
+    stripchart(counts[, "Count_CB"], at=3, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
+    stripchart(counts[, "Count_CC"], at=4, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.002))
+  }
+
 }
 
 getDemeNamesForDemeStructure <- function(demeStructure, number=NULL){
@@ -141,7 +144,7 @@ getMigrationRates <- function(logTable){
   return(arrowRates)
 }
 
-plotInterSpeciesTransitionRateEstimates <- function(log, logFile){
+plotInterSpeciesTransitionRateEstimates <- function(log, logFile, withoutPoints=FALSE){
   
   # Initialise two arrays to store samples of the posterior sums from each model - sample size relative to AICM weight
   badgerToCowRatePosteriorSumSamples<- c()
@@ -187,16 +190,18 @@ plotInterSpeciesTransitionRateEstimates <- function(log, logFile){
   # Plot a boxplot of the inter-species transition rates
   boxplot(sumRatesBadgerToCow, sumRatesCowToBadger, pch=19, outcol=rgb(0,0,0, 0.75), frame=FALSE, xaxt="n", las=1,
           ylab="Per lineage transition rate per year", ylim=c(0, max(c(sumRatesBadgerToCow, sumRatesCowToBadger))),
-          outline=FALSE, main="Estimated inter-species transition rates")
+          outline=withoutPoints, main="Estimated inter-species transition rates")
   
   # Add an X axis
   axis(side=1, at=c(1,2), labels=c("Badger->Cow", "Cow->Badger"), tick=TRUE)
   
   # Add jittered points on top of boxplot
-  stripchart(sumRatesBadgerToCow, at=1, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.02))
-  stripchart(sumRatesCowToBadger, at=2, vertical=TRUE, jitter=0.3, 
-             method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.02))
+  if(withoutPoints == FALSE){
+    stripchart(sumRatesBadgerToCow, at=1, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.02))
+    stripchart(sumRatesCowToBadger, at=2, vertical=TRUE, jitter=0.3, 
+               method="jitter", add=TRUE, pch=19, col=rgb(0,0,0, 0.02))
+  }
 }
 
 calculateForwardMigrationRates <- function(logTable){
