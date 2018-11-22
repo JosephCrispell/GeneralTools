@@ -69,7 +69,7 @@ migrationRateEstimates <- summarisePosteriorLogTables(path, logTables, code=2,
 
 # Read in the transition counts for all the trees
 #   Counts created by Java: MyWork:examineBASTAPosterior:CountTransitions.java
-file <- paste0(path, "TransitionCounts_", date, ".txt")
+file <- paste0(path, "TransitionCounts-conservative_", date, ".txt")
 transitionCounts <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 
 # Remove the burn-in period from each analysis
@@ -160,6 +160,16 @@ plotSummaryOfTransitionRatesBasedOnPosteriorTrees <- function(weightedSampleOfTr
     lines(x=c(i, i), y=c(quantiles[1], quantiles[2]))
     points(x=i, y=median(weightedSampleOfTransitionRates[, columns[i]]), pch=19, col="black")
   }
+  
+  # Calculate some summary statistics
+  quantilesBB <- quantile(weightedSampleOfTransitionRates[, "Count_BB"], probs=c(0.025, 0.975))
+  medianBB <- median(weightedSampleOfTransitionRates[, "Count_BB"])
+  quantilesBC <- quantile(weightedSampleOfTransitionRates[, "Count_BC"], probs=c(0.025, 0.975))
+  medianBC <- median(weightedSampleOfTransitionRates[, "Count_BC"])
+  quantilesCB <- quantile(weightedSampleOfTransitionRates[, "Count_CB"], probs=c(0.025, 0.975))
+  medianCB <- median(weightedSampleOfTransitionRates[, "Count_CB"])
+  quantilesCC <- quantile(weightedSampleOfTransitionRates[, "Count_CC"], probs=c(0.025, 0.975))
+  medianCC <- median(weightedSampleOfTransitionRates[, "Count_CC"])
   
   # Add a plot label
   mtext("C", side=3, line=1, at=-0.35, cex=2.5)
