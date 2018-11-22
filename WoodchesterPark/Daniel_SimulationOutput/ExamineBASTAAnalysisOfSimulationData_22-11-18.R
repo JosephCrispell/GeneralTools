@@ -11,7 +11,7 @@ logFile <- paste0(path, "2Deme_equal_relaxed_10-04-18.log")
 log <- read.table(logFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Replace "N" in table with NAs
-logTable[logTable == "N"] <- NA
+log[log == "N"] <- NA
 
 # Calculate the forward rates
 log <- calculateForwardMigrationRates(log)
