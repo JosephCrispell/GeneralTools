@@ -251,7 +251,7 @@ summariseTheInterSpeciesRateFlagPosteriors <- function(migrationRateEstimates){
   axisLimits <- par("usr")
   
   # Add a plot label
-  mtext("D", side=3, line=1, at=axisLimits[1], cex=2.5)
+  mtext("d", side=3, line=1, at=axisLimits[1], cex=2.5)
   
   # Reset the margins
   par(mar=currentMar)
@@ -333,7 +333,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   axisLimits <- par("usr")
   
   # Add a plot label
-  mtext("C", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+  mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the plotting margins
   par(mar=currentMar)
@@ -791,7 +791,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     axisLimits <- par("usr")
     
     # Add a plot label
-    mtext("B", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+    mtext("b", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
     
     # ## Plot badger -> cattle versus cattle -> badger
     # par(mar=c(5.1, 4.1, 0.5, 2.1))
@@ -892,7 +892,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   axisLimits <- par("usr")
   
   # Add a plot label
-  mtext("A", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+  mtext("a", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))

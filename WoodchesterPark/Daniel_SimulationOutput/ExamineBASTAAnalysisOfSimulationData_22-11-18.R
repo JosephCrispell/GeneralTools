@@ -164,6 +164,10 @@ plotInterSpeciesTransitionRateEstimates <- function(log, logFile, withoutPoints=
   # Examine each rate
   for(key in names(migrationRateEstimates)){
     
+    # Get the values for the current migration rate
+    values <- migrationRateEstimates[[key]]
+    values[is.na(values)] <- 0
+    
     # Split the key into its deme numbers
     demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
     
@@ -172,8 +176,8 @@ plotInterSpeciesTransitionRateEstimates <- function(log, logFile, withoutPoints=
              pattern="badger") == TRUE &&
        grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
              pattern="cow") == TRUE){
-      values <- migrationRateEstimates[[key]]
-      values[is.na(values)] <- 0
+      
+      # Add the current rate values to the growing sum
       sumRatesBadgerToCow <- sumRatesBadgerToCow + values
       
     }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
@@ -181,11 +185,15 @@ plotInterSpeciesTransitionRateEstimates <- function(log, logFile, withoutPoints=
              grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                    pattern="badger") == TRUE){
       
-      values <- migrationRateEstimates[[key]]
-      values[is.na(values)] <- 0
+      # Add the current rate values to the growing sum
       sumRatesCowToBadger <- sumRatesCowToBadger + values
     }
   }
+  
+  # Remove any values that are exactly zero
+  # - These will result when flag=0 across badger-to-cattle/cattle-to-badger rates estimated
+  sumRatesBadgerToCow <- sumRatesBadgerToCow[sumRatesBadgerToCow != 0]
+  sumRatesCowToBadger <- sumRatesCowToBadger[sumRatesCowToBadger != 0]
     
   # Plot a boxplot of the inter-species transition rates
   boxplot(sumRatesBadgerToCow, sumRatesCowToBadger, pch=19, outcol=rgb(0,0,0, 0.75), frame=FALSE, xaxt="n", las=1,

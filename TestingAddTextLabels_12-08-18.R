@@ -45,10 +45,9 @@ xx=10**(-4:-1)
 yy=0.5*(xx**0.5)
 
 #this doesn't show the label
-plot(xx,yy,log="xy",type="b")
-points(x=xx, y=yy, pch=19, col="red")
-text(x=xx, y=yy, labels=c("A", "B", "C"))
-addTextLabels(min(xx),min(yy),"(min,min)")
+plot(xx,yy,log="x",type="b")
+
+addTextLabels(xx,yy,c("A", "B", "C", "D"))
 
 #this works
 plot(log10(xx),log10(yy),type="b")
