@@ -6,7 +6,7 @@
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_05-04-2018.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_22-11-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
@@ -21,7 +21,7 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 xLim <- as.Date(c("1988-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
-file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_08-09-18.pdf", sep="")
+file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_22-11-18.pdf", sep="")
 pdf(file, height=11, width=8)
 
 # Get an array of all the clusters
@@ -175,12 +175,22 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
   addLinesForYears(datesInRange)
   
   # Add Legend
-  legend("topleft", legend=c("Isolate Obtained", "Detection/Breakdown",
-                             "Positive Test", "Inconclusive Test"),
-         pch=c(18, 16, 16, 16, 16), 
-         col=c("blue", "cyan", "red", "orange"),
-         text.col=c("blue", "cyan", "red", "orange"),
-         bty="n", cex=1)
+  if(cluster == 3){
+    legend("topleft", legend=c("Isolate Obtained", "Detection/Breakdown",
+                               "Positive Test"),
+           pch=c(18, 16, 16, 16), 
+           col=c("blue", "cyan", "red"),
+           text.col=c("blue", "cyan", "red"),
+           bty="n", cex=1)
+  }else{
+    legend("topleft", legend=c("Isolate Obtained", "Detection/Breakdown",
+                               "Positive Test", "Inconclusive Test"),
+           pch=c(18, 16, 16, 16, 16), 
+           col=c("blue", "cyan", "red", "orange"),
+           text.col=c("blue", "cyan", "red", "orange"),
+           bty="n", cex=1)
+  }
+  
   
   # Add the cluster number to plot
   if(addCluster == TRUE){

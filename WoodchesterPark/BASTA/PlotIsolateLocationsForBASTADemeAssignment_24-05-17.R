@@ -9,7 +9,7 @@ library(geiger) # Phylogenetic tree tools
 library(plotrix) # Draw circle
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 #######################################################################
 # Calculate the Territory Centroids of Each Social Group in Each Year #
@@ -155,18 +155,6 @@ expand <- 10000
 # Plot the badger territories from each year onto a single plot
 plotTerritories(territoriesForEachYear, badgerCentre, expand, rgb(1,0,0, 0.1))
 
-##############################################
-# Plot the land parcels of the sampled herds #
-##############################################
-
-# Plot polygons from sampled herds
-for(cph in sampledCPHs){
-  
-  for(key in cphs[[cph]]){
-    polygon(landParcelCoords[[key]], border=rgb(0,0,1, 0.2))
-  }
-}
-
 #################################
 # Plot the sampled cattle herds #
 #################################
@@ -283,6 +271,76 @@ text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
 # Add legend
 legend("bottomright", legend=c("Badger", "Cow"), text.col=c("black", "black"),
        bty="n", pch=c(20, 17), pt.cex=c(2, 1.5))
+
+#####
+#####
+#####
+
+
+######################################
+# Add land parcel outlines for herds #
+######################################
+
+
+##############################################
+# Plot the badger territories from all years #
+##############################################
+
+# Plot the badger territories from each year onto a single plot
+plotTerritories(territoriesForEachYear, badgerCentre, expand, rgb(1,0,0, 0.1))
+
+##############################################
+# Plot the land parcels of the sampled herds #
+##############################################
+
+# Plot polygons from sampled herds
+for(cph in sampledCPHs){
+  
+  for(key in cphs[[cph]]){
+    polygon(landParcelCoords[[key]], border=rgb(0,0,1, 0.2))
+  }
+}
+
+#################################
+# Plot the sampled cattle herds #
+#################################
+for(row in 1:nrow(cattleInfo)){
+  points(x=cattleInfo[row, "Mapx"], y=cattleInfo[row, "Mapy"], pch=17,
+         col=rgb(0,0,1, 0.5), cex=1.5)
+}
+
+#########################################
+# Add Badger sampling locations to plot #
+#########################################
+
+# Plot the badger isolate sampling locations
+addBadgerIsolatesLocations(badgerInfo=badgerInfo, groupsRows=groupsRows, 
+                           groupsCentroidsPerYear=groupsCentroidsPerYear,
+                           col=rgb(1,0,0, 0.5), cex=2)
+
+###############################################
+# Add circles to define inner and outer demes #
+###############################################
+
+# Add deme defining circles
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=thresholdDistance,
+            border="black")
+draw.circle(x=badgerCentre[1], y=badgerCentre[2], radius=outerDistance,
+            border="black")
+text(x=badgerCentre[1], y=(badgerCentre[2] - thresholdDistance) + 500,
+     labels=paste("Inner: ", paste(thresholdDistance / 1000, "km", sep="")))
+text(x=badgerCentre[1], y=(badgerCentre[2] - outerDistance) + 500,
+     labels=paste("Outer: ", paste(outerDistance / 1000, "km", sep="")))
+
+##############
+# Add Legend #
+##############
+
+# Add legend
+legend("bottomright", legend=c("Badger", "Cow"), text.col=c("red", "blue"),
+       bty="n", pch=c(20, 17), pt.cex=c(2, 1.5), col=c("red", "blue"))
+
+
 
 
 dev.off()

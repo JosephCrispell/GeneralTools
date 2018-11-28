@@ -20,6 +20,9 @@ badgerCentre <- c(381761.7, 200964.3)
 # NOTE the INNER threshold distance
 inner <- 3500
 
+# NOTE the genome size
+genomeSize <- 4345492
+
 # Examine all of the simulation outputs
 for(fileName in c("sim_48-01.csv", "sim_48-02.csv", "sim_48-03.csv",
                   "sim_52-01.csv", "sim_52-02.csv", "sim_52-03.csv",
@@ -143,7 +146,7 @@ for(fileName in c("sim_48-01.csv", "sim_48-02.csv", "sim_48-03.csv",
     
     # Build the XML file
     buildXMLFile(demeStructure, equalOrVaryingPopSizes, path=simulationDirectory, date, selected, chainLength, relaxedOrStrict, 
-                 sampleFromPrior=FALSE, estimateKappa=FALSE, addingConstantSites=FALSE)
+                 sampleFromPrior=FALSE, estimateKappa=FALSE, genomeSize=genomeSize)
     
   }
   
@@ -161,7 +164,7 @@ for(fileName in c("sim_48-01.csv", "sim_48-02.csv", "sim_48-03.csv",
 
 buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes="varying", path, date, selected, chainLength,
                          relaxedOrStrict="strict", sampleFromPrior=FALSE, estimateKappa=FALSE, 
-                         addingConstantSites=FALSE){
+                         genomeSize){
   
   # Note the output XML name
   outputFileName <- paste(getDemeInfo(demeStructure, "Name"), "_",
@@ -180,14 +183,15 @@ buildXMLFile <- function(demeStructure, equalOrVaryingPopSizes="varying", path, 
   fileLines <- startBuildingOutputFileLines()
   
   # Add Sequenced block
-  fileLines <- addSequenceBlock(fileLines, selected, sampleFromPrior, addingConstantSites)
+  fileLines <- addSequenceBlock(fileLines, selected, sampleFromPrior)
   
   # Add distribution block - if relaxed
   if(relaxedOrStrict == "relaxed"){
     fileLines <- addDistributionBlock(fileLines)
   }
   
-  # NO constant sites block added
+  # Add constant sites block
+  fileLines <- addConstantSiteCountsBlock(fileLines, nSNPs=nchar(selected$Sequence[1]), genomeSize)
   
   # Add sampling dates block
   fileLines <- addTipDateBlock(fileLines, selected)
@@ -445,10 +449,10 @@ startBuildingOutputFileLines <- function(){
   return(fileLines)
 }
 
-addSequenceBlock <- function(fileLines, selected, sampleFromPrior, addingConstantSites=FALSE){
+addSequenceBlock <- function(fileLines, selected, sampleFromPrior){
   
   fileLines[length(fileLines) + 1] <- "\t<!-- Sequence Alignment -->"
-  if(sampleFromPrior == FALSE && addingConstantSites == TRUE){
+  if(sampleFromPrior == FALSE){
     fileLines[length(fileLines) + 1] <- "\t<data id=\"alignmentVar\" dataType=\"nucleotide\">"
   }else{
     fileLines[length(fileLines) + 1] <- "\t<data id=\"alignment\" dataType=\"nucleotide\">"
@@ -909,6 +913,22 @@ writeXMLFile <- function(fileLines, outputFileName){
   
   # Close the output file
   close(fileConnection)
+}
+
+addConstantSiteCountsBlock <- function(fileLines, nSNPs, genomeSize){
+  
+  ## Create the constant site counts
+  n <- genomeSize - nSNPs
+  counts <- round(c(n/4, n/4, n/4, n/4), digits=0)
+  
+  ## Print out block
+  counts <- paste(counts, collapse=" ")
+  fileLines[length(fileLines) + 1] <- ""
+  fileLines[length(fileLines) + 1] <- "\t<!-- Constant Site Counts -->"
+  fileLines[length(fileLines) + 1] <- paste("\t<data id='alignment' spec='FilteredAlignment' filter='-' data='@alignmentVar' constantSiteWeights='",
+                                            counts, "'/>", sep="")
+  
+  return(fileLines)
 }
 
 
