@@ -40,3 +40,16 @@ abline(v = 1, col = "green")
 
 addTextLabels(x, y, ShortSci, cex=0.9, col.background=rgb(0,0,0, 0.75), col.label="white")
 addTextLabels(x, y, ShortSci, cex=0.9, col.background=rgb(0,0,0, 0.75), col.label="white", keepLabelsInside = FALSE)
+
+xx=10**(-4:-1)
+yy=0.5*(xx**0.5)
+
+#this doesn't show the label
+plot(xx,yy,log="xy",type="b")
+points(x=xx, y=yy, pch=19, col="red")
+text(x=xx, y=yy, labels=c("A", "B", "C"))
+addTextLabels(min(xx),min(yy),"(min,min)")
+
+#this works
+plot(log10(xx),log10(yy),type="b")
+addTextLabels(log10(min(xx)),log10(min(yy)),"(min,min)")

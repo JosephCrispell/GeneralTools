@@ -5,13 +5,16 @@ library(contoureR)
 #### Load data ####
 
 # Read in the data
-file <- "/home/josephcrispell/Desktop/Research/LiliAnalyses/MI_Elk_Data_134isolates_traits_withClades_v2.tsv.csv"
+file <- "/home/josephcrispell/Desktop/Research/LiliAnalyses/MI_Elk_Data_134isolates_traits_withClades_v3.csv"
 table <- read.table(file, header=TRUE, sep=",")
 
 #### Examine spatial clustering ####
 
 # Open the pdf
 pdf("/home/josephcrispell/Desktop/Research/LiliAnalyses/ExaminingSpatialClustering_20-11-18.pdf")
+
+# Set the plotting dimensions
+par(mfrow=c(2,2))
 
 # Define colours for the clusters 
 colours <- c(rgb(1,0,0, 0.75), rgb(0,1,0, 0.75), rgb(0,0,1, 0.75), rgb(0,0,0, 0.75))
@@ -27,6 +30,9 @@ plotDifferences(differences, differencesPermutedClades)
 
 # Kmeans clustering
 runKMeansClustering(table, colours)
+
+# Reset the plotting window dimensions
+par(mfrow=c(1,1))
 
 # Principle components analysis
 runPCA(table, colours, scale=TRUE)
@@ -82,7 +88,7 @@ plotDataWithPolygons <- function(table, colours){
   
   # Plot the points
   plot(table$POINT_X, table$POINT_Y, col=table$Colour, pch=19, bty="n", xlab="X", ylab="Y", 
-       main="Locations of isolates within clades")
+       main="", las=1)
   
   # Add a polygon for each clade
   for(clade in unique(table$Clade)){
@@ -99,6 +105,12 @@ plotDataWithPolygons <- function(table, colours){
   
   # Add a legend
   legend("topright", legend=c("Clade:", unique(table$Clade)), text.col=c("black", colours[unique(table$Clade)]), bty="n")
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add a plot label
+  mtext("A", side=3, line=1, at=axisLimits[1], cex=2.5)
 }
 
 runKMeansClustering <- function(table, colours){
@@ -108,7 +120,7 @@ runKMeansClustering <- function(table, colours){
   matrix <- as.matrix(data.frame(x=table$POINT_X, y=table$POINT_Y, clade=table$Clade))
   
   # Run a kmeans analysis for 4 clusters - the number of clades we have
-  clusterInfo <- kmeans(matrix[, c("x", "y")], centers=4)
+  clusterInfo <- kmeans(matrix[, c("x", "y")], centers=3)
   
   # Plot the kmeans clusters and 
   plot(matrix, col=colours[matrix[, "clade"]], pch=c(21, 22, 23, 24)[clusterInfo$cluster], 
@@ -121,6 +133,11 @@ runKMeansClustering <- function(table, colours){
          pch=c(19, c(21, 22, 23, 24)[sort(unique(clusterInfo$cluster))]), bty="n",
          col=c("white", "black", "black", "black", "black"))
   
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add a plot label
+  mtext("C", side=3, line=1, at=axisLimits[1], cex=2.5)
   
   # Calculate the variance of each column
   variance <- apply(matrix, 2, var)
@@ -138,6 +155,12 @@ runKMeansClustering <- function(table, colours){
   plot(1:30, withinClusterSumOfSquares, type="o", xlab="Number of Clusters", ylab="Within groups sum of squares",
        bty="n", las=1)
   
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add a plot label
+  mtext("D", side=3, line=1, at=axisLimits[1], cex=2.5)
+  
 }
 
 plotDifferences <- function(differences, differencesPermutedClades){
@@ -146,15 +169,15 @@ plotDifferences <- function(differences, differencesPermutedClades){
   yLim <- c(0, max(c(max(differences), max(differencesPermutedClades))))
   
   # Build an initial empty plot
-  plot(x=NULL, y=NULL, xlim=c(0.75, 6), ylim=yLim, bty="n", xaxt="n", xlab="",
+  plot(x=NULL, y=NULL, xlim=c(0.75, 3.5), ylim=yLim, bty="n", xaxt="n", xlab="",
        ylab="Spatial difference (m)", las=1,
-       main="Comparing spatial distances between clades using random samples")
+       main="")
   
   # Add an X axis
-  axis(side=1, at=1:6, labels=colnames(differences))
+  axis(side=1, at=1:3, labels=colnames(differences))
   
   # Plot the 95% bounds of the distributions before and after permutation
-  for(i in 1:6){
+  for(i in 1:3){
     
     # Get the column
     column <- colnames(differences)[i]
@@ -174,6 +197,13 @@ plotDifferences <- function(differences, differencesPermutedClades){
     points(x=i+0.15, y=median(differencesPermutedClades[, column]), pch=19)
   }
   
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add a plot label
+  mtext("B", side=3, line=1, at=axisLimits[1], cex=2.5)
+  
+  # Add a legend
   legend("top", legend=c("Before permutation", "After permutation"), text.col=c("red", "blue"), bty="n")
 }
 
@@ -185,7 +215,7 @@ calculateDistancesBetweenRandomSamples <- function(table, nComparisons=100, perm
   }
   
   # Initialise a data frame to store the distances between random samples from each clade
-  differences <- data.frame(Diff_1_2=NA, Diff_1_3=NA, Diff_1_4=NA, Diff_2_3=NA, Diff_2_4=NA, Diff_3_4=NA)
+  differences <- data.frame(Diff_1_2=NA, Diff_1_3=NA, Diff_2_3=NA)
   
   # Compare each clade once
   for(i in unique(table$Clade)){

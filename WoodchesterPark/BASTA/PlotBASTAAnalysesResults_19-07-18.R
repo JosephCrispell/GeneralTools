@@ -79,8 +79,11 @@ transitionCountsWithoutBurnIn <- removeBurnIn(transitionCounts, burnInProp=0.1)
 aicmScores <- getAICMScores(migrationRateEstimates)
 
 # Sample the transition counts and associated branch length sums based on the AICM model scores
-weightedSampleOfTransitionRates <- getWeightedSampleOfTransitionCountsBasedOnAICMScores(transitionCountsWithoutBurnIn,
-                                                                                        aicmScores)
+weightedSampleOfTransitionCounts <- getWeightedSampleOfTransitionCountsBasedOnAICMScores(transitionCountsWithoutBurnIn,
+                                                                                         aicmScores)
+
+# Get the transition counts for the best model
+bestModelTransitionCounts <- getCountsFromBestModel(transitionCountsWithoutBurnIn, aicmScores)
 
 #################################
 # Plot Model comparison results #
@@ -110,20 +113,20 @@ weightedMeanEstimates <-
   calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
     migrationRateEstimates)
 
-
 ##################################################################
 # Plot a summary of the transition counts on the posterior trees #
 ##################################################################
-plotSummaryOfTransitionRatesBasedOnPosteriorTrees(weightedSampleOfTransitionRates)
+#plotSummaryOfTransitionRatesBasedOnPosteriorTrees(weightedSampleOfTransitionCounts)
+plotSummaryOfTransitionCountsBasedOnPosteriorTrees(bestModelTransitionCounts)
+
+####################################################
+# Plot the rate flag distributions from each model #
+####################################################
+
+#summariseTheInterSpeciesRateFlagPosteriors(migrationRateEstimates)
 
 # Reset the plotting window dimensions
 par(mfrow=c(1,1))
-
-# Plot the rates
-# plotTransitionRatesBetweenBadgerAndCow(badgerToCow=weightedMeanEstimates[1],
-#                                        cowToBadger=weightedMeanEstimates[2],
-#                                        code=2, arrowFactor=20)
-
 
 # Close the pdf
 dev.off()
@@ -132,7 +135,162 @@ dev.off()
 # FUNCTIONS #
 #############
 
-plotSummaryOfTransitionRatesBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates){
+summariseTheInterSpeciesRateFlagPosteriors <- function(migrationRateEstimates){
+    
+  # Summarising the rate flags associated with the badger-to-cow and cow-to-badger rates
+  
+  # Get the analyses names
+  analyses <- names(migrationRateEstimates)
+  names <- c()
+  
+  # Initialise a vectors to store the median and range of the rate flags
+  modelBadgerToCowFlagMeans <- c()
+  modelBadgerToCowFlagLower <- c()
+  modelBadgerToCowFlagUpper <- c()
+  modelCowToBadgerFlagMeans <- c()
+  modelCowToBadgerFlagLower <- c()
+  modelCowToBadgerFlagUpper <- c()
+  
+  # Examine each of the different model structures
+  for(i in 1:length(analyses)){
+    
+    # Initialise arrays to store the rates from badgers to cattle and vice versa
+    sumFlagsBadgerToCow <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
+    sumFlagsCowToBadger <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
+    
+    # Initialise counts for the number of badger-to-cow and cow-to-badger rates for the current model
+    nBadgerToCow <- 0
+    nCowToBadger <- 0
+    
+    # Get the demeStructure
+    parts <- strsplit(analyses[i], "_")[[1]]
+    demeStructure <- parts[1]
+    names[i] <- paste(parts[c(1,2)], collapse="_")
+    
+    # Examine each rate
+    for(key in names(migrationRateEstimates[[analyses[i]]])){
+      
+      # Ignore AICM and zero rates (rates never estimate e.g. outer-cattle -> inner-badger)
+      if(key == "AICM"){
+        next
+      }
+      
+      # Convert the NAs to zeros, and the non-NAs to 1s
+      values <- migrationRateEstimates[[analyses[i]]][[key]]
+      values <- ifelse(is.na(values), 0, 1)
+      
+      # Split the key into its deme numbers
+      demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
+      
+      # Check if current rate is between badger and cattle populations
+      if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+               pattern="badger") == TRUE &&
+         grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
+               pattern="cow") == TRUE){
+        
+        # Increment the count
+        nBadgerToCow <- nBadgerToCow + 1
+        
+        # Add the flags for the current rate to the growing sum
+        sumFlagsBadgerToCow <- sumFlagsBadgerToCow + values
+        
+      }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
+                     pattern="cow") == TRUE &&
+               grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
+                     pattern="badger") == TRUE){
+        
+        # Increment the count
+        nCowToBadger <- nCowToBadger + 1
+        
+        # Add the flags for the current rate to the growing sum
+        sumFlagsCowToBadger <- sumFlagsCowToBadger + values
+      }
+    }
+    
+    # Divide the sums of the flags by the number of rates
+    flagsBadgerToCow <- sumFlagsBadgerToCow / nBadgerToCow
+    flagsCowToBadger <- sumFlagsCowToBadger / nCowToBadger
+    
+    # Store summary statistics of these posterior sums
+    modelBadgerToCowFlagMeans[i] <- mean(flagsBadgerToCow)
+    quantiles <- quantile(flagsBadgerToCow, probs=c(0.025, 0.975))
+    modelBadgerToCowFlagLower[i] <- quantiles[[1]]
+    modelBadgerToCowFlagUpper[i] <- quantiles[[2]]
+    
+    modelCowToBadgerFlagMeans[i] <- mean(flagsCowToBadger)
+    quantiles <- quantile(flagsCowToBadger, probs=c(0.025, 0.975))
+    modelCowToBadgerFlagLower[i] <- quantiles[[1]]
+    modelCowToBadgerFlagUpper[i] <- quantiles[[2]]
+    
+  }
+  
+  ## Plot the interspecies transmission rates for each model
+  currentMar <- par("mar")
+  par(mar=c(17, 5.5, 5, 0.1)) # bottom, left, top, right
+  plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
+       ylim=c(0, 1),
+       ylab="", main="Posterior probability of inter-species transition rates",
+       las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=1.25, cex.axis=1.25)
+  mtext(side=2, text="Posterior probability", line=3.5, cex=1.25)
+  
+  for(i in 1:length(analyses)){
+    
+    # Badgers to cattle
+    points(x=c(i-0.1, i-0.1), y=c(modelBadgerToCowFlagLower[i], modelBadgerToCowFlagUpper[i]), type="l", col=rgb(1,0,0, 1))
+    points(x=i-0.1, y=modelBadgerToCowFlagMeans[i], pch=19, col=rgb(1,0,0, 0.75))
+    
+    # Cattle to Badger
+    points(x=c(i+0.1, i+0.1), y=c(modelCowToBadgerFlagLower[i], modelCowToBadgerFlagUpper[i]), type="l", col=rgb(0,0,1, 1))
+    points(x=i+0.1, y=modelCowToBadgerFlagMeans[i], pch=19, col=rgb(0,0,1, 0.75))
+  }
+  
+  # Axis
+  axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
+
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add a plot label
+  mtext("D", side=3, line=1, at=axisLimits[1], cex=2.5)
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
+
+getCountsFromBestModel <- function(transitionCountsWithoutBurnIn, aicmScores){
+  
+  # Identify the best model
+  bestModel <- getBestModel(aicmScores)
+  
+  # Subset the counts associated with the best model
+  subsetOfCounts <- transitionCountsWithoutBurnIn[transitionCountsWithoutBurnIn$Analysis == bestModel, ]
+  
+  return(subsetOfCounts)
+}
+
+getBestModel <- function(aicmScores){
+  
+  # Initialise an output variable
+  model <- ""
+  bestAICM <- Inf
+
+  # Examine each of the aicmScores
+  for(name in names(aicmScores)){
+    
+    if(aicmScores[[name]][1] < bestAICM){
+      model <- name
+      bestAICM <- aicmScores[[name]][1]
+    }
+  }
+  
+  # Remove the date from the model name
+  parts <- strsplit(model, split="_")[[1]]
+  model <- paste0(parts[1], "_", parts[2], "_", parts[3])
+  
+  return(model)
+}
+
+plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates){
   
   # Set the margin sizes
   currentMar <- par("mar")
@@ -171,8 +329,11 @@ plotSummaryOfTransitionRatesBasedOnPosteriorTrees <- function(weightedSampleOfTr
   quantilesCC <- quantile(weightedSampleOfTransitionRates[, "Count_CC"], probs=c(0.025, 0.975))
   medianCC <- median(weightedSampleOfTransitionRates[, "Count_CC"])
   
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
   # Add a plot label
-  mtext("C", side=3, line=1, at=-0.35, cex=2.5)
+  mtext("C", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the plotting margins
   par(mar=currentMar)
@@ -419,9 +580,8 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # 6. Calculate weighted average rates:
     #      - Sample the posterior sums for cattle->badgers relative to AICM weight
     #      - Sample the posterior sums for badgers->cattle relative to AICM weight
-    #       c->b = median(sampleCB, na.rm=TRUE)
-    #       b->c = median(sampleBC, na.rm=TRUE)
-    #      - NOTE: NAs introduced when flag = 0, these are removed after relative sampling
+    #       c->b = median(sampleCB)
+    #       b->c = median(sampleBC)
     #
     # Above method for weighting AICM suggested by Paul Johnson
     # I think this is equivalent to Ensemble Bayesian Model Averaging
@@ -461,12 +621,24 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     modelCowToBadgerRateLower <- c()
     modelCowToBadgerRateUpper <- c()
     
+    # Initialise a vectors to store the mean of the rate flags
+    modelBadgerToCowFlagMeans <- c()
+    modelCowToBadgerFlagMeans <- c()
+
     # Examine each of the different model structures
     for(i in 1:length(analyses)){
       
       # Initialise arrays to store the rates from badgers to cattle and vice versa
       sumRatesBadgerToCow <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
       sumRatesCowToBadger <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
+      
+      # Initialise arrays to store the rate flags from badgers to cattle and vice versa
+      sumFlagsBadgerToCow <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
+      sumFlagsCowToBadger <- rep(0, length(migrationRateEstimates[[analyses[i]]][[1]]))
+      
+      # Initialise counts for the number of badger-to-cow and cow-to-badger rates for the current model
+      nBadgerToCow <- 0
+      nCowToBadger <- 0
       
       # Get the demeStructure
       parts <- strsplit(analyses[i], "_")[[1]]
@@ -481,6 +653,15 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
           next
         }
         
+        # Get the migration rate values
+        values <- migrationRateEstimates[[analyses[i]]][[key]]
+        
+        # Create the flags (1 when values not NA, 0 otherwise)
+        flags <- ifelse(is.na(values), 0, 1)
+        
+        # Replace the NA values with zero - so they aren't carried into the sums
+        values[is.na(values)] <- 0
+        
         # Split the key into its deme numbers
         demeNumbers <- as.numeric(strsplit(key, split="_")[[1]])
  
@@ -489,8 +670,14 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
                  pattern="badger") == TRUE &&
            grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                  pattern="cow") == TRUE){
-          values <- migrationRateEstimates[[analyses[i]]][[key]]
-          values[is.na(values)] <- 0
+          
+          # Increment the count
+          nBadgerToCow <- nBadgerToCow + 1
+          
+          # Add the flags for the current rate to the growing sum
+          sumFlagsBadgerToCow <- sumFlagsBadgerToCow + flags
+          
+          # Add the current rate estimates to the growing sum
           sumRatesBadgerToCow <- sumRatesBadgerToCow + values
           
         }else if(grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[1]),
@@ -498,20 +685,30 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
                  grepl(getDemeNamesForDemeStructure(demeStructure, demeNumbers[2]),
                        pattern="badger") == TRUE){
           
-          values <- migrationRateEstimates[[analyses[i]]][[key]]
-          values[is.na(values)] <- 0
+          # Increment the count
+          nCowToBadger <- nCowToBadger + 1
+          
+          # Add the flags for the current rate to the growing sum
+          sumFlagsCowToBadger <- sumFlagsCowToBadger + flags
+          
+          # Add the current rate estimates to the growing sum
           sumRatesCowToBadger <- sumRatesCowToBadger + values
         }
       }
       
+      # Remove any values that are exactly zero
+      # - These will result when flag=0 across badger-to-cattle/cattle-to-badger rates estimate
+      sumRatesBadgerToCow <- sumRatesBadgerToCow[sumRatesBadgerToCow != 0]
+      sumRatesCowToBadger <- sumRatesCowToBadger[sumRatesCowToBadger != 0]
+      
       # Store summary statistics of these posterior sums
-      modelBadgerToCowRateMedians[i] <- median(sumRatesBadgerToCow, na.rm=TRUE)
-      quantiles <- quantile(sumRatesBadgerToCow, probs=c(0.025, 0.975), na.rm=TRUE)
+      modelBadgerToCowRateMedians[i] <- median(sumRatesBadgerToCow)
+      quantiles <- quantile(sumRatesBadgerToCow, probs=c(0.025, 0.975))
       modelBadgerToCowRateLower[i] <- quantiles[[1]]
       modelBadgerToCowRateUpper[i] <- quantiles[[2]]
       
-      modelCowToBadgerRateMedians[i] <- median(sumRatesCowToBadger, na.rm=TRUE)
-      quantiles <- quantile(sumRatesCowToBadger, probs=c(0.025, 0.975), na.rm=TRUE)
+      modelCowToBadgerRateMedians[i] <- median(sumRatesCowToBadger)
+      quantiles <- quantile(sumRatesCowToBadger, probs=c(0.025, 0.975))
       modelCowToBadgerRateLower[i] <- quantiles[[1]]
       modelCowToBadgerRateUpper[i] <- quantiles[[2]]
       
@@ -522,47 +719,79 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       cowToBadgerRatePosteriorSumSamples <- 
         c(cowToBadgerRatePosteriorSumSamples,
           sample(sumRatesCowToBadger, size=round(normalisedModelAICMWeights[i] * length(sumRatesCowToBadger), digits=0)))
+      
+      # Divide the sums of the flags by the number of rates
+      flagsBadgerToCow <- sumFlagsBadgerToCow / nBadgerToCow
+      flagsCowToBadger <- sumFlagsCowToBadger / nCowToBadger
+      
+      # Store summary statistics of these posterior sums
+      modelBadgerToCowFlagMeans[i] <- mean(flagsBadgerToCow)
+      modelCowToBadgerFlagMeans[i] <- mean(flagsCowToBadger)
     }
     
     ## Plot the interspecies transmission rates for each model
+    
+    # Get and set the margins
     currentMar <- par("mar")
-    par(mar=c(17, 5.5, 5, 0.1)) # bottom, left, top, right
-    plot(x=NULL, y=NULL, xlim=c(1, length(analyses) + 1), 
-         ylim=c(0, max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper), na.rm=TRUE)),
-         ylab="", main="Estimated inter-species transition rates",
+    par(mar=c(17, 5.5, 5, 0.2)) # bottom, left, top, right
+    
+    # Set the Y axis limits - leave space for flag estimates
+    maxValue <- max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper))
+    yLim <- c(0, maxValue + (0.2 * maxValue))
+
+    # Create the initial empty plot
+    plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
+         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species transition rates",
          las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
+    
+    # Add the Y axis
+    axis(side=2, at=round(seq(yLim[1], maxValue, by=maxValue/4), digits=2), las=1)
     mtext(side=2, text="Per lineage transition rate per year", line=3.5, cex=1.25)
     
+    # Get the axis limits
+    axisLimits <- par("usr")
+    
+    # Add summaries for the rates from each analyses
     for(i in 1:length(analyses)){
 
       # Badgers to cattle
       points(x=c(i-0.1, i-0.1), y=c(modelBadgerToCowRateLower[i], modelBadgerToCowRateUpper[i]), type="l", col=rgb(1,0,0, 1))
       points(x=i-0.1, y=modelBadgerToCowRateMedians[i], pch=19, col=rgb(1,0,0, 0.75))
+      text(x=i-ifelse(nchar(round(modelBadgerToCowFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
+           y=modelBadgerToCowRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
+           labels=round(modelBadgerToCowFlagMeans[i], digits=2), col="red", cex=0.75, xpd=TRUE)
       
       # Cattle to Badger
       points(x=c(i+0.1, i+0.1), y=c(modelCowToBadgerRateLower[i], modelCowToBadgerRateUpper[i]), type="l", col=rgb(0,0,1, 1))
       points(x=i+0.1, y=modelCowToBadgerRateMedians[i], pch=19, col=rgb(0,0,1, 0.75))
+      text(x=i+ifelse(nchar(round(modelCowToBadgerFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
+           y=modelCowToBadgerRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
+           labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.75, xpd=TRUE)
     }
     
-    # Model average - badgers to cattle
-    quantiles <- quantile(badgerToCowRatePosteriorSumSamples, probs=c(0.025, 0.975), na.rm=TRUE)
-    median <- median(badgerToCowRatePosteriorSumSamples, na.rm=TRUE)
-    points(x=c(length(analyses) + 0.9, length(analyses) + 0.9), y=c(quantiles[[1]], quantiles[[2]]), type="l", col="red")
-    points(x=length(analyses) + 0.9, y=median, pch=19, col=rgb(1,0,0, 0.75))
-    
-    # Model average - cattle to badgers
-    quantiles <- quantile(cowToBadgerRatePosteriorSumSamples, probs=c(0.025, 0.975), na.rm=TRUE)
-    median <- median(cowToBadgerRatePosteriorSumSamples, na.rm=TRUE)
-    points(x=c(length(analyses) + 1.1, length(analyses) + 1.1), y=c(quantiles[[1]], quantiles[[2]]), type="l", col="blue")
-    points(x=length(analyses) + 1.1, y=median, pch=19, col=rgb(0,0,1, 0.75))
+    # # Model average - badgers to cattle
+    # quantiles <- quantile(badgerToCowRatePosteriorSumSamples, probs=c(0.025, 0.975), na.rm=TRUE)
+    # median <- median(badgerToCowRatePosteriorSumSamples, na.rm=TRUE)
+    # points(x=c(length(analyses) + 0.9, length(analyses) + 0.9), y=c(quantiles[[1]], quantiles[[2]]), type="l", col="red")
+    # points(x=length(analyses) + 0.9, y=median, pch=19, col=rgb(1,0,0, 0.75))
+    # 
+    # # Model average - cattle to badgers
+    # quantiles <- quantile(cowToBadgerRatePosteriorSumSamples, probs=c(0.025, 0.975), na.rm=TRUE)
+    # median <- median(cowToBadgerRatePosteriorSumSamples, na.rm=TRUE)
+    # points(x=c(length(analyses) + 1.1, length(analyses) + 1.1), y=c(quantiles[[1]], quantiles[[2]]), type="l", col="blue")
+    # points(x=length(analyses) + 1.1, y=median, pch=19, col=rgb(0,0,1, 0.75))
     
     # Axis
-    axis(side=1, at=1:(length(analyses)+1), labels=c(names, ""), las=2, cex.axis=1.25)
-    axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=1.5, col.axis="black", tick=FALSE)
+    axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
+    # axis(side=1, at=1:(length(analyses)+1), labels=c(names, ""), las=2, cex.axis=1.25)
+    # axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=1.5, col.axis="black", tick=FALSE)
     legend("top", legend=c("Badgers-to-Cattle", "Cattle-to-Badgers"), text.col=c("red", "blue"), bty="n")
     
+    # Get the axis limits
+    axisLimits <- par("usr")
+    
     # Add a plot label
-    mtext("B", side=3, line=1, at=-2, cex=2.5)
+    mtext("B", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
     
     # ## Plot badger -> cattle versus cattle -> badger
     # par(mar=c(5.1, 4.1, 0.5, 2.1))
@@ -635,7 +864,7 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
        xlim=c(1, length(analyses)), ylim=yLim,
        xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=2)
   axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2, cex.axis=1.25)
-  mtext(side=2, text="AICM score", line=6, cex=1.5)
+  mtext(side=2, text="AICM score", line=6, cex=1.25)
   axis(side=1, at=1:length(analyses),
        labels=names, las=2, cex.axis=1.25)
   
@@ -659,8 +888,11 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
          y=c(bootstrapMaxs[minIndex], bootstrapMaxs[minIndex]),
          lty=2, col=rgb(0,0,0, 0.5), type="l")
 
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
   # Add a plot label
-  mtext("A", side=3, line=1, at=-2, cex=2.5)
+  mtext("A", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))
@@ -1014,7 +1246,7 @@ getArrowRates <- function(logTable){
     }
     
     # Skip rate if never estimate e.d. cattle-outer -> badger-inner
-    if(length(unique(logTable[, col])) == 1){
+    if(length(unique(logTable[, col])) <= 2){
       next
     }
     
