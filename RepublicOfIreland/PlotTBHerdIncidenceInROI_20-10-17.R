@@ -6,7 +6,7 @@ library(maptools) # Read shape file
 ###################################
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Paratuberculosis/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Paratuberculosis/"
 
 # Read in the shape file
 file <- paste(path, "CountyPolygonCoords/ROI_CountyBoundaries/counties.shp", sep="")
