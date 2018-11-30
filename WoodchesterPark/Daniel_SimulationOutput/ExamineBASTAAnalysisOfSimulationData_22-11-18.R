@@ -1,7 +1,7 @@
 #### Load the data ####
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/BASTA/Simulations/119-02_2Deme_varying_strict_28-11-18/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/BASTA/Simulations/119-03_2Deme_varying_strict_28-11-18/"
 
 # Note the trees file
 treesFile <- paste0(path, "2Deme_equal_relaxed_10-04-18.trees")

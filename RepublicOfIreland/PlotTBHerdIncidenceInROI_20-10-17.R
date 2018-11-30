@@ -29,27 +29,92 @@ statistics <- readTBStatisticsFile(file)
 # Calculate the per county proportion test positive animals in most recent report - 2018Q3
 summaryTables <- calculateSummaryStatisticsPerQuarter(statistics)
 
-# # Read in the file
-# file <- paste(path, "DAFM_TBHerdPrevalence_2015.txt", sep="")
-# tbInfo <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE,
-#                        check.names=FALSE)
-# 
-# # Combine counties that have been split
-# tbInfo <- combineSplitCountyData(tbInfo)
-# 
-# # Get proportion herds infected per county
-# countyProps <- getCountyPropHerdsInfected(tbInfo)
+##################
+# Plot summaries #
+#################
 
-#####################
-# Plot the counties #
-#####################
+# Open an output pdf
+pdf(paste0(path, "HerdTbStatistics_2010-2018.pdf"))
 
-plotProportionHerdsInfectedPerCounty(countyCoords, countyNames,
-                                     countyProps)
+# Plot the proportion of herds infected in the country - compare to number of herds
+plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2018Q3`, column="ProportionHerds", digits=1, units="%",
+                  main="Proportion herds infected", cex=0.75)
+plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2018Q3`, column="NumberHerdsTested", units="",
+                  main="Number of herds", cex=0.75)
+
+# Plot the trend in the proportion of infected
+yearsOfInterest <- 2010:2018
+plotProportionTrends(summaryTables, yearsOfInterest)
+
+dev.off()
 
 #############
 # FUNCTIONS #
 #############
+
+plotProportionTrends <- function(summaryTables, yearsOfInterest){
+  
+  # Initialise a vector to store the proportion of infected herds and the number of herds
+  proportionHerds <- c()
+  nHerds <- c()
+  proportionAnimals <- c()
+  nAnimals <- c()
+  
+  # Examine the summary tables available for each period
+  for(key in names(summaryTables)){
+    
+    # Skip all quarters except the fourth (or third for 2018)
+    if(grepl(key, pattern="Q1|Q2|Q3") && key != "2018Q3"){
+      next
+    }
+
+    # Get the information for the state
+    stateInfo <- summaryTables[[key]][1, ]
+    
+    # Store the proportion of herds infected and the number of herds
+    proportionHerds[length(proportionHerds) + 1] <- stateInfo[1, "ProportionHerds"]
+    nHerds[length(nHerds) + 1] <- stateInfo[1, "NumberHerdsTested"]
+    
+    # Store the proportion of animals infected and the number of animals
+    proportionAnimals[length(proportionAnimals) + 1] <- stateInfo[1, "ProportionAnimals"]
+    nAnimals[length(nAnimals) + 1] <- stateInfo[1, "NumberAnimalsTested"]
+  }
+  
+  # Plot the proportion of herds infected in Ireland
+  plot(x=yearsOfInterest, y=proportionHerds, ylim=c(0, 0.05), las=1, bty="n", type="o", lwd=2, pch=19, cex=2,
+       ylab="Proportion", xlab="Year", main="Proportion tested herds positive")
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add the number of herds above each proportion
+  text(x=yearsOfInterest, y=proportionHerds + 0.1*proportionHerds, labels=nHerds, xpd=TRUE)
+  
+  # Add line for European threshold
+  points(x=c(yearsOfInterest[1], yearsOfInterest[length(yearsOfInterest)]), y=c(0.01, 0.01), type="l", lty=2,
+         col="green", lwd=4)
+  
+  
+  # Get and set the margins
+  currentMar <- par("mar")
+  par(mar=c(5.1,5.1,4.1,2.1))
+  
+  # Plot the proportion of animals infected in Ireland
+  plot(x=yearsOfInterest, y=proportionAnimals, ylim=c(0, 0.003), las=1, bty="n", type="o", lwd=2, pch=19, cex=2,
+       ylab="", xlab="Year", main="Proportion tested animals positive")
+  
+  # Add Y axis label
+  mtext("Proportion", side=2, line=4)
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add the number of herds above each proportion
+  text(x=yearsOfInterest, y=proportionAnimals + 0.1*proportionAnimals, labels=nAnimals, xpd=TRUE, cex=0.8)
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
 
 calculateSummaryStatisticsPerQuarter <- function(statistics){
   
@@ -78,6 +143,22 @@ calculateSummaryStatisticsPerQuarter <- function(statistics){
       dataSummary[row, "NumberAnimalsTested"] <- as.numeric(info[i-1, column])
       dataSummary[row, "NumberAnimalsPositive"] <- as.numeric(info[i, column])
     }
+    
+    # Combine Tipperary (north & south), Cork (north & south), and Wicklow (east and west)
+    corkRow <- which(dataSummary$County == "CORK NORTH")
+    dataSummary[corkRow, "County"] <- "CORK"
+    dataSummary[corkRow, 2:5] <- dataSummary[corkRow, 2:5] + dataSummary[corkRow + 1, 2:5]
+    dataSummary <- dataSummary[-(corkRow + 1), ]
+    
+    tipperaryRow <- which(dataSummary$County == "TIPPERARY NORTH")
+    dataSummary[tipperaryRow, "County"] <- "TIPPERARY"
+    dataSummary[tipperaryRow, 2:5] <- dataSummary[tipperaryRow, 2:5] + dataSummary[tipperaryRow + 1, 2:5]
+    dataSummary <- dataSummary[-(tipperaryRow + 1), ]
+    
+    wicklowRow <- which(dataSummary$County == "WICKLOW E")
+    dataSummary[wicklowRow, "County"] <- "WICKLOW"
+    dataSummary[wicklowRow, 2:5] <- dataSummary[wicklowRow, 2:5] + dataSummary[wicklowRow + 1, 2:5]
+    dataSummary <- dataSummary[-(wicklowRow + 1), ]
     
     # Calculate the proportion test positive
     dataSummary$ProportionAnimals <- dataSummary$NumberAnimalsPositive / dataSummary$NumberAnimalsTested
@@ -139,112 +220,57 @@ readTBStatisticsFile <- function(fileName){
   return(statistics)
 }
 
-findMax <- function(list){
+plotInfoPerCounty <- function(countyCoords, countyNames, summaryTable, column, digits=1, units="%",
+                              cex=1, main=""){
   
-  max <- 0
-  for(key in names(list)){
-    if(list[[key]] > max){
-      max <- list[[key]]
-    }
-  }
+  # Get and set the margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,2,0))
   
-  return(max)
-}
-
-getCountyPropHerdsInfected <- function(tbInfo){
-  
-  countyProps <- list()
-  for(row in 1:nrow(tbInfo)){
-    
-    countyProps[[tbInfo[row, 1]]] <- tbInfo[row, 4] / 100
-  }
-  
-  return(countyProps)
-}
-
-combineSplitCountyData <- function(tbInfo){
-  
-  rowsToRemove <- c()
-  for(row in 1:nrow(tbInfo)){
-    
-    parts <- strsplit(tbInfo[row, "RVO"], split=" ")[[1]]
-    
-    if(row %in% rowsToRemove){
-      next
-    }
-    
-    if(length(parts) > 1){
-      
-      newValues <- c()
-      
-      newValues[2] <- tbInfo[row, 2] + tbInfo[row + 1, 2]
-      newValues[3] <- tbInfo[row, 3] + tbInfo[row + 1, 3]
-      newValues[4] <- (((tbInfo[row, 3] * (tbInfo[row, 4] / 100)) +
-                          (tbInfo[row + 1, 3] * (tbInfo[row + 1, 4] / 100))) /
-                         newValues[3] ) * 100
-      
-      newValues[5] <- tbInfo[row, 5] + tbInfo[row + 1, 5]
-      newValues[6] <- (((tbInfo[row, 5] * (tbInfo[row, 6] / 1000)) +
-                          (tbInfo[row + 1, 5] * (tbInfo[row + 1, 6] / 1000))) /
-                         newValues[5]) * 1000
-      
-      tbInfo[row, ] <- newValues
-      tbInfo[row, 1] <- parts[1]
-      rowsToRemove[length(rowsToRemove) + 1] <- row + 1
-    }
-  }
-  tbInfo <- tbInfo[-rowsToRemove, ]
-  
-  return(tbInfo)
-}
-
-plotProportionHerdsInfectedPerCounty <- function(countyCoords, countyNames,
-                                                 countyProps){
-  
-  niCounties <- c(
-    "LONDONDERRY", "ANTRIM", "DOWN", "ARMAGH", "TYRONE", "FERMANAGH")
+  # Note the names of the counties in Northern Ireland
+  niCounties <- c("LONDONDERRY", "ANTRIM", "DOWN", "ARMAGH", "TYRONE", "FERMANAGH")
   
   # Calculate max proportion herds infected
-  maxProp <- findMax(countyProps)
+  maxProp <- max(summaryTable[-1, column])
   
-  par(mar=c(0,0,0,0))
-  
+  # Create an empty plot
   plot(x=NULL, y=NULL, yaxt="n", xaxt="n", ylab="", xlab="", bty="n",
        xlim=c(countyCoords[["min"]][1], countyCoords[["max"]][1]),
-       ylim=c(countyCoords[["min"]][2], countyCoords[["max"]][2]))
+       ylim=c(countyCoords[["min"]][2], countyCoords[["max"]][2]),
+       main=main)
   
+  # Examine each of the counties
   for(key in names(countyCoords)){
     
+    # Ignore the minimum and maximum coordinates
     if(key %in% c("min", "max")){
       next
     }
     
+    # Plot the Northern Ireland counties greyed out
     if(countyNames[[key]] %in% niCounties){
-      polygon(countyCoords[[key]], border=rgb(0,0,0, 1), 
-              col=rgb(0,0,0, 0.75),
-              lwd=2)
+      polygon(countyCoords[[key]], border=rgb(0,0,0, 1), col=rgb(0,0,0, 0.75), lwd=2)
       next
     }
     
-    prop <- countyProps[[countyNames[[key]]]]
-    if(length(prop) == 0){
-      print(countyNames[[key]])
-      prop <- 0
-    }
+    # Get the information for the current county
+    countyInfo <- summaryTable[summaryTable$County == countyNames[[key]], ]
     
+    # Plot a polygon for the current county
     polygon(countyCoords[[key]], border=rgb(0,0,0, 1), 
-            col=rgb(1,0,0,prop / maxProp),
-            lwd=2)
+            col=rgb(0,0,1, countyInfo[1, column] / maxProp), lwd=2)
     
-    if(prop != 0){
-      text(x=mean(countyCoords[[key]][, 1]),
-           y=mean(countyCoords[[key]][, 2]),
-           labels=paste(round(prop * 100, digits=1), "%", sep=""),
-           cex=0.75, col="blue")
-    }else{
-      print(countyNames[[key]])
-    }
+    # Find the mid-point of the polygon
+    middleX <- mean(countyCoords[[key]][, 1])
+    middleY <- mean(countyCoords[[key]][, 2])
+      
+    # Add the value of interest
+    text(x=middleX, y=middleY,
+         labels=paste(round(countyInfo[1, column] * 100, digits=digits), units, sep=""), cex=cex, col="red")
   }
+  
+  # Reset the margins
+  par(mar=currentMar)
 }
 
 writePolygonCoordsToFile <- function(countyCoords, countyNames, path){
