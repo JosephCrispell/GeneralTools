@@ -733,7 +733,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     
     # Get and set the margins
     currentMar <- par("mar")
-    par(mar=c(17, 5.5, 5, 0.2)) # bottom, left, top, right
+    par(mar=c(17, 5.5, 5, 0.5)) # bottom, left, top, right
     
     # Set the Y axis limits - leave space for flag estimates
     maxValue <- max(c(modelBadgerToCowRateUpper, modelCowToBadgerRateUpper))
@@ -759,14 +759,14 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       points(x=i-0.1, y=modelBadgerToCowRateMedians[i], pch=19, col=rgb(1,0,0, 0.75))
       text(x=i-ifelse(nchar(round(modelBadgerToCowFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
            y=modelBadgerToCowRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
-           labels=round(modelBadgerToCowFlagMeans[i], digits=2), col="red", cex=0.75, xpd=TRUE)
+           labels=round(modelBadgerToCowFlagMeans[i], digits=2), col="red", cex=0.95, xpd=TRUE)
       
       # Cattle to Badger
       points(x=c(i+0.1, i+0.1), y=c(modelCowToBadgerRateLower[i], modelCowToBadgerRateUpper[i]), type="l", col=rgb(0,0,1, 1))
       points(x=i+0.1, y=modelCowToBadgerRateMedians[i], pch=19, col=rgb(0,0,1, 0.75))
       text(x=i+ifelse(nchar(round(modelCowToBadgerFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
            y=modelCowToBadgerRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
-           labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.75, xpd=TRUE)
+           labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.95, xpd=TRUE)
     }
     
     # # Model average - badgers to cattle

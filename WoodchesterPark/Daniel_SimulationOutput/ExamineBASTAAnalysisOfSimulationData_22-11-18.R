@@ -1,13 +1,13 @@
 #### Load the data ####
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/BASTA/Replicate1_10-04-18/2Deme_equal_relaxed_10-04-18/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/BASTA/Simulations/119-02_2Deme_varying_strict_28-11-18/"
 
 # Note the trees file
 treesFile <- paste0(path, "2Deme_equal_relaxed_10-04-18.trees")
 
 # Load the log file
-logFile <- paste0(path, "2Deme_equal_relaxed_10-04-18.log")
+logFile <- paste0(path, "119-02_2Deme_varying_strict_28-11-18.log")
 log <- read.table(logFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Replace "N" in table with NAs
@@ -15,6 +15,10 @@ log[log == "N"] <- NA
 
 # Calculate the forward rates
 log <- calculateForwardMigrationRates(log)
+
+# Remove the burn-in
+burnIn <- round(0.1 * nrow(log), digits=0)
+log <- log[burnIn:nrow(log), ]
 
 #### Count the transitions ####
 
