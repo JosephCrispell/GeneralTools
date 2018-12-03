@@ -36,6 +36,12 @@ summaryTables <- calculateSummaryStatisticsPerQuarter(statistics)
 # Open an output pdf
 pdf(paste0(path, "HerdTbStatistics_2010-2018.pdf"))
 
+# Plot Wicklow
+plotCounty(countyCoords, countyNames, "WICKLOW")
+
+# Plot the county outlines for Ireland
+plotCountyOutlines(countyCoords, countyNames)
+
 # Plot the proportion of herds infected in the country - compare to number of herds
 plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2018Q3`, column="ProportionHerds", digits=1, units="%",
                   main="Proportion herds infected", cex=0.75)
@@ -51,6 +57,62 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+plotCounty <- function(countyCoords, countyNames, name){
+  
+  # Find the county index
+  countyIndex <- NULL
+  for(key in names(countyNames)){
+    
+    if(countyNames[[key]] == name){
+      countyIndex <- key
+      break
+    }
+  }
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, yaxt="n", xaxt="n", ylab="", xlab="", bty="n",
+       xlim=range(countyCoords[[countyIndex]][, 1]), ylim=range(countyCoords[[countyIndex]][, 2]))
+  
+  # Plot the county polygon
+  polygon(countyCoords[[countyIndex]], border=rgb(0,0,0, 1), col=rgb(0,0,1, 0), lwd=4)
+}
+
+plotCountyOutlines <- function(countyCoords, countyNames){
+  
+  # Get and set the margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,0,0))
+  
+  # Note the names of the counties in Northern Ireland
+  niCounties <- c("LONDONDERRY", "ANTRIM", "DOWN", "ARMAGH", "TYRONE", "FERMANAGH")
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, yaxt="n", xaxt="n", ylab="", xlab="", bty="n",
+       xlim=c(countyCoords[["min"]][1], countyCoords[["max"]][1]),
+       ylim=c(countyCoords[["min"]][2], countyCoords[["max"]][2]))
+  
+  # Examine each of the counties
+  for(key in names(countyCoords)){
+    
+    # Ignore the minimum and maximum coordinates
+    if(key %in% c("min", "max")){
+      next
+    }
+    
+    # Plot the Northern Ireland counties greyed out
+    if(countyNames[[key]] %in% niCounties){
+      polygon(countyCoords[[key]], border=rgb(0,0,0, 1), col=rgb(0,0,0, 0.75), lwd=2)
+      next
+    }
+
+    # Plot a polygon for the current county
+    polygon(countyCoords[[key]], border=rgb(0,0,0, 1), col=rgb(0,0,1, 0), lwd=2)
+  }
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
 
 plotProportionTrends <- function(summaryTables, yearsOfInterest){
   
