@@ -35,6 +35,30 @@ dev.off()
 
 #### FUNCTIONS ####
 
+getEdgeList <- function(adjacencyMatrix){
+  
+  # Intialise a dataframe to store the edges
+  edges <- data.frame("Source"=NA, "Sink"=NA, stringsAsFactors=FALSE)
+  count <- 0
+  
+  # Examine each row of the adjacency matrix
+  for(row in seq_len(nrow(adjacencyMatrix))){
+
+    # Examine each column of the adjacency matrix
+    for(col in seq_len(ncol(adjacencyMatrix))){
+      
+      # Check if edge present
+      if(adjacencyMatrix[row, col] == 1){
+        count <- count + 1
+        edges[count, "Source"] <- rownames(adjacencyMatrix)[row]
+        edges[count, "Sink"] <- colnames(adjacencyMatrix)[col] 
+      }
+    }
+  }
+  
+  return(edges)
+}
+
 plotCountsAsBars <- function(counts){
   
   # Get the set the margins
