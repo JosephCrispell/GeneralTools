@@ -52,3 +52,23 @@ addTextLabels(xx,yy,c("A", "B", "C", "D"))
 #this works
 plot(log10(xx),log10(yy),type="b")
 addTextLabels(log10(min(xx)),log10(min(yy)),"(min,min)")
+
+### Plotting with  multiple colours
+# Create random points
+x = runif(n=10)
+y = runif(n=10)
+
+# Create random labels
+testLabels <- c("short", "mediummm", "looooonnnnnnngggggg", "0090292002", "9", "A Different label")
+labels <- sample(testLabels, size=10, replace=TRUE)
+
+# Set label colours
+colours <- c("red", "red", "red", "red", "red", "blue", "blue", "blue", "blue", "blue")
+
+# Plot points
+plot(x, y, asp=1)
+
+# Add labels
+addTextLabels(x, y, labels, cex=0.9, col.background=rgb(0,0,0, 0.75), col.label=colours, lty=c(1,2,3))
+
+
