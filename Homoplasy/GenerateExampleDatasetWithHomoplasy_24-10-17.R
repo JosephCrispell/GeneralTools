@@ -140,17 +140,17 @@ results$NMissed <- results$NHomoplasies - results$NFoundAfter
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
                                              results=results, 
                                              column="NMissed", colours=colours, 
-                                             title="Number inserted homoplasies not present",
-                                             legendTitle="N. not present",
-                                             plotLabel="A.", colourAlpha=0.75, spline=FALSE)
+                                             title="Number of inserted homoplasies not present",
+                                             legendTitle="Number not present",
+                                             plotLabel="a.", colourAlpha=0.75, spline=FALSE)
 
 ### Plot the number non-inserted homoplasies found by homoplasyFinder
 plotProportionOfSimulationsWithValueInColumn(nHomoplasiesValues=nHomoplasiesValues, nSimulations=nSimulations,
                                              results=results, 
                                              column="NIncorrectAfter", colours=colours, 
-                                             title="Number non-inserted homoplasies present",
-                                             legendTitle="N. present",
-                                             plotLabel="B.", colourAlpha=0.75, spline=FALSE)
+                                             title="Number of non-inserted homoplasies present",
+                                             legendTitle="Number present",
+                                             plotLabel="b.", colourAlpha=0.75, spline=FALSE)
 
 dev.off()
 

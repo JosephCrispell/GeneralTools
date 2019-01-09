@@ -10,10 +10,10 @@ library(geiger)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
 
 # Read in the FASTA file
-fastaFile <- paste(path, "Fastqs/vcfFiles_NoINDELS/sequences_Prox-10_11-07-2018.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_09-01-2019.fasta", sep="")
 sequencesDNAbin <- read.dna(fastaFile,
                             format = "fasta", skip=1) # skip first line - I added this line into FASTA: nSequences length
 
@@ -34,10 +34,10 @@ sampleInfo$Moved.in <- as.Date(sampleInfo$Moved.in, format="%d/%m/%Y")
 #### Build tree ####
 
 # Build a phylogeny using RAxML
-mlTree <- runRAXML(fastaFile, date, path)
+mlTree <- runRAXML(fastaFile, date, path, alreadyRun=TRUE)
 
 # Remove NI isolates and Reference
-mlTree <- drop.tip(mlTree, c(">Ref-1997", ">182-MBovis_S4_2.vcf.gz", ">161-MBovis_S29_1.vcf.gz"))
+mlTree <- drop.tip(mlTree, mlTree$tip.label[grepl(mlTree$tip.label, pattern=">Ref-1997|>182-MBovis|>161-MBovis")])
 
 # Parse the isolate IDs
 mlTree$tip.label <- parseIDs(mlTree$tip.label)
@@ -48,7 +48,7 @@ mlTree$edge.length <- mlTree$edge.length * getNSitesInFASTA(fastaFile)
 #### Plot the tree with sampling info ####
 
 # Open a pdf
-pdf(paste(path, "MBovisAnnotatedPhylogeny_18-07-18.pdf", sep=""))
+pdf(paste(path, "MBovisAnnotatedPhylogeny_09-09-19.pdf", sep=""))
 
 # Set the margins
 par(mai=c(0.75,0,0,3))
@@ -93,7 +93,7 @@ dev.off()
 # FUNCTIONS #
 #############
 
-runRAXML <- function(fastaFile, date, path, nBootstraps=100, nThreads=6){
+runRAXML <- function(fastaFile, date, path, nBootstraps=100, nThreads=6, alreadyRun=FALSE){
   
   # Create a directory for the output file
   directory <- paste(path, "RAxML_", date, sep="")
@@ -105,19 +105,22 @@ runRAXML <- function(fastaFile, date, path, nBootstraps=100, nThreads=6){
   # Build analysis name
   analysisName <- paste("RaxML-R_", date, sep="")
   
-  # Build the command
-  model <- "GTRCAT" # No rate heterogenity
-  seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
-  
-  command <- paste("raxmlHPC", 
-                   " -f a", # Algorithm: Rapid boostrap inference
-                   " -N ", nBootstraps,
-                   " -T ", nThreads,
-                   " -m ", model, " -V", # -V means no rate heterogenity
-                   " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
-                   " -n ", analysisName,
-                   " -s ", fastaFile, sep="")
-  system(command, intern=TRUE)
+  # Check if already Run and just want to retrieve tree
+  if(alreadyRun == FALSE){
+    # Build the command
+    model <- "GTRCAT" # No rate heterogenity
+    seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
+    
+    command <- paste("raxmlHPC", 
+                     " -f a", # Algorithm: Rapid boostrap inference
+                     " -N ", nBootstraps,
+                     " -T ", nThreads,
+                     " -m ", model, " -V", # -V means no rate heterogenity
+                     " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
+                     " -n ", analysisName,
+                     " -s ", fastaFile, sep="")
+    system(command, intern=TRUE)
+  }
   
   # Get the tree and read it in
   treeBS <- getTreeFileWithSupportValues(analysisName)
