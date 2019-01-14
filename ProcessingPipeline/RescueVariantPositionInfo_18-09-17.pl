@@ -14,8 +14,8 @@ use Term::ANSIColor; # For Coloured Print Statements
 # #CHROM	POS	Sample 1:Sample 2:Sample 3:...      \t
 # 0			1	2
 #				|
-#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		RefAlt	;
-# 						0 	1  		2 	3				4				5		6		7			8
+#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		Ref	Alt	;
+# 						0 	1  		2 	3				4				5		6		7			8	9
 
 #############
 # FUNCTIONS #
@@ -81,7 +81,7 @@ sub checkForAlleleToRescue{
 	my @qualityInfo = split /;/, $isolateInfo;
 		
 	# Note alleles present
-	my @allelesPresent = split //, $qualityInfo[8];
+	my @allelesPresent = ($qualityInfo[8], $qualityInfo[9]);
 	my @highQualityBaseDepth = split /,/, $qualityInfo[1];
 		
 	# Count high quality base depth
@@ -104,7 +104,7 @@ sub checkForAlleleToRescue{
 		
 		# Re-build the current isolates information at the current site
 		$isolateInfo = $qualityInfo[0] . ";" .	$qualityInfo[1] . ";" .	$qualityInfo[2] . ";" . $proportionHighQualityBasesSupportingAllele;
-		$isolateInfo .= ";" . $allelesPresent[$chosen] . ";" . 	$qualityInfo[5] . ";" .	$qualityInfo[6] . ";Rescue;" . $qualityInfo[8];
+		$isolateInfo .= ";" . $allelesPresent[$chosen] . ";" . 	$qualityInfo[5] . ";" .	$qualityInfo[6] . ";Rescue;" . $qualityInfo[8] . ";" . $qualityInfo[9];
 	}
 
 	return $isolateInfo;

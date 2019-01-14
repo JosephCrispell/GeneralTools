@@ -21,15 +21,15 @@ use Term::ANSIColor; # For Coloured Print Statements
 # #CHROM	Pos	Sample 1:Sample 2:Sample 3:...					\t
 # 0			1 	2  		
 # 				|		 
-#				 ---->	DP	HQDP	MQ	QUAL	FQ	RefAlt		;
-# 						0 	1  		2 	3		4	5
+#				 ---->	DP	HQDP	MQ	QUAL	FQ	Ref	Alt		;
+# 						0 	1  		2 	3		4	5	6
 
 # Creates file where information for each SNP position is recorded (For each of the samples available):
 # #CHROM	POS	Sample 1:Sample 2:Sample 3:...
 # 0			1	2
 #				|
-#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		RefAlt;
-# 						0 	1  		2 	3				4				5		6		7			8	
+#				 ---> 	DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result		Ref	Alt	;
+# 						0 	1  		2 	3				4				5		6		7			8	9
 
 ###########
 # Filters #
@@ -99,8 +99,8 @@ if($verbose eq "-help" || $verbose eq ""){
 
 	print "Beginning Variant Filtering...\n" if $verbose == 1;
 	
-	# DP	HQDP	MQ	QUAL	FQ	RefAlt		;
-	# 0 	1  		2 	3		4	5
+	# DP	HQDP	MQ	QUAL	FQ	Ref 	Alt		;
+	# 0 	1  		2 	3		4	5		6
 
 	# Initialise the necessary variables
 	my @snpInfo;
@@ -113,7 +113,7 @@ if($verbose eq "-help" || $verbose eq ""){
 	my $ref;
 	my $alt;
 	
-	# Initialise variables needed further calculations
+	# Initialise variables needed for further calculations
 	my $refProportion; # Proportion of HQ bases supporting Reference allele
 	my $altProportion; 
 	my $call;
@@ -173,8 +173,8 @@ if($verbose eq "-help" || $verbose eq ""){
 			}
 			
 			# Extract the Current Samples SNP Information
-			# DP	HQDP	MQ	QUAL	FQ	RefAlt		;
-			# 0 	1  		2 	3		4	5
+			# DP	HQDP	MQ	QUAL	FQ	Ref	Alt		;
+			# 0 	1  		2 	3		4	5	6
 			@isolateInfo = split /\;/, $snpInfo[$pos];
 					
 			# Store the quality Metrics
@@ -183,8 +183,8 @@ if($verbose eq "-help" || $verbose eq ""){
 			$mappingQuality = $isolateInfo[2];
 			$qual = $isolateInfo[3];
 			$fq = $isolateInfo[4];
-			$ref = substr($isolateInfo[5], 0, 1);
-			$alt = substr($isolateInfo[5], 1);
+			$ref = $isolateInfo[5];
+			$alt = $isolateInfo[6];
 	
 			# Calculate the Proportion of High Quality Bases supporting the Reference Allele
 			$refProportion = 0;
@@ -246,7 +246,7 @@ if($verbose eq "-help" || $verbose eq ""){
 				$result = "Fail";
 			}
 		
-			# Prepare the SNP filter information from the current sample DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result	RefAlt
+			# Prepare the SNP filter information from the current sample DP	HQDP	MQ	AlleleSupport	AlleleCalled	QUAL	FQ		Result	Ref	Alt
 			$resultInfo =  $readDepth . "\;" . $isolateInfo[1] . "\;" . $mappingQuality . "\;";
 			if($call eq "Ref" && $result eq "Pass"){
 				$resultInfo = $resultInfo . $refProportion . "\;" . $ref . "\;";
@@ -257,7 +257,7 @@ if($verbose eq "-help" || $verbose eq ""){
 			}else{
 				$resultInfo = $resultInfo . $altProportion . "\;" . "N" . "\;";
 			}
-			$resultInfo = $resultInfo . $qual . "\;" . $fq . "\;" . $result . ";" . $isolateInfo[5];
+			$resultInfo = $resultInfo . $qual . "\;" . $fq . "\;" . $result . ";" . $ref . ";" . $alt;
 
 			# Store the Filtering Results for the current isolate
 			$outputLine = $outputLine . "$resultInfo";
