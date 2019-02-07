@@ -275,7 +275,7 @@ print "Creating Fasta File...\n" if $verbose == 1;
 	
 # Print the Sequences out to File - note two slightly different formats
 $noIsolates = $noIsolates + 1; # Remember we have added the reference
-my $sequenceLength = ($sequencePos + 1) - $nRemovedByProximity;
+my $sequenceLength = ($sequencePos + 1) - ($nRemovedByProximity + $nRemovedAsINDELs);
 print FASTA "$noIsolates $sequenceLength\n";
 	
 for(my $pos = 0; $pos < $noIsolates; $pos++){
