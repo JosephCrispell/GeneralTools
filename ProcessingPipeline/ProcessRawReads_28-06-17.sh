@@ -114,6 +114,19 @@ function checkToolsAreInstalled {
 		exit 0
 	fi
 
+	# SPAdes
+	if ! type "spades.py" > /dev/null 2>&1;
+	then
+		echo -e "\e[0;31m ERROR! A necessary program is not accessible: \e[0m""spades.py"
+		echo "	Installation instructions taken from: http://cab.spbu.ru/files/release3.13.0/manual.html"
+		echo "	wget http://cab.spbu.ru/files/release3.13.0/SPAdes-x.x.x-Linux.tar.gz"
+		echo "	tar -xzf SPAdes-3.13.0-Linux.tar.gz"
+		echo "	nano ~/.bashrc"
+		echo "		Add: export PATH=\$PATH:/path/to/SPAdes-x.x.x-Linux/bin"
+		echo "	source ~/.bashrc"
+		exit 0
+	fi
+
 	# java - not used in pipeline but necessary
 	if ! type "java" > /dev/null 2>&1;
 	then
@@ -524,20 +537,35 @@ do
 		echo -e "\e[0;31m Examining unmapped reads of poorly mapped isolate: \e[0m"$PAIRID
 
 		UNMAPPEDFILE=$PAIRID"_"$RUN"_unmapped.sam"
-		RANDOMREADS=$PAIRID"_"$RUN"_randomReads.txt"
 		BLASTOUTPUT=$PAIRID"_"$RUN"_BLAST.txt"
 		BLASTHITS=$PAIRID"_"$RUN"_unmappedReadHits.txt"
 
-		# BLAST some random reads from the unmapped reads file
-		# -f Flag: onlu include reads with all of the FLAGS in INT present
-		samtools view $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
-		perl $PICKREADS 10 $UNMAPPEDFILE $RANDOMREADS # Pick 10 random unmapped reads
-		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote
-		perl $EXAMINEBLASTOUTPUT 1 $BLASTOUTPUT > $BLASTHITS
+		# Get the unmapped reads
+		# -f Flag: only include reads with all of the FLAGS in INT present
+		#		0x0004 Query is unmapped
+		#		0x0008 Mate is unmapped
+		#		12
+		samtools view $SAMFILE -f 12 --threads $NTHREADS -b > $UNMAPPEDFILE # Store unmapped reads in bam file
+
+		# Convert the BAM into forward and reverse FASTQ files
+		# -f Flag: only include reads with all of the FLAGS in INT present
+		samtools bam2fq $UNMAPPEDFILE -1 forward.fastq -2 reverse.fastq
+
+		# De novo assembly the unmapped reads into contigs
+		spades.py --threads $NTHREADS -1 forward.fastq -2 reverse.fastq -o $PAIRID --only-assembler	
+
+		# Select the first contig and BLAST it against the nucleotide database
+		perl $EXTRACTCONTIGS 1,2,3 $PAIRID/contigs.fasta
+
+		# BLAST the contig
+		blastn -query $PAIRID/extractedSequences_*.fasta -out $BLASTOUTPUT -db nr -remote
+		perl $EXAMINEBLASTOUTPUT 2 $BLASTOUTPUT > $BLASTHITS
 
 		# Remove the unneccesary files
+		rm forward.fastq
+		rm reverse.fastq
+		rm --recursive $PAIRID/
 		rm $UNMAPPEDFILE
-		rm $RANDOMREADS
 		rm $BLASTOUTPUT
 	fi
 
