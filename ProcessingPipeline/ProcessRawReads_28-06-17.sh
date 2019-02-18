@@ -19,12 +19,12 @@ function checkIfHelpStatementRequested {
 		echo -e "\e[0;34m bash script designed to process paired raw read FASTQ files \e[0m"
 		echo " Command line structure:"
 		echo "	bash ProcessRawReads.sh fileEnding trimGalore prinseq pathToRef pickRandomReads examineBlastOutput"
-		echo "	fileEnding: 		The ending of each FASTQ file that is common to all"
-		echo "	trimGalore:		Would you like to use trim_galore to remove adaptors? [pathToTrimGalore/false]"
-		echo "	prinseq:		Would you like to use prinseq to trim the reads? [pathToPrinseq/false]"
-		echo "	pathToRef:		Provide full path to indexed (bwa index) reference fasta sequence"
-		echo "	pickRandomReads:	Provide full path to perl script that randomly picks unmapped reads to blast"
-		echo "	examineBlastOutput:	Provide full path to perl script that examines blast output"
+		echo "		fileEnding: 		The ending of each FASTQ file that is common to all"
+		echo "		trimGalore:		Would you like to use trim_galore to remove adaptors? [pathToTrimGalore/false]"
+		echo "		prinseq:		Would you like to use prinseq to trim the reads? [pathToPrinseq/false]"
+		echo "		pathToRef:		Provide full path to indexed (bwa index) reference fasta sequence"
+		echo "		extractSequences:	Provide full path to perl script that extracts sequences from FASTA"
+		echo "		examineBlastOutput:	Provide full path to perl script that examines blast output"
 		echo
 		echo " Requires the following tools:"
 		echo "	cutadapt"
@@ -34,11 +34,9 @@ function checkIfHelpStatementRequested {
 		echo "	bcftools"
 		echo
 		echo " Notes:"
-		echo "	Needs access to the internet to run BLAST searches on unmapped reads of poorly mapped"
-		echo "	Threshold for BLASTING unmapped reads is hard coded. Edit script to change."
+		echo "	Needs access and sudo rights to the internet to run BLAST searches on de novo assembled unmapped reads of poorly mapped"
+		echo "	Threshold for BLASTING unmapped reads is hard coded = 0.9. Edit script to change."
 		echo "	Uses the 1st column of file names to create unique file name"
-		echo "	Only examines unmapped reads if proportion mapped drops below 0.9"
-		echo "	Requires sudo rights and internet to examine unmapped reads"
 		echo "	If wanting to specify Prinseq settings outside of this bash script. Put settings into file with start: PrinseqSettings. Use same format as used in this script"
 
 		# Exit without an error
@@ -244,7 +242,7 @@ FILEENDING=$1 # Get the common FASTQ file ending
 TRIMGALORE=$2 # Note whether to remove adaptors with trim_galore
 PRINSEQ=$3 # Get the path to the prinseq tool
 REFERENCE=$4 # Get the path to the Reference fasta file
-PICKREADS=$5 # Get path to perl script that randomly picks unmapped reads to blast
+EXTRACTCONTIGS=$5 # Get path to perl script that extracts sequences from a fasta file
 EXAMINEBLASTOUTPUT=$6 # Get path to perl script that examines blast output
 
 # Create the output isolate mapping file
@@ -257,7 +255,7 @@ echo -e "\e[0;32m 	Searching for FASTQ files with ending: \e[0m"$FILEENDING
 echo -e "\e[0;32m 	Path to trim_galore tool: \e[0m"$TRIMGALORE
 echo -e "\e[0;32m 	Path to prinseq tool: \e[0m"$PRINSEQ
 echo -e "\e[0;32m 	Path to M. bovis reference sequence: \e[0m"$REFERENCE
-echo -e "\e[0;32m 	Path to perl script that randomly picks reads for BLAST: \e[0m"$PICKREADS
+echo -e "\e[0;32m 	Path to perl script that extracts sequences from FASTA: \e[0m"$EXTRACTCONTIGS
 echo -e "\e[0;32m 	Path to perl script that examines BLAST output: \e[0m"$EXAMINEBLASTOUTPUT
 echo
 echo -e "\e[0;32m 	Produces summary File for Isolate Mapping Info: \e[0m"$SAMSUMMARY
@@ -435,8 +433,8 @@ do
 	READLENGTH=`sed '2q;d' $FILE1 | wc | awk '{ split($0, array, " "); print array[3] }'`
 
 	####### Alignment #######
-	# Get number of cores of computer
-	NCORES=`nproc --all`
+	# Get number of threads of computer
+	NTHREADS=`nproc --all`
 
 	# Generate SAM file
 	# Create a name for the SAM file
@@ -449,7 +447,7 @@ do
 
 		# Generate SAM file
 		# -t Flag: specify the number of cores to use
-		bwa mem -t $NCORES $REFERENCE $FILE1 $FILE2 > $SAMFILE
+		bwa mem -t $NTHREADS $REFERENCE $FILE1 $FILE2 > $SAMFILE
 
 	else
 		echo -e "\e[0;34m Beginning Read Alignment with bwa aln... \e[0m"
@@ -459,8 +457,8 @@ do
 		# REMOVE -I flag if Illumina 1.9
 		FILE1SAI=$FILE1".sai"
 		FILE2SAI=$FILE2".sai"
-		bwa aln -I $REFERENCE $FILE1 > $FILE1SAI
-		bwa aln -I $REFERENCE $FILE2 > $FILE2SAI
+		bwa aln -t $NTHREADS -I $REFERENCE $FILE1 > $FILE1SAI
+		bwa aln -t $NTHREADS -I $REFERENCE $FILE2 > $FILE2SAI
 
 		# Generate SAM file
 		# -f Flag: SAM file to output results
@@ -494,9 +492,25 @@ do
 	# -F Flag: only include reads with none of the FLAGS
 	# -f Flag: only include reads with all of the FLAGS
 	# -c Flag: print only a count of matching records
-	MAPPED=`samtools view $SAMFILE -c -F 4`
-	UNMAPPED=`samtools view $SAMFILE -c -f 4`
-	MULTIMAPPED=`samtools view $SAMFILE -c -f 256`
+	MAPPED=`samtools view $SAMFILE -c -F 4 --threads $NTHREADS`
+	UNMAPPED=`samtools view $SAMFILE -c -f 4 --threads $NTHREADS`
+	MULTIMAPPED=`samtools view $SAMFILE -c -f 256 --threads $NTHREADS`
+
+	# HEX code table for samtools view: Base 16
+	# 4096 256 16 1
+	# 0    0   0  0
+	# 0x0001      p       the read is paired in sequencing
+	# 0x0002      P       the read is mapped in a proper pair
+	# 0x0004      u       the query sequence itself is unmapped
+	# 0x0008      U       the mate is unmapped
+	# 0x0010      r       strand of the query (1 for reverse)
+	# 0x0020      R       strand of the mate
+	# 0x0040      1       the read is the first read in a pair
+	# 0x0080      2       the read is the second read in a pair
+	# 0x0100      s       the alignment is not primary
+	# 0x0200      f       the read fails platform/vendor quality checks
+	# 0x0400      d       the read is either a PCR or an optical duplicate
+	# Help here: http://broadinstitute.github.io/picard/explain-flags.html
 
 	# Print out the information for the reads in the current SAM file
 	echo $PAIRID"	"$MAPPED"	"$UNMAPPED"	"$MULTIMAPPED >> $SAMSUMMARY
@@ -504,7 +518,7 @@ do
 	# Check the proportion of mapped reads
 	PROPMAPPED=`perl -E "say $MAPPED / ($MAPPED + $UNMAPPED + $MULTIMAPPED)"` # Changed to include multi-mapped reads!
 
-	if [ $(echo " $PROPMAPPED < 0.9" | bc) -eq 1 ]
+	if [ $(echo " $PROPMAPPED < 1" | bc) -eq 1 ]
 	then
 
 		echo -e "\e[0;31m Examining unmapped reads of poorly mapped isolate: \e[0m"$PAIRID
@@ -534,9 +548,9 @@ do
 	NDUPBAMFILE=$PAIRID"_"$RUN"_srtd_ndup.bam"
 
 	# -b Flag: output BAM
-	samtools view -b $SAMFILE > $BAMFILE
-	samtools sort $BAMFILE -o $SRTDBAMFILE
-	samtools index $SRTDBAMFILE
+	samtools view --threads $NTHREADS -b $SAMFILE > $BAMFILE
+	samtools sort $BAMFILE -o $SRTDBAMFILE --threads $NTHREADS
+	samtools index $SRTDBAMFILE -@ $NTHREADS
 	samtools rmdup $SRTDBAMFILE $NDUPBAMFILE			# Should I be removing the duplicates????!!!!!
 	echo -e "\e[0;34m and Converted to BAM File -> Alignment Complete. \e[0m"
 
@@ -570,7 +584,7 @@ do
 	#	- Calls varying and non-varying sites by default
 	#	- Ignores dubious reference (N) sites
 	VCFFILE=$PAIRID"_"$RUN".vcf"
-	bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v > $VCFFILE
+	bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS > $VCFFILE
 	echo -e "\e[0;34m VCF File Created. \e[0m"
 	echo -e "\e[0;34m Finished Identifying Variants. \e[0m"
 
