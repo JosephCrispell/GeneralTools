@@ -7,10 +7,12 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 cattleFile <- paste0(path, "IsolateData/CattleIsolateInfo_AddedNew_TB1484-TB1490_22-03-18.csv")
 cattleInfo <- read.table(cattleFile, header=TRUE, stringsAsFactors=FALSE, sep=",")
 cattleInfo <- cattleInfo[is.na(cattleInfo$StrainId) == FALSE, ]
+cattleInfo$DateCultured <- as.Date(cattleInfo$DateCultured, format="%d/%m/%Y")
 
 # Read in the isolate data for the cattle
 badgerFile <- paste0(path, "IsolateData/BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv")
 badgerInfo <- read.table(badgerFile, header=TRUE, stringsAsFactors=FALSE, sep=",")
+badgerInfo$date <- as.Date(badgerInfo$date, format="%d/%m/%Y")
 
 #### Get the IDs of the badger and cattle isolates used for analyses (193 badgers and 159 cattle) ####
 
@@ -38,6 +40,7 @@ colnames(output) <- colnames(template)
 
 # Fill the table with the cattle and badger sequence data
 output$`*sample_name` <- c(badgerInfo$WB_id, cattleInfo$StrainId)
+output$isolate <- c(badgerInfo$WB_id, cattleInfo$StrainId)
 output$`*organism` <- rep("Mycobacterium tuberculosis variant bovis", nrow(badgerInfo) + nrow(cattleInfo))
 output$`*collection_date` <- c(badgerInfo$date, cattleInfo$DateCultured)
 output$`*geo_loc_name` <- rep("United Kingdom: England: Woodchester Park", nrow(badgerInfo) + nrow(cattleInfo))
