@@ -1197,8 +1197,18 @@ testSubstitutionModels <- function(sequencesPhyDat){
             modelTestResults$Model[which.min(modelTestResults$AIC)], "\n"))
 }
 
-buildAndBootStrapMLTree <- function(nBootstraps, substitutionModel){
+buildAndBootStrapMLTree <- function(nBootstraps, substitutionModel, alignment){
 
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+  #### Formatting alignment ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+  
+  # Convert to DNAbin format
+  sequencesDNAbin <- as.DNAbin(alignment)
+  
+  # Convert to phyDat object
+  sequencesPhyDat <- as.phyDat(alignment)
+  
   #~~~~~~~~~~~~~~~~~~~~~~~~#
   #### Preliminary tree ####
   #~~~~~~~~~~~~~~~~~~~~~~~~#

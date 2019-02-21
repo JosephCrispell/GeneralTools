@@ -1,7 +1,7 @@
 #### Load libraries ####
 
-library(ape) # Calculating genetic distances
-library(phangorn) # NJ() function
+library(ape) # Writing FASTA file
+library(phangorn) # Tree building
 
 #### Read in the simulation output ####
 
@@ -15,14 +15,9 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 genomeSize <- 4345492
 
 #### Examine the simulation output ####
-fileName <- paste0(path, "sim_119-02/sim_48-01.csv")
-
-# Create a directory specific to the current file
-simulationDirectory <- paste0(path, substr(fileName,1,nchar(fileName)-4), "/")
-dir.create(simulationDirectory)
 
 # Read in a simulation output table
-simFile <- paste0(path, "sequences/", fileName)
+simFile <- paste0(path, "sim_119-02/sim_119-02.csv")
 simOutput <- read.table(simFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
 simOutput$animal_ID <- gsub("_", "-", simOutput$animal_ID)
 
@@ -37,23 +32,193 @@ seedSNPs <- getSeedSNPs(simOutput)
 # Add a nucleotide sequence, based on the SNPs, for each individual
 simOutput <- generateSequences(simOutput)
 
-# Identify the non-seed SNPs
-nonSeedSNPs <- c(1:nchar(simOutput[1, "Sequence"]))[-as.numeric(seedSNPs)]
-
 # Create a fasta file
+fastaFile <- paste0(substr(simFile, 1, nchar(simFile)-4), ".fasta")
+alignment <- createFasta(simOutput, fastaFile, seedSNPs=NULL)
 
-# Examine the genetic distances between the sequences
-geneticDistancesWithoutSeedSNPs <- generateGeneticDistances(simOutput, sitesToIgnore=as.numeric(seedSNPs))
-geneticDistances <- generateGeneticDistances(simOutput)
+#### Build phylogeny ####
 
-# Build and plot a phylogenetic tree
-buildPhylogeny(geneticDistances)
+# Build a phylogenetic tree using phangorn - neighbour joining and maximum likelihood
+njTree <- buildNJTree(alignment)
+mlTree <- buildAndBootStrapMLTree(initialTree=njTree, alignment=alignment, nBootstraps=100)
+
+# Build a maximum likelihood phylogenetic tree using RAXML
+raxmlTree <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path=path, alreadyRun=FALSE)
+
+#### Plot the phylogeny ####
+
+plot.phylo(raxmlTree, "fan")
+nodelabels()
 
 #############
 # FUNCTIONS #
 #############
 
-# Processing and examining data
+buildNJTree <- function(alignment){
+  
+  # Build the distance matrix
+  distanceMatrix <- dist.dna(as.DNAbin(alignment), model="JC69")
+
+  # Build neighbour joining tree
+  njTree <- nj(distanceMatrix)
+  
+  return(njTree)
+}
+
+buildAndBootStrapMLTree <- function(initialTree, alignment, nBootstraps=NULL){
+  
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+  #### Formatting alignment ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+  # Convert alignment to phyDat object
+  sequencesPhyDat <- as.phyDat(alignment)
+  
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~#
+  #### Maximum Likelihood ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~#
+  
+  cat("Running Maximum Likelihood tree estimation\n")
+  
+  # Compute likelihood of tree given sequences
+  likelihoodObject <- pml(initialTree, sequencesPhyDat)
+  
+  # Set maximum likelihood controls
+  controls <- pml.control(maxit=100000, trace=0)
+  
+  # Run maximum likelihood
+  fittingOutput <- optim.pml(likelihoodObject, 
+                             optNni = TRUE,       # Optimise topology
+                             optInv = TRUE,       # Optimise proportion of variable sites
+                             model = "JC",       # Use Jukes Cantor substitution model (this is model used to generate sequences - all sites equally likely)
+                             rearrangement="NNI", # Nearest Neighbour Interchanges
+                             control=controls)
+  tree <- fittingOutput$tree
+  
+  #~~~~~~~~~~~~~~~~~~~~~#
+  #### Bootstrapping ####
+  #~~~~~~~~~~~~~~~~~~~~~#
+  
+  if(is.null(nBootstraps) == FALSE){
+    cat("Running bootstrapping of Maximum Likelihood tree estimation\n")
+    
+    # Bootstrap the result of maximum likelihood
+    bootstrapResults <- bootstrap.pml(fittingOutput, bs = nBootstraps, optNni = TRUE,
+                                      jumble=TRUE)
+    
+    
+    # Get phylogenetic tree with bootstrap values
+    cat("Getting tree with bootstrap values. Finished..\n")
+    tree <- plotBS(fittingOutput$tree, bootstrapResults, p = 50, type="phylogram")
+  }
+
+  return(tree)
+}
+
+runRAXML <- function(fastaFile, date, nBootstraps, nThreads, path, alreadyRun=FALSE){
+  
+  # Installing RAxML on Ubuntu:
+  # sudo apt update
+  # sudo apt install raxml
+  
+  # Note the RAxML directory name
+  directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
+  
+  # Set the Working directory - this will be where the output files are dumped
+  setwd(directory)
+  
+  # Build analysis name
+  analysisName <- paste("RaxML-R_", date, sep="")
+  
+  # Check if already run this
+  if(alreadyRun == FALSE){
+    
+    # Create the RAxML directory for the output file
+    suppressWarnings(dir.create(directory))
+    
+    # Build the command
+    model <- "GTRCAT" # No rate heterogenity
+    seeds <- sample(1:100000000, size=2, replace=FALSE) # For parsimony tree and boostrapping
+    
+    command <- paste("raxmlHPC", 
+                     " -f a", # Algorithm: Rapid boostrap inference
+                     " -N ", nBootstraps,
+                     " -T ", nThreads,
+                     " -m ", model, " -V", # -V means no rate heterogenity
+                     " -p ", seeds[1], " -x ", seeds[2], # Parsimony and boostrapping seeds
+                     " -n ", analysisName,
+                     " -s ", fastaFile, sep="")
+    system(command, intern=TRUE)
+  }
+  
+  # Get the tree and read it in
+  treeBS <- getTreeFileWithSupportValues(analysisName)
+  
+  return(treeBS)
+}
+
+getTreeFileWithSupportValues <- function(analysisName){
+  
+  # Get files in current working directory
+  files <- list.files()
+  
+  # Select the tree file with BS support values
+  treeBSFile <- files[grepl(files, pattern=paste("RAxML_bipartitions[.]", analysisName, sep="")) == TRUE]
+  
+  # Open the file
+  treeBS <- read.tree(treeBSFile)
+  
+  return(treeBS)
+}
+
+createFasta <- function(simOutput, fileName, seedSNPs=NULL){
+  
+  # Initialise a vector to store the FASTA file lines
+  fileLines <- c()
+  
+  # Create a matrix to store the sequences
+  sequences <- matrix(NA, nrow=nrow(simOutput), ncol=nchar(simOutput[1, "Sequence"])-length(seedSNPs))
+  rownames(sequences) <- simOutput$animal_ID
+  
+  # Examine each of the sequences and create the FASTA file lines
+  for(row in seq_len(nrow(simOutput))){
+    
+    # Add in the sequence identifier
+    fileLines[length(fileLines) + 1] <- paste0(">", simOutput[row, "animal_ID"])
+    
+    # Check if wanting to ignore seed SNPs
+    if(is.null(seedSNPs)){
+      
+      # Store the current sequence in the matrix
+      sequences[row, ] <- strsplit(simOutput[row, "Sequence"], split="")[[1]]
+      
+      # Add the current sequence
+      fileLines[length(fileLines) + 1] <- simOutput[row, "Sequence"]
+    }else{
+      
+      # Store the current sequence in the matrix
+      sequences[row, ] <- strsplit(simOutput[row, "Sequence"], split="")[[1]][-seedSNPs]
+
+      # Add the current sequence
+      fileLines[length(fileLines) + 1] <- paste(sequences[row, ], collapse="")
+    }
+  }
+  
+  # Open the output FASTA file
+  fileConnection <- file(fileName)
+  
+  # Print the file lines to file
+  writeLines(fileLines, fileConnection)
+  
+  # Close the output FASTA file
+  close(fileConnection)
+
+  # Convert the sequences matrix to an alignment object
+  alignment <- as.alignment(sequences)
+
+  return(alignment)
+}
+
 buildPhylogeny <- function(fastaFile, treeBuildingTool="NeighbourJoining"){
   
   # Get and set the margins
@@ -70,30 +235,6 @@ buildPhylogeny <- function(fastaFile, treeBuildingTool="NeighbourJoining"){
   
   
   return(treel)
-}
-
-getLowerTriangle <- function(distances){
-  
-  # Initialise a vector to the the distances in the lower triangle
-  output <- c()
-  
-  # Examine each row
-  for(row in seq_len(nrow(distances))){
-    
-    # Examine each column
-    for(col in seq_len(ncol(distances))){
-      
-      # Skip the upper and diagonal
-      if(row >= col){
-        next
-      }
-      
-      # Store the current distance
-      output[length(output) + 1] <- distances[row, col]
-    }
-  }
-  
-  return(output)
 }
 
 generateGeneticDistances <- function(simOutput, sitesToIgnore=NULL){
