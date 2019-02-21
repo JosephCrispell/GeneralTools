@@ -47,8 +47,12 @@ raxmlTree <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path=paste0(
 
 #### Plot the phylogeny ####
 
+pdf(paste0(path, "sim_119-02/test.pdf"), height=40, width=40)
+
 plot.phylo(raxmlTree, "fan")
 nodelabels()
+
+dev.off()
 
 #############
 # FUNCTIONS #
