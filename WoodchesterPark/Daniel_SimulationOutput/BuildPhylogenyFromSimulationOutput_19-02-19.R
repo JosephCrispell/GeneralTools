@@ -43,7 +43,7 @@ njTree <- buildNJTree(alignment)
 mlTree <- buildAndBootStrapMLTree(initialTree=njTree, alignment=alignment, nBootstraps=100)
 
 # Build a maximum likelihood phylogenetic tree using RAXML
-raxmlTree <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path=path, alreadyRun=FALSE)
+raxmlTree <- runRAXML(fastaFile, date, nBootstraps=100, nThreads=6, path=paste0(path, "sim_119-02/"), alreadyRun=FALSE)
 
 #### Plot the phylogeny ####
 
@@ -122,7 +122,10 @@ runRAXML <- function(fastaFile, date, nBootstraps, nThreads, path, alreadyRun=FA
   # sudo apt install raxml
   
   # Note the RAxML directory name
-  directory <- paste(path, "vcfFiles/RAxML_", date, sep="")
+  directory <- paste0(path, "RAxML_", date)
+  
+  # Create the directory
+  dir.create(directory)
   
   # Set the Working directory - this will be where the output files are dumped
   setwd(directory)
