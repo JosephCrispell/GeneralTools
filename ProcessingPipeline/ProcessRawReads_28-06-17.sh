@@ -23,7 +23,7 @@ function checkIfHelpStatementRequested {
 		echo "		trimGalore:		Would you like to use trim_galore to remove adaptors? [pathToTrimGalore/false]"
 		echo "		prinseq:		Would you like to use prinseq to trim the reads? [pathToPrinseq/false]"
 		echo "		pathToRef:		Provide full path to indexed (bwa index) reference fasta sequence"
-		echo "		extractSequences:	Provide full path to perl script that extracts sequences from FASTA"
+		echo "		pickRandomReads:	Provide full path to perl script that randomly picks unmapped reads to blast"
 		echo "		examineBlastOutput:	Provide full path to perl script that examines blast output"
 		echo
 		echo " Requires the following tools:"
@@ -242,7 +242,7 @@ FILEENDING=$1 # Get the common FASTQ file ending
 TRIMGALORE=$2 # Note whether to remove adaptors with trim_galore
 PRINSEQ=$3 # Get the path to the prinseq tool
 REFERENCE=$4 # Get the path to the Reference fasta file
-EXTRACTCONTIGS=$5 # Get path to perl script that extracts sequences from a fasta file
+PICKREADS=$5 # Get path to perl script that extracts reads from SAM file
 EXAMINEBLASTOUTPUT=$6 # Get path to perl script that examines blast output
 
 # Create the output isolate mapping file
