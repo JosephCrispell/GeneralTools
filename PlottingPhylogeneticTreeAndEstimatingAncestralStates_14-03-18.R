@@ -7,7 +7,7 @@ library(phytools)
 #### READ FASTA ####
 
 # Read in the FASTA file
-sequencesDNAbin <- read.dna("C:/Users/Joseph Crisp/Desktop/example_09-03-18.fasta",
+sequencesDNAbin <- read.dna("/home/josephcrispell/Desktop/example_09-03-18.fasta",
                             format = "fasta", skip=1) # skip first line - I added this line into FASTA: nSequences length
 
 

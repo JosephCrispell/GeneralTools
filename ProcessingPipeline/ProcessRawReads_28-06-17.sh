@@ -52,9 +52,9 @@ function checkToolsAreInstalled {
 		echo -e "\e[0;31m ERROR! A necessary program is not accessible: \e[0m""cutadapt"
 		echo "	Follow the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html"
 		echo "	Requires python-dev:"
-		echo "	sudo apt-get install python-dev"
-		echo "	sudo apt install python-pip"
-		echo "	pip install --user --upgrade cutadapt"
+		echo "	sudo apt install python3-pip"
+		echo "	"
+		echo "	sudo pip3 install cutadapt"
 		exit 0
 	fi
 
@@ -518,7 +518,7 @@ do
 	# Check the proportion of mapped reads
 	PROPMAPPED=`perl -E "say $MAPPED / ($MAPPED + $UNMAPPED + $MULTIMAPPED)"` # Changed to include multi-mapped reads!
 
-	if [ $(echo " $PROPMAPPED < 1" | bc) -eq 1 ]
+	if [ $(echo " $PROPMAPPED < 0.9" | bc) -eq 1 ]
 	then
 
 		echo -e "\e[0;31m Examining unmapped reads of poorly mapped isolate: \e[0m"$PAIRID

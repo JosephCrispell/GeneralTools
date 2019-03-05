@@ -153,7 +153,7 @@ plotProportionTrends <- function(summaryTables, yearsOfInterest){
   text(x=yearsOfInterest, y=proportionHerds + 0.1*proportionHerds, labels=nHerds, xpd=TRUE)
   
   # Add line for European threshold
-  points(x=c(yearsOfInterest[1], yearsOfInterest[length(yearsOfInterest)]), y=c(0.01, 0.01), type="l", lty=2,
+  points(x=c(yearsOfInterest[1], yearsOfInterest[length(yearsOfInterest)]), y=c(0.001, 0.001), type="l", lty=2,
          col="green", lwd=4)
   
   
