@@ -2,7 +2,7 @@
 # Set path #
 ############
 
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/MAP/vcfFiles/"
+path <- "/home/josephcrispell/Desktop/Research/Cumbria/vcfFiles/"
 
 ##########################
 # Read in coverage files #
@@ -13,7 +13,7 @@ path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/MAP/vcfFiles/"
 # genomeCoverage <- read.table(genomeCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Read in the isolate coverage file
-isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_10-07-2018.txt", sep="")
+isolateCoverageFile <- paste(path, "isolateCoverageSummary_DP-20_06-03-2019.txt", sep="")
 isolateCoverage <- read.table(isolateCoverageFile, header=TRUE, stringsAsFactors=FALSE)
 
 # Parse the Isolate column

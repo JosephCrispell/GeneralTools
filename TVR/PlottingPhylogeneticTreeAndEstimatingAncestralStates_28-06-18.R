@@ -7,7 +7,6 @@ library(phytools)
 
 countTransitions <- function(tree, tipStates, ancestralStateProbs, probThreshold=0.5){
   
-  # CURRENTLY TOO SIMPLISTIC! FORGOT THAT NEED TO CONSIDER CHERRIES!!!
   # A more conservative transition count method - recommended by Nicola De Maio
   # 	- Assumes the ancestor represents one of the tips in the past
   # 
@@ -60,11 +59,11 @@ countTransitions <- function(tree, tipStates, ancestralStateProbs, probThreshold
     # Check if we have encountered this from node before
     if(is.null(nodes[[fromNode]]) == FALSE){
       
-      nodes[[fromNode]] <- c(nodes[[fromNode]], toState)
+      nodes[[fromNode]]$Daughters <- c(nodes[[fromNode]][[Daughters]], toState)
       
     # Create a record for the current node if we haven't encountered it before
     }else{
-      nodes[[fromNode]] <- c(fromState, toState)
+      nodes[[fromNode]] <- list("Parent"=fromState, "Daughters"=c(toState))
     }
   }
   
@@ -84,23 +83,29 @@ countTransitions <- function(tree, tipStates, ancestralStateProbs, probThreshold
       next
     }
     
+    # Get the state of the parent
+    parent <- nodes[[node]]$Parent
+    
+    # Get the states of the daughters for the current node
+    daughters <- nodes[[node]]$Daughters
+    
     # Examine each of the daughter states
-    for(i in 2:length(nodes[[node]])){
+    for(i in seq_along(daughters)){
       
       # Check if state of daughter is the same as that of parent
-      if(nodes[[node]][i] != -1 && nodes[[node]][i] == nodes[[node]][1]){
+      if(daughters[i] != -1 && daughters[i] == parent){
         nSameStateBranches <- nSameStateBranches + 1
         
       # Found branch beginning and ending with different states - count the inter species transmission event
-      }else if(nodes[[node]][i] != -1){
-        transitionCounts[nodes[[node]][1], nodes[[node]][i]] <- transitionCounts[nodes[[node]][1], nodes[[node]][i]] + 1
+      }else if(daughters[i] != -1){
+        transitionCounts[parent, daughters[i]] <- transitionCounts[parent, daughters[i]] + 1
       }
     }
     
     # Count the number of within species transmission events - conservatively assumes parent node is same animal as one of daughters
     if(nSameStateBranches > 1){
       for(i in seq_len(nSameStateBranches - 1)){
-        transitionCounts[nodes[[node]][1], nodes[[node]][1]] <- transitionCounts[nodes[[node]][1], nodes[[node]][1]] + 1
+        transitionCounts[parent, parent] <- transitionCounts[parent, parent] + 1
       }
     }
   }

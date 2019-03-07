@@ -13,34 +13,37 @@ library(gplots)
 path <- "/home/josephcrispell/Desktop/Research/Cumbria/"
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/sequences_Prox-10_09-08-2018.fasta", sep="")
+file <- paste(path, "vcfFiles/sequences_Prox-10_07-03-2019.fasta", sep="")
 sequences <- readFasta(file)
+
+# Note the number of sites in the FASTA
+nSitesInFasta <- length(sequences[[1]])
 
 ############################
 # Read in the isolate data #
 ############################
 
 # Mapping
-file <- paste(path, "isolateMappingSummary_09-08-18.txt", sep="")
+file <- paste(path, "isolateMappingSummary_07-03-19.txt", sep="")
 mapping <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 mapping$Prop <- mapping$NumberMappedReads / (mapping$NumberMappedReads + mapping$NumberUnmappedReads)
 mapping$Isolate <- parseIds(mapping$Isolate)
 isolateMapping <- createList("Isolate", "Prop", mapping)
 
 # Genome coverage
-file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_09-08-2018.txt", sep="")
+file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_07-03-2019.txt", sep="")
 vpCoverage <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 vpCoverage$Isolate <- parseIds(vpCoverage$Isolate)
 isolateVPCoverage <- createList("Isolate", "Coverage", vpCoverage)
 
 # Sampling information
-file <- paste(path, "17z_metadata_290618_forR.csv", sep="")
+file <- paste(path, "17z_metadata_040319.csv", sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 idLabels <- designTipLabels(samplingInfo)
 
-##############
-# Build tree #
-##############
+###################################
+# Calculate the genetic distances #
+###################################
 
 # Set the margins
 par(mfrow=c(1,1))
@@ -55,27 +58,34 @@ geneticDistances <- buildGeneticDistanceMatrix(sequences)
 # Drop referencce and isolates that are only different from the reference
 geneticDistances <- removeBlankIsolates(geneticDistances)
 
-# Build neighbour joining tree
-tree <- NJ(geneticDistances)
+##########################
+# Read in the RAxML tree #
+##########################
+
+# Read in the tree
+file <- paste0(path, "vcfFiles/mlTree_07-03-19.tree")
+tree <- read.tree(file)
 
 # Change tip labels
+tree$tip.label <- parseTipLabels(tree$tip.label)
 tips <- tree$tip.label
 tree$tip.label <- getValues(idLabels, tree$tip.label)
 
+# Scale the branch lengths to represent SNPs
+tree$edge.length <- tree$edge.length * nSitesInFasta
+
 # Plot tree with and without reference
-file <- paste(path, "vcfFiles/CumbrianIsolates_SummaryPlots_09-08-18.pdf", sep="")
+file <- paste(path, "vcfFiles/CumbrianIsolates_SummaryPlots_07-03-19.pdf", sep="")
 pdf(file)
 
 #### WITH REFERENCE
 
-badgers <- c("AF-21-05293-17",
-             "AF-21-5220-17",
-             "AF-21-5712-17")
-factor <- 2
+badgers <- samplingInfo[grepl(samplingInfo$Notes, pattern="Badger"), "Isolate"]
+factor <- 1
 plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
            edge.color="dimgrey", edge.width=3,
-           show.node.label=TRUE, label.offset=0.15,
-           underscore=TRUE)
+           show.node.label=FALSE, label.offset=0.15,
+           underscore=TRUE, cex=0.5)
 
 # Add node labels
 nodelabels(node=1:length(tree$tip.label), 
@@ -116,15 +126,11 @@ text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd
 # Drop reference tip
 tree <- drop.tip(tree, "Ref-1997")
 
-# Note badgers
-badgers <- c("AF-21-05293-17",
-             "AF-21-5220-17",
-             "AF-21-5712-17")
-factor <- 2
+# Plot the phylogeny
 plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
            edge.color="dimgrey", edge.width=3,
-           show.node.label=TRUE, label.offset=0.15,
-           underscore=TRUE)
+           show.node.label=FALSE, label.offset=0.15,
+           underscore=TRUE, cex=0.5)
 
 # Add node labels
 nodelabels(node=1:length(tree$tip.label), 
@@ -164,30 +170,30 @@ text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd
 # SNP table #
 #############
 
-# Build SNP table for sites where there are two isolates with coverage that are different
-informativeSites <- noteInformativeSites(sequences)
-
-# Build smaller sequences using only the informative sites
-informativeSequences <- keepSites(sequences, informativeSites)
-
-# Print out SNP table
-newLabels <- getValues(idLabels, names(informativeSequences))
-file <- paste(path, "vcfFiles/InformativeFasta_09-08-18.fasta", sep="")
-printOutInformativeSequences(informativeSequences, file, newLabels)
+# # Build SNP table for sites where there are two isolates with coverage that are different
+# informativeSites <- noteInformativeSites(sequences)
+# 
+# # Build smaller sequences using only the informative sites
+# informativeSequences <- keepSites(sequences, informativeSites)
+# 
+# # Print out SNP table
+# newLabels <- getValues(idLabels, names(informativeSequences))
+# file <- paste(path, "vcfFiles/InformativeFasta_07-03-19.fasta", sep="")
+# printOutInformativeSequences(informativeSequences, file, newLabels)
 
 #################################
 # Min Genetic Distance Heatmap? #
 #################################
-
-# Build genetic distance matrix
-geneticDistances <- buildGeneticDistanceMatrix(sequences)
-
-# Plot ordered heatmap with Reference
-plotHeatmap(geneticDistances, order=TRUE, propNs, badgers)
-
-# Plot ordered heatmap without Reference
-refRow <- which(rownames(geneticDistances) == "Ref-1997")
-plotHeatmap(geneticDistances[-refRow, -refRow], order=TRUE, propNs, badgers)
+# 
+# # Build genetic distance matrix
+# geneticDistances <- buildGeneticDistanceMatrix(sequences)
+# 
+# # Plot ordered heatmap with Reference
+# plotHeatmap(geneticDistances, order=TRUE, propNs, badgers)
+# 
+# # Plot ordered heatmap without Reference
+# refRow <- which(rownames(geneticDistances) == "Ref-1997")
+# plotHeatmap(geneticDistances[-refRow, -refRow], order=TRUE, propNs, badgers)
 
 # Close the PDF file (must be closed when code is running as well)
 dev.off()
@@ -197,6 +203,24 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+parseTipLabels <- function(tipLabels){
+  
+  # Initialise a vector to store the output
+  output <- c()
+  
+  # Examine each of the tips
+  for(i in seq_along(tipLabels)){
+    
+    # Remove the ">" from the start
+    output[i] <- substr(tipLabels[i], 2, nchar(tipLabels[i]))
+    
+    # Get the first part
+    output[i] <- strsplit(output[i], split="_")[[1]][1]
+  }
+  
+  return(output)
+}
 
 plotHeatmap <- function(geneticDistances, order, propNs, badgers){
   
@@ -538,4 +562,21 @@ readFasta <- function(fileName){
   sequences[[name]] <- strsplit(sequence, split="")[[1]]
   
   return(sequences)
+}
+
+getNSitesInFASTA <- function(fastaFile){
+  
+  # Open a connection to a file to read (open="r")
+  connection <- file(fastaFile, open="r")
+  
+  # Get first line of file
+  firstLine <- readLines(connection, n=1)
+  
+  # Close file connection
+  close(connection)
+  
+  # Get the number of sites used in the FASTA file from first line
+  nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
+  
+  return(nSites)
 }

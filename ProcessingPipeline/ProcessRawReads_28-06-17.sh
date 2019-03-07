@@ -255,7 +255,7 @@ echo -e "\e[0;32m 	Searching for FASTQ files with ending: \e[0m"$FILEENDING
 echo -e "\e[0;32m 	Path to trim_galore tool: \e[0m"$TRIMGALORE
 echo -e "\e[0;32m 	Path to prinseq tool: \e[0m"$PRINSEQ
 echo -e "\e[0;32m 	Path to M. bovis reference sequence: \e[0m"$REFERENCE
-echo -e "\e[0;32m 	Path to perl script that extracts sequences from FASTA: \e[0m"$EXTRACTCONTIGS
+echo -e "\e[0;32m 	Path to perl script that extracts sequences from FASTA: \e[0m"$PICKREADS
 echo -e "\e[0;32m 	Path to perl script that examines BLAST output: \e[0m"$EXAMINEBLASTOUTPUT
 echo
 echo -e "\e[0;32m 	Produces summary File for Isolate Mapping Info: \e[0m"$SAMSUMMARY
