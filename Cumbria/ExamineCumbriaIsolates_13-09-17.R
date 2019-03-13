@@ -1,37 +1,34 @@
-############
-# Packages #
-############
+#### Packages ####
 
 library(phangorn)
 library(gplots)
 
-#########################
-# Read in sequence data #
-#########################
+#### Read in sequence data ####
 
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Cumbria/"
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/sequences_Prox-10_07-03-2019.fasta", sep="")
+file <- paste(path, "vcfFiles/sequences_Prox-10_12-03-2019.fasta", sep="")
 sequences <- readFasta(file)
 
 # Note the number of sites in the FASTA
 nSitesInFasta <- length(sequences[[1]])
 
-############################
-# Read in the isolate data #
-############################
+# Calculate the proportion Ns for each isolate
+propNs <- calculatePropNsForSequences(sequences)
+
+#### Read in the isolate data ####
 
 # Mapping
-file <- paste(path, "isolateMappingSummary_07-03-19.txt", sep="")
+file <- paste(path, "isolateMappingSummary_12-03-19.txt", sep="")
 mapping <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 mapping$Prop <- mapping$NumberMappedReads / (mapping$NumberMappedReads + mapping$NumberUnmappedReads)
 mapping$Isolate <- parseIds(mapping$Isolate)
 isolateMapping <- createList("Isolate", "Prop", mapping)
 
 # Genome coverage
-file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_07-03-2019.txt", sep="")
+file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_12-03-2019.txt", sep="")
 vpCoverage <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 vpCoverage$Isolate <- parseIds(vpCoverage$Isolate)
 isolateVPCoverage <- createList("Isolate", "Coverage", vpCoverage)
@@ -41,30 +38,22 @@ file <- paste(path, "17z_metadata_040319.csv", sep="")
 samplingInfo <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 idLabels <- designTipLabels(samplingInfo)
 
-###################################
-# Calculate the genetic distances #
-###################################
+# Note the IDs of the badgers
+badgers <- samplingInfo[grepl(samplingInfo$Notes, pattern="Badger"), "Isolate"]
 
-# Set the margins
-par(mfrow=c(1,1))
-par(mar=c(5,1,1,2)) # Bottom, Left, Top, Right
-
-# Calculate the proportion Ns for each isolate
-propNs <- calculatePropNsForSequences(sequences)
-
-# Build genetic distance matrix
-geneticDistances <- buildGeneticDistanceMatrix(sequences)
-
-# Drop referencce and isolates that are only different from the reference
-geneticDistances <- removeBlankIsolates(geneticDistances)
-
-##########################
-# Read in the RAxML tree #
-##########################
+#### Read in the RAxML tree ####
 
 # Read in the tree
-file <- paste0(path, "vcfFiles/mlTree_07-03-19.tree")
-tree <- read.tree(file)
+treeFile <- paste0(path, "vcfFiles/mlTree_12-03-19.tree")
+tree <- read.tree(treeFile)
+
+# Re-root the tree
+tree <- root(tree, 
+             outgroup=">Ref-1997", # Set the isolate to root the tree on - can also use node
+             resolve.root=TRUE) # Ensures new root will be bifurcating
+
+# Drop reference tip
+tree <- drop.tip(tree, ">Ref-1997")
 
 # Change tip labels
 tree$tip.label <- parseTipLabels(tree$tip.label)
@@ -74,57 +63,31 @@ tree$tip.label <- getValues(idLabels, tree$tip.label)
 # Scale the branch lengths to represent SNPs
 tree$edge.length <- tree$edge.length * nSitesInFasta
 
-# Plot tree with and without reference
-file <- paste(path, "vcfFiles/CumbrianIsolates_SummaryPlots_07-03-19.pdf", sep="")
-pdf(file)
+#### Ancestral State Estimation ####
 
-#### WITH REFERENCE
+# Get the tip states
+tipStates <- ifelse(tips %in% badgers, "badger", "cow")
 
-badgers <- samplingInfo[grepl(samplingInfo$Notes, pattern="Badger"), "Isolate"]
+# Estimate ancestral states under a ER model
+ancestralStateFitting <- ace(tipStates, tree, 
+                             model="ARD", # "ER" Equal rates; "ARD" All rates different
+                             type="discrete") # Discrete states
+
+# Count the estimated transitions
+transitionCounts <- countTransitions(tree=tree, tipStates=tipStates,
+                                     ancestralStateProbs=ancestralStateFitting$lik.anc,
+                                     probThreshold=0.5)
+
+#### Open an output file for plots ####
+
+# Use the treeFile name as the basis to name the plot file
+outputFile <- paste0(substr(treeFile, 1, nchar(treeFile) - 4), "pdf")
+pdf(outputFile)
+
+#### Plot the phylogeny ####
+
+# Note the tip size scaling factor
 factor <- 1
-plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
-           edge.color="dimgrey", edge.width=3,
-           show.node.label=FALSE, label.offset=0.15,
-           underscore=TRUE, cex=0.5)
-
-# Add node labels
-nodelabels(node=1:length(tree$tip.label), 
-           cex=(1 - getValues(propNs, tips)) * factor,
-           pch=ifelse(tips %in% badgers, 21, 24),
-           bg=ifelse(tips %in% badgers, "red", "blue"), 
-           col="dimgrey")
-
-# Get the plotting region dimensions = x1, x2, y1, y2 
-# (coordinates of bottom left and top right corners)
-dimensions <- par("usr")
-xLength <- dimensions[2] - dimensions[1]
-yLength <- dimensions[4] - dimensions[3]
-
-# Add quality legend
-legend(x=dimensions[2] - (0.1 * xLength), 
-       y=dimensions[3] + (0.3 * yLength),
-       legend=seq(0.5, 1, 0.1), pch=24, bty='n',
-       pt.cex=seq(0.5, 1, 0.1) * factor, xpd=TRUE,
-       title="Coverage")
-
-# Add species legend
-legend(x=dimensions[1] + (0.4 * xLength),
-       y=dimensions[3], 
-       legend=c("Cow", "Badger"),
-       pch=c(17, 16), cex=1, col=c("blue", "red"), 
-       text.col=c("blue", "red"), bty='n', xpd=TRUE)
-
-# Add Scale bar
-points(x=c(0, 1), 
-       y=c(dimensions[3] - (0.05 * yLength), dimensions[3] - (0.05 * yLength)),
-       type="l", lwd=3, xpd=TRUE)
-text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd=TRUE)
-
-
-##### WITHOUT REFERENCE
-
-# Drop reference tip
-tree <- drop.tip(tree, "Ref-1997")
 
 # Plot the phylogeny
 plot.phylo(tree, show.tip.label=TRUE, type="phylogram",
@@ -165,37 +128,11 @@ points(x=c(0, 1),
        type="l", lwd=3, xpd=TRUE)
 text(x=0.5, y=dimensions[3] - (0.075 * yLength), labels="~ 1 SNP", cex=0.75, xpd=TRUE)
 
+# Add the estimated transition counts
+plotTransitionCounts(transitionCounts, dimensions)
 
-#############
-# SNP table #
-#############
+#### Close the output file ####
 
-# # Build SNP table for sites where there are two isolates with coverage that are different
-# informativeSites <- noteInformativeSites(sequences)
-# 
-# # Build smaller sequences using only the informative sites
-# informativeSequences <- keepSites(sequences, informativeSites)
-# 
-# # Print out SNP table
-# newLabels <- getValues(idLabels, names(informativeSequences))
-# file <- paste(path, "vcfFiles/InformativeFasta_07-03-19.fasta", sep="")
-# printOutInformativeSequences(informativeSequences, file, newLabels)
-
-#################################
-# Min Genetic Distance Heatmap? #
-#################################
-# 
-# # Build genetic distance matrix
-# geneticDistances <- buildGeneticDistanceMatrix(sequences)
-# 
-# # Plot ordered heatmap with Reference
-# plotHeatmap(geneticDistances, order=TRUE, propNs, badgers)
-# 
-# # Plot ordered heatmap without Reference
-# refRow <- which(rownames(geneticDistances) == "Ref-1997")
-# plotHeatmap(geneticDistances[-refRow, -refRow], order=TRUE, propNs, badgers)
-
-# Close the PDF file (must be closed when code is running as well)
 dev.off()
 
 
@@ -203,6 +140,39 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+plotTransitionCounts <- function(transitionCounts, dimensions){
+  
+  # Define the boundaries of the plotting area
+  width <- dimensions[2] - dimensions[1]
+  height <- dimensions[4] - dimensions[3]
+  xCoords <- c(dimensions[1], dimensions[2] - 0.7*width)
+  yCoords <- c(dimensions[3] + (0.1*height), dimensions[4] - 0.6*height)
+  width <- xCoords[2] - xCoords[1]
+  height <- yCoords[2] - yCoords[1]
+  
+  # Bottom left box
+  rect(xleft=xCoords[1], ybottom=yCoords[1], xright=xCoords[1] + (0.5*width), ytop=yCoords[2] - (0.5*height), xpd=TRUE)
+  
+  # Bottom right box
+  rect(xleft=xCoords[1] + (0.5*width), ybottom=yCoords[1], xright=xCoords[1] + width, ytop=yCoords[2] - (0.5*height), xpd=TRUE)
+  
+  # Top left box
+  rect(xleft=xCoords[1], ybottom=yCoords[1] + (0.5*height), xright=xCoords[1] + (0.5*width), ytop=yCoords[2], xpd=TRUE)
+  
+  # Top right 
+  rect(xleft=xCoords[1] + (0.5*width), ybottom=yCoords[1] + (0.5*height), xright=xCoords[1] + width, ytop=yCoords[2], xpd=TRUE)
+  
+  # Add labels
+  text(x=c(xCoords[1] + (0.05*width), xCoords[1] + (0.6*width), xCoords[1] - (0.41*width), xCoords[1] - (0.41*width)), 
+       y=c(yCoords[2] + 0.07*height, yCoords[2] + 0.07*height, yCoords[1] + (0.25*height), yCoords[1] + (0.75*height)), 
+       labels=c("Badger", "Cow", "Cow", "Badger"), col=c("red", "blue", "blue", "red"), xpd=TRUE, pos=4)
+  
+  # Add counts
+  text(x=c(xCoords[1] + (0.25*width), xCoords[1] + (0.25*width), xCoords[1] + (0.75*width), xCoords[1] + (0.75*width)), 
+       y=c(yCoords[1] + (0.75*height), yCoords[1] + (0.25*height), yCoords[1] + (0.75*height), yCoords[1] + (0.25*height)),
+       labels=as.vector(transitionCounts))
+}
 
 parseTipLabels <- function(tipLabels){
   
@@ -579,4 +549,112 @@ getNSitesInFASTA <- function(fastaFile){
   nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
   
   return(nSites)
+}
+
+countTransitions <- function(tree, tipStates, ancestralStateProbs, probThreshold=0.5){
+  
+  # A more conservative transition count method - recommended by Nicola De Maio
+  # 	- Assumes the ancestor represents one of the tips in the past
+  # 
+  # For a two state problem: A & B
+  #  ----A				----A				----A				  ----B	
+  # |		  1 AA	 |		0 AA	 |		  1 AA	 |		 0 AA
+  # A		  0 AB	 A		1 AB	 A----B	1 AB	 A		 2 AB
+  # |				     |				   |				     |
+  # ----A			   ----B			 ----A				 ----B
+  
+  # Nodes in phylogenetic tree are numbered:
+  # 1:Ntip(tree) (1:Ntip(tree) + tree$Nnode)
+  # 
+  # Edges on the phylogenetic tree are under tree$edge
+  # A matrix of two columns: FROM, TO - based upon the node indices defined above
+  #
+  # Ancestral state probs - probability of each state for each INTERNAL node
+  #
+  # Probability threshold is the threshold to define the state assigned to each internal node
+  
+  # Note the state probabilities for the tips
+  tipStateProbs <- matrix(0, nrow=length(tipStates), ncol=2)
+  tipStateProbs[tipStates == "cow", 2] <- 1
+  tipStateProbs[tipStates == "badger", 1] <- 1
+  
+  # Add the state probabilities for the tips onto the ancestral state probs for ease
+  stateProbs <- rbind(tipStateProbs, ancestralStateProbs)
+  
+  # Initialise a list to store the states associated with each internal nodes daughter nodes
+  nodes <- list()
+
+  # Examine each edge in the phylogeny
+  for(row in 1:nrow(tree$edge)){
+    
+    # Note the node index of from node
+    fromNode <- as.character(tree$edge[row, 1])
+    
+    # Get the state for the from node
+    fromState <- which(stateProbs[as.numeric(fromNode), ] > probThreshold)
+    if(length(fromState) == 0){
+      fromState <- -1
+    }
+    
+    # Get the state for the to node
+    toState <- which(stateProbs[tree$edge[row, 2], ] > probThreshold)
+    if(length(toState) == 0){
+      toState <- -1
+    }
+    
+    # Check if we have encountered this from node before
+    if(is.null(nodes[[fromNode]]) == FALSE){
+      
+      nodes[[fromNode]]$Daughters <- c(nodes[[fromNode]]$Daughters, toState)
+      
+      # Create a record for the current node if we haven't encountered it before
+    }else{
+      nodes[[fromNode]] <- list("Parent"=fromState, "Daughters"=c(toState))
+    }
+  }
+  
+  # Initialise a matrix to count the transitions
+  transitionCounts <- matrix(0, nrow=2, ncol=2)
+  colnames(transitionCounts) <- colnames(stateProbs)
+  rownames(transitionCounts) <- colnames(stateProbs)
+  
+  # Examine each of the node
+  for(node in names(nodes)){
+    
+    # Initialise a variable to count the number of branches beginning and ending with the same state
+    nSameStateBranches <- 0
+    
+    # Skip node if no state available
+    if(nodes[[node]][1] == -1){
+      next
+    }
+    
+    # Get the state of the parent
+    parent <- nodes[[node]]$Parent
+    
+    # Get the states of the daughters for the current node
+    daughters <- nodes[[node]]$Daughters
+    
+    # Examine each of the daughter states
+    for(i in seq_along(daughters)){
+      
+      # Check if state of daughter is the same as that of parent
+      if(daughters[i] != -1 && daughters[i] == parent){
+        nSameStateBranches <- nSameStateBranches + 1
+        
+        # Found branch beginning and ending with different states - count the inter species transmission event
+      }else if(daughters[i] != -1){
+        transitionCounts[parent, daughters[i]] <- transitionCounts[parent, daughters[i]] + 1
+      }
+    }
+    
+    # Count the number of within species transmission events - conservatively assumes parent node is same animal as one of daughters
+    if(nSameStateBranches > 1){
+      for(i in seq_len(nSameStateBranches - 1)){
+        transitionCounts[parent, parent] <- transitionCounts[parent, parent] + 1
+      }
+    }
+  }
+  
+  return(transitionCounts)
 }

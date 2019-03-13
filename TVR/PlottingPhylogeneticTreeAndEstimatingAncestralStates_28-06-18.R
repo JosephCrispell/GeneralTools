@@ -59,7 +59,7 @@ countTransitions <- function(tree, tipStates, ancestralStateProbs, probThreshold
     # Check if we have encountered this from node before
     if(is.null(nodes[[fromNode]]) == FALSE){
       
-      nodes[[fromNode]]$Daughters <- c(nodes[[fromNode]][[Daughters]], toState)
+      nodes[[fromNode]]$Daughters <- c(nodes[[fromNode]]$Daughters, toState)
       
     # Create a record for the current node if we haven't encountered it before
     }else{
