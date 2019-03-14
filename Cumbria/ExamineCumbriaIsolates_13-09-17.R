@@ -78,6 +78,30 @@ transitionCounts <- countTransitions(tree=tree, tipStates=tipStates,
                                      ancestralStateProbs=ancestralStateFitting$lik.anc,
                                      probThreshold=0.5)
 
+#### Prepare tree for tempest ####
+
+# Get the tip dates in standard format in a tip label
+tipLabelsWithDates <- createTipLabelsWithStandardDateFormat(tree$tip.label)
+
+# Create a tree with the dated tip labels
+treeWithDates <- tree
+treeWithDates$tip.label <- tipLabelsWithDates
+
+# Remove tips without dates
+for(tip in treeWithDates$tip.label){
+  
+  # Check if no date available
+  if(grepl(tip, pattern="_NA")){
+    
+    # Drop the tip
+    treeWithDates <- drop.tip(treeWithDates, tip)
+  }
+}
+
+# Print the tree to file
+
+
+
 #### Open an output file for plots ####
 
 # Use the treeFile name as the basis to name the plot file
@@ -140,6 +164,38 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+createTipLabelsWithStandardDateFormat <- function(tipLabels){
+  
+  # Initialise an array to store the new tip labels
+  output <- c()
+  
+  # Examine each of the tip labels
+  for(i in seq_along(tipLabels)){
+    
+    # Split the tip label into its parts
+    parts <- strsplit(tipLabels[i], split="_")[[1]]
+    
+    # Skip individuals with no date
+    if(parts[3] == "NA"){
+      output[i] <- paste0(parts[1], "_NA")
+      next
+    }
+    
+    # Get the current tips date
+    date <- ""
+    if(grepl(parts[3], pattern="/")){
+      date <- as.character(as.Date(parts[3], format="%d/%m/%Y"))
+    }else{
+      date <- as.character(as.Date(paste0("15-", parts[3]), format="%d-%b-%y"))
+    }
+    
+    # Create the new tip label
+    output[i] <- paste0(parts[1], "_", date)
+  }
+  
+  return(output)
+}
 
 plotTransitionCounts <- function(transitionCounts, dimensions){
   
