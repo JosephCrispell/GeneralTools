@@ -9,7 +9,7 @@ library(gplots)
 path <- "/home/josephcrispell/Desktop/Research/Cumbria/"
 
 # Read in the FASTA file
-file <- paste(path, "vcfFiles/sequences_Prox-10_12-03-2019.fasta", sep="")
+file <- paste(path, "vcfFiles/sequences_Prox-10_15-03-2019.fasta", sep="")
 sequences <- readFasta(file)
 
 # Note the number of sites in the FASTA
@@ -28,7 +28,7 @@ mapping$Isolate <- parseIds(mapping$Isolate)
 isolateMapping <- createList("Isolate", "Prop", mapping)
 
 # Genome coverage
-file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_12-03-2019.txt", sep="")
+file <- paste(path, "vcfFiles/","IsolateVariantPositionCoverage_RESCUED_15-03-2019.txt", sep="")
 vpCoverage <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 vpCoverage$Isolate <- parseIds(vpCoverage$Isolate)
 isolateVPCoverage <- createList("Isolate", "Coverage", vpCoverage)
@@ -44,7 +44,7 @@ badgers <- samplingInfo[grepl(samplingInfo$Notes, pattern="Badger"), "Isolate"]
 #### Read in the RAxML tree ####
 
 # Read in the tree
-treeFile <- paste0(path, "vcfFiles/mlTree_12-03-19.tree")
+treeFile <- paste0(path, "vcfFiles/mlTree_15-03-19.tree")
 tree <- read.tree(treeFile)
 
 # Re-root the tree
@@ -99,8 +99,8 @@ for(tip in treeWithDates$tip.label){
 }
 
 # Print the tree to file
-
-
+outputTreeFile <- paste0(substr(treeFile, 1, nchar(treeFile)-5), "_DatedTips.tree")
+write.tree(treeWithDates, file=outputTreeFile, append=FALSE, digits=20, tree.names=FALSE)
 
 #### Open an output file for plots ####
 
@@ -425,10 +425,17 @@ designTipLabels <- function(samplingInfo){
   tipLabels <- list()
   for(row in 1:nrow(samplingInfo)){
     
-    id <- strsplit(samplingInfo[row, "Isolate"], split="-")[[1]][3]
+    parts <- strsplit(samplingInfo[row, "Isolate"], split="-")[[1]]
     
-    tipLabels[[samplingInfo[row, "Isolate"]]] <- paste(id, samplingInfo[row, "Location"], 
-                                                       samplingInfo[row, "Date"], sep="_")
+    if(length(parts) > 1){
+      id <- parts[3]
+      
+      tipLabels[[samplingInfo[row, "Isolate"]]] <- paste(id, samplingInfo[row, "Location"], 
+                                                         samplingInfo[row, "Date"], sep="_")
+    }else{
+      tipLabels[[samplingInfo[row, "Isolate"]]] <- paste(samplingInfo[row, "Isolate"], samplingInfo[row, "Location"], 
+                                                         samplingInfo[row, "Date"], sep="_")
+    }
   }
   
   return(tipLabels)

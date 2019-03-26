@@ -7,7 +7,7 @@
 import sys # Command line arguments
 import re # pattern matching
 
-# Count the number of sampled badgers associated with badger isolates in merged file
+# Get the right forward and reverse FASTQ files for the TVR sequences
 # Author: Joseph Crispell
 # Created: 09-10-17
 

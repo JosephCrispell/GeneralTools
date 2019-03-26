@@ -13,7 +13,7 @@ date <- format(Sys.Date(), "%d-%m-%y")
 path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
 
 # Read in the FASTA file
-fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_09-01-2019.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_19-03-2019.fasta", sep="")
 sequencesDNAbin <- read.dna(fastaFile,
                             format = "fasta", skip=1) # skip first line - I added this line into FASTA: nSequences length
 

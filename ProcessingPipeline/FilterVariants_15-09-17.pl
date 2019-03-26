@@ -284,7 +284,7 @@ if($verbose eq "-help" || $verbose eq ""){
 				$nAlellesOfSitesRemoved[2]++;
 			}elsif($ref eq 'T'){
 				$nAlellesOfSitesRemoved[3]++;
-			}else{
+			}elsif(length($ref) == 1){ # Check that we haven't found indel
 				print "ERROR!: Reference allele not recognised: $ref\n";
 			}
 		}

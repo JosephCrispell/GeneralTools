@@ -723,7 +723,7 @@ viewRAxMLTree <- function(treeBS, filePath=path){
   par(mar=c(0,0,0,0)) # Bottom, Left, Top, Right
     
   # Plot initial tree to find nodes defining clades
-  pdf(paste(filePath, "test.pdf", sep=""), height=40, width=40)
+  pdf(paste(filePath, "test.pdf", sep=""), height=100, width=100)
     
   plot.phylo(treeBS, "fan")
   nodelabels()

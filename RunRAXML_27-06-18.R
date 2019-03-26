@@ -3,13 +3,13 @@ library(ape)
 library(beepr)
 
 # Note the FASTA file name and path
-fastaFile <- "/home/josephcrispell/Desktop/Research/Cumbria/vcfFiles/sequences_Prox-10_12-03-2019.fasta"
+fastaFile <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/vcfFiles/sequences_Prox-10_19-03-2019.fasta"
 
 # Set the working directory
-setwd("/home/josephcrispell/Desktop/Research/Cumbria/vcfFiles/")
+setwd("/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/vcfFiles/")
 
 # Build analysis name
-analysisName <- "RaxML-R_12-03-19"
+analysisName <- "RaxML-R_19-03-19"
 
 # Set the input parameters for RAXML
 model <- "GTRCAT" # No rate heterogenity
