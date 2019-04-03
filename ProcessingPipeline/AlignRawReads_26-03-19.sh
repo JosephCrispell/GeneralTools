@@ -8,7 +8,7 @@
 # Author: Joseph Crispell
 
 # Command Line Structure:
-# bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference
+# bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference.fasta
 
 # Arguments:
 # forward.fastq.gz	Compressed FASTQ file containing the forward reads (file name should contain _R1_)
@@ -52,6 +52,21 @@
 ## Reference sequence
 # Download the FASTA file for your desired reference genome
 # $ bwa index reference.fasta
+
+##################
+# HELP STATEMENT #
+##################
+
+if test "$#" -ne 3; then
+    
+    echo -e "\e[0;34m bash script designed to process a pair of FASTQ files \e[0m"
+	echo " Command line structure:"
+	echo "	bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference.fasta"
+	echo "		forward.fastq.gz      Full path to FASTQ files containing the forward reads (usually has \"_R1_\" in name)"
+	echo "		reverse.fastq.gz      Full path to FASTQ files containing the reverse reads (usually has \"_R2_\" in name)"
+	echo "		forward.fastq.gz      Full path to reference genome FASTA file. Note this should be indexed with bwa index."
+	exit 0
+fi
 
 #############
 # ARGUMENTS #
@@ -104,12 +119,17 @@ TRIMMEDREVERSE="trimmed_reverse.fastq"
 # Run cutadapt
 cutadapt -b AGATCGGAAGAG -B AGATCGGAAGAG -b CTGTCTCTTATA -B CTGTCTCTTATA -o $TRIMMEDFORWARD -p $TRIMMEDREVERSE $FORWARD $REVERSE --minimum-length=$MINLENGTH --trim-n --max-n=$MAXPROPN --quality-cutoff=$QUALITY,$QUALITY -u $TRIMLEFTFORWARD -u -$TRIMRIGHTFORWARD -U $TRIMLEFTREVERSE -U -$TRIMRIGHTREVERSE --cores=$NTHREADS
 
+echo -e "\e[0;34m Finished trimming. Zipping up original FASTQ files... \e[0m"
+
+# Zip up the original untrimmed FASTQ files
+gzip $FORWARD & gzip $REVERSE
+
 ############
 # ALIGNING #
 ############
 
 # Print progress information
-echo -e "\e[0;34m Starting to align trimmed reads... \e[0m"
+echo -e "\e[0;34m Finished zipping FASTQ files. Starting to align trimmed reads - creating SAM file... \e[0m"
 
 # Name the output file
 SAMFILE="aligned.sam"
@@ -117,39 +137,56 @@ SAMFILE="aligned.sam"
 # Run the alignment
 bwa mem -t $NTHREADS $REFERENCE $TRIMMEDFORWARD $TRIMMEDREVERSE > $SAMFILE
 
+echo -e "\e[0;34m Finished aligning and created SAM file. Converting SAM file to BAM file... \e[0m"
+
 # Convert SAM to BAM
 BAMFILE="aligned.bam"
 samtools view --threads $NTHREADS -b $SAMFILE > $BAMFILE
+
+echo -e "\e[0;34m Finished creating BAM file. Sorting BAM file... \e[0m"
 
 # Sort the aligned reads
 SORTEDBAMFILE="aligned_sorted.bam"
 samtools sort $BAMFILE -o $SORTEDBAMFILE --threads $NTHREADS
 
+echo -e "\e[0;34m Finished sorting BAM file. Indexing BAM file... \e[0m"
+
 # Index the sorted reads
-samtools index $SRTDBAMFILE -@ $NTHREADS
+samtools index $SORTEDBAMFILE -@ $NTHREADS
+
+echo -e "\e[0;34m Finished indexing BAM file. Removing duplicates from BAM file... \e[0m"
 
 # Remove duplicates
 NODUPLICATES="aligned_sorted_rmDuplicates.bam"
-samtools rmdup $SRTDBAMFILE $NODUPLICATES
+samtools rmdup $SORTEDBAMFILE $NODUPLICATES
 
 ###################
 # VARIANT CALLING #
 ###################
 
 # Print progress information
-echo -e "\e[0;34m Starting variant calling... \e[0m"
+echo -e "\e[0;34m Finished removing duplicates. Starting variant calling - creating BCF file... \e[0m"
 
 # Set some quality filters
 ADJUST=50 # Parameter to adjust quality scores
-MAPQAULITY=30 # Skip aligned reads with quality score less than this
+MAPQUALITY=30 # Skip aligned reads with quality score less than this
 BASEQUALITY=20 # Skip bases with quality score less than this
 
 # Create a BCF file (compressed form of VCF)
 BCFFILE="variants.bcf"
 samtools mpileup --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --uncompressed --fasta-ref $REFERENCE $NODUPLICATES > $BCFFILE
 
+echo -e "\e[0;34m Created BCF file. Converting BCF file to VCF file... \e[0m"
+
 # Convert BCF to VCF
 VCFFILE="variants.vcf"
 bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS > $VCFFILE
+
+echo -e "\e[0;34m Finished cconverting BCF file to VCF file. Removing unecessary intermediate files... \e[0m"
+
+rm aligned.*
+rm trimmed_*
+rm aligned_*.bam*
+rm variants.bcf
 
 echo -e "\e[0;32m Finished! :-) \e[0m"

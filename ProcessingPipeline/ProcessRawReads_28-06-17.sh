@@ -14,7 +14,7 @@
 ####################
 
 function checkIfHelpStatementRequested {
-	if [ $1 == "-h" -o $1 == "-help"  -o $1 == "help" -o $1 == "" ]
+	if [ "$#" -ne 6 ]
 	then
 		echo -e "\e[0;34m bash script designed to process paired raw read FASTQ files \e[0m"
 		echo " Command line structure:"
