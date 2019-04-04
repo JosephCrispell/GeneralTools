@@ -102,7 +102,8 @@ sub GetCompliment{
 		A => 'T',
 		C => 'G',
 		G => 'C',
-		T => 'A'
+		T => 'A',
+		N => 'N'
 	);
 	
 	# Initialise an array to store the compliment
