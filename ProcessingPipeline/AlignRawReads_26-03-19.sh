@@ -57,8 +57,9 @@
 # HELP STATEMENT #
 ##################
 
+# Print help statement when more/less than three input arguments provided
 if test "$#" -ne 3; then
-    
+
     echo -e "\e[0;34m bash script designed to process a pair of FASTQ files \e[0m"
 	echo " Command line structure:"
 	echo "	bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference.fasta"
@@ -80,7 +81,7 @@ REVERSE=$2
 REFERENCE=$3
 
 # Set the number of threads to use throughout - how many tasks can be done simultaneously
-NTHREADS=3
+NTHREADS=10
 
 #########
 # UNZIP #
@@ -108,9 +109,9 @@ QUALITY=25 # Quality threshold used to filter poor quality reads
 MAXPROPN=0.25 # Threshold proportion of Ns in read (sites with no information) used to filter poor quality reads
 MINLENGTH=50 # Threshold to filter reads out that are too short
 TRIMLEFTFORWARD=10 # Number of sites to remove from left of forward reads
-TRIMRIGHTFORWARD=10 # Number of sites to remove from right of forward reads
+TRIMRIGHTFORWARD=0 # Number of sites to remove from right of forward reads
 TRIMLEFTREVERSE=10 # Number of sites to remove from left of forward reads
-TRIMRIGHTREVERSE=10 # Number of sites to remove from right of forward reads
+TRIMRIGHTREVERSE=0 # Number of sites to remove from right of forward reads
 
 # Name the output files
 TRIMMEDFORWARD="trimmed_forward.fastq"
@@ -182,8 +183,8 @@ echo -e "\e[0;34m Created BCF file. Converting BCF file to VCF file... \e[0m"
 VCFFILE="variants.vcf"
 bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS > $VCFFILE
 
+# Remove the intermediate files
 echo -e "\e[0;34m Finished cconverting BCF file to VCF file. Removing unecessary intermediate files... \e[0m"
-
 rm aligned.*
 rm trimmed_*
 rm aligned_*.bam*

@@ -1,7 +1,7 @@
 
 # Create two random samples from a normal distribution
 sampleA <- rnorm(50, mean=5) # Draw 50 random samples from a normal distribution with a mean of 5
-sampleB <- rnorm(50, mean=10) # Draw 50 random samples from a normal distribution with a mean of 5
+sampleB <- rnorm(50, mean=5.5) # Draw 50 random samples from a normal distribution with a mean of 5
 
 ## Plot them in a histogram
 
@@ -10,7 +10,7 @@ xLim <- c(min(sampleA, sampleB), max(sampleA, sampleB))
 
 # Define the bins
 # Define a sequence of numbers that are the bounds of bins for histogram
-breaks <- seq(from=xLim[0], to=xLim[1] + 0.1, by=0.25) 
+breaks <- seq(from=xLim[1], to=xLim[2] + 1, by=0.25) 
 
 # Create the histograms but don't plot them yet
 aHist <- hist(sampleA, breaks=breaks, plot=FALSE)

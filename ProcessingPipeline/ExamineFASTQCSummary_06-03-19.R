@@ -1,10 +1,10 @@
 #### Read in the data ####
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/NorthernIreland/TVR/FASTQs/FASTQC/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Fastqs_ALL_15-03-19/Alicia/FASTQC/"
 
 # Read in the FASTQC file summary table
-summaryFile <- paste0(path, "Fastqc_summary_25-03-19.txt")
+summaryFile <- paste0(path, "Fastqc_summary_04-04-19.txt")
 summary <- read.table(summaryFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Look at GC distribution
@@ -16,4 +16,3 @@ boxplot(summary$LeftTrim, summary$RightTrim, names=c("LEFT", "RIGHT"), las=1, fr
 
 # Check adapter flag
 table(summary$AdapterContentFlag)
-
