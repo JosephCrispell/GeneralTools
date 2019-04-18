@@ -10,13 +10,10 @@ path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Fastqs_ALL_15-0
 # Read in the vcf file
 vcfFile <- paste0(path, "variants.vcf")
 vcf <- read.table(vcfFile, header=TRUE, stringsAsFactors=FALSE, sep="\t", comment.char="@", check.names=FALSE, skip=28)
-#vcf <- VCFloci(vcfFile)
-
 
 #### Examine the coverage ####
 
 # Get the read depth for each site in vcf
-#depth <- getINFO(vcf, what="DP")
 depth <- apply(vcf, 1, getReadDepth)
 
 # Plot the depth distribution
