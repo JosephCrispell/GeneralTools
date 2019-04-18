@@ -179,15 +179,15 @@ BASEQUALITY=20 # Skip bases with quality score less than this
 
 # Create a BCF file (compressed form of VCF)
 BCFFILE="variants.bcf"
-samtools mpileup --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --fasta-ref $REFERENCE $NODUPLICATES > $BCFFILE
+bcftools mpileup $NODUPLICATES --threads $NTHREADS --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --fasta-ref $REFERENCE --output-type b --output $BCFFILE
 
 echo -e "\e[0;34m Created BCF file. Converting BCF file to VCF file... \e[0m"
 
 # Convert BCF to VCF
 VCFFILE="variants.vcf"
-bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS --variants-only > $VCFFILE
+bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS --variants-only --output-type v --output $VCFFILE
 
-echo -e "\e[0;34m Finished cconverting BCF file to VCF file. Running consequence calling on variants... \e[0m"
+echo -e "\e[0;34m Finished converting BCF file to VCF file. Running consequence calling on variants... \e[0m"
 
 # Consequence calling
 CONSEQUENCEFILE="consequence.vcf"
