@@ -179,7 +179,7 @@ BASEQUALITY=20 # Skip bases with quality score less than this
 
 # Create a BCF file (compressed form of VCF)
 BCFFILE="variants.bcf"
-samtools mpileup --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --fasta-ref $REFERENCE $NODUPLICATES > $BCFFILE
+samtools mpileup --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --uncompressed --fasta-ref $REFERENCE $NODUPLICATES > $BCFFILE
 
 echo -e "\e[0;34m Created BCF file. Converting BCF file to VCF file... \e[0m"
 
@@ -187,14 +187,12 @@ echo -e "\e[0;34m Created BCF file. Converting BCF file to VCF file... \e[0m"
 VCFFILE="variants.vcf"
 bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS --variants-only > $VCFFILE
 
-echo -e "\e[0;34m Finished cconverting BCF file to VCF file. Running consequence calling on variants... \e[0m"
-
 # Consequence calling
 CONSEQUENCEFILE="consequence.vcf"
-bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output-type v --output $CONSEQUENCEFILE $VCFFILE
+bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output $CONSEQUENCEFILE --output-type v
 
 # Remove the intermediate files
-echo -e "\e[0;34m Finished consequence calling. Removing unecessary intermediate files... \e[0m"
+echo -e "\e[0;34m Finished cconverting BCF file to VCF file. Removing unecessary intermediate files... \e[0m"
 rm aligned.*
 rm trimmed_*
 rm aligned_*.bam*
