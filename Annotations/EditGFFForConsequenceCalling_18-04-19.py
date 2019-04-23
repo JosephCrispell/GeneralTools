@@ -2,6 +2,25 @@
 
 # Author Damien Farrell
 # Date: 09-02-18
+# Purpose: bcftools csq takes a gff file but it doesn't work on the NCBI version. This script creates a GFF from a GB file that will work
+
+# Command line structure:
+# python CreateGFFForConsequenceCalling_DATE.py annotations.gb output.gff
+#   annotations.gb      Annotations in the Genbank (full) format - download from NCBI
+#   output.gff          Annotations in a GFF format that will work with bcftools csq
+
+###################
+# Import packages #
+###################
+
+import sys # Command line arguments
+import BCBio # GFF file object
+import Bio.SeqFeature # Feature holders
+from Bio import SeqIO
+
+#############
+# FUNCTIONS #
+#############
 
 def GFF_bcftools_format(in_file, out_file):
     """Convert a bacterial genbank file from NCBI to a GFF3 format that can be used in bcftools csq.
@@ -56,3 +75,14 @@ def GFF_bcftools_format(in_file, out_file):
         #write the new features to a GFF                                      
         GFF.write([new], out_handle)
         return
+
+###########################
+# Editing annotation file #
+###########################
+
+# Get the command line arguments
+annotationFile = sys.argv[1]
+outputFile = sys.argv[2]
+
+# Edit the annotation file and create new output
+GFF_bcftools_format(annotationFile, outputFile)
