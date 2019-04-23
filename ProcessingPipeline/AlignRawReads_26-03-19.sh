@@ -14,6 +14,7 @@
 # forward.fastq.gz	Compressed FASTQ file containing the forward reads (file name should contain _R1_)
 # reverse.fastq.gz	Compressed FASTQ file containing the reverse reads (file name should contain _R2_)
 # reference         Reference genome file - must be indexed (see end of TOOL INSTALLATION section below)
+# annotations.gff3	Full path to annotation file for the reference genome (NOTE M. bovis NCBI gff3 file doesn't work properly)
 
 #####################
 # TOOL INSTALLATION #
