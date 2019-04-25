@@ -191,8 +191,8 @@ bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --thread
 echo -e "\e[0;34m Finished converting BCF file to VCF file. Running consequence calling on variants... \e[0m"
 
 # Consequence calling
-CONSEQUENCEFILE="consequence.vcf"
-bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output-type v --output $CONSEQUENCEFILE $VCFFILE
+CONSEQUENCEFILE="consequence.tsv"
+bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output-type t --output $CONSEQUENCEFILE $VCFFILE
 
 # Remove the intermediate files
 echo -e "\e[0;34m Finished consequence calling. Removing unecessary intermediate files... \e[0m"
