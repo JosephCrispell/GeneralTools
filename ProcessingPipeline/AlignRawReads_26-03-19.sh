@@ -191,6 +191,7 @@ bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --thread
 echo -e "\e[0;34m Finished converting BCF file to VCF file. Running consequence calling on variants... \e[0m"
 
 # Consequence calling
+# Note that the organism name in the the FASTA file (the #CHROM name in the VCF file) must match the first column of the gff file
 CONSEQUENCEFILE="consequence.tsv"
 bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output-type t --output $CONSEQUENCEFILE $VCFFILE
 
