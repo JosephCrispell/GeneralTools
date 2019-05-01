@@ -25,22 +25,47 @@ metadata <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_19-03-2019.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 
+# Read in the coverage information
+coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_19-03-2019.txt")
+coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
 #### Build phylogeny ####
 
 # Build a phylogeny using RAxML
 tree <- runRAXML(fastaFile, date="26-04-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
 
 # Remove NI isolates and Reference
-tree <- drop.tip(mlTree, mlTree$tip.label[grepl(mlTree$tip.label, pattern=">Ref-1997|>182-MBovis|>161-MBovis")])
+tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997|>182-MBovis|>161-MBovis")])
 
 # Edit the tip labels
 tree$tip.label <- editTipLabels(tree$tip.label)
 
 # Get the tip information (species and sampling date)
-tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable)
+tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 
 # Convert branch lengths to SNPs
 tree$edge.length <- tree$edge.length * nSites
+
+#### Identify and remove duplicates ####
+
+# Count how many times each aliquot ID appears
+aliquotCounts <- table(tipInfo$Aliquot)
+
+# Identify the duplicated aliquots
+duplicated <- names(aliquotCounts)[aliquotCounts > 1]
+
+# Get the tip information for the duplicates
+duplicatedTipInfo <- tipInfo[tipInfo$Aliquot %in% duplicated, ]
+
+# Pick which tip to keep - note I checked phylogeny and these tips are identical on the phylogeny :-)
+remove <- pickDuplicatedTipToRemove(duplicatedTipInfo)
+
+# Drop one of each duplicated tip
+tree <- drop.tip(tree, remove)
+
+# Update the tip information
+tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
+
 
 #### Plot the phylogeny ####
 
@@ -75,9 +100,36 @@ par(mar=currentMar)
 # Close the output pdf
 dev.off()
 
+#### Make a note of the aliquot IDs that we don't have sequence data for yet ####
+
+# Get the metadata for the aliquots that haven't been sequenced
+notSequencedInfo <- metadata[metadata$Aliquot %in% tipInfo$Aliquot == FALSE, ]
+
+# Print to file - just aliquot IDs
+notSequencedFile <- paste0(path, "AliquotsNotSequenced_", date, ".csv")
+write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, sep=",", row.names=FALSE)
+
 #### FUNCTIONS ####
 
-addSpeciesLegend <- function(tipShapesAndColours){
+pickDuplicatedTipToRemove <- function(duplicatedTipInfo){
+  
+  # Initialise an array to store the tips to remove
+  remove <- c()
+  
+  # Examine the tips associate with each aliquot
+  for(aliquot in unique(duplicatedTipInfo$Aliquot)){
+    
+    # Get the tip info for the tips associated with the current aliquot
+    tipInfo <- duplicatedTipInfo[duplicatedTipInfo$Aliquot == aliquot, ]
+    
+    # Pick the tip with the lowest coverage to remove
+    remove <- c(remove, tipInfo[which(tipInfo$Coverage < max(tipInfo$Coverage)), "ID"])
+  }
+  
+  return(remove)
+}
+
+addSpeciesLegend <- function(tipShapesAndColours, cex=1){
   
   # Get the plotting region dimensions = x1, x2, y1, y2 
   # (coordinates of bottom left and top right corners)
@@ -100,10 +152,10 @@ addSpeciesLegend <- function(tipShapesAndColours){
     
     # Plot a point for the current species
     points(x=xStart+(i*xSpace), y=yPos, pch=as.numeric(tipShapesAndColours[[species[i]]][2]),
-           col=tipShapesAndColours[[species[i]]][1], xpd=TRUE)
+           col=tipShapesAndColours[[species[i]]][1], xpd=TRUE, cex=cex)
     
     # Add a label
-    text(x=xStart+(i*xSpace), y=yPos, labels=species[i], pos=4, xpd=TRUE)
+    text(x=xStart+(i*xSpace), y=yPos, labels=species[i], pos=4, xpd=TRUE, cex=cex)
   }
 }
 
@@ -222,10 +274,10 @@ addScaleBar <- function(scaleSize, cex=1){
          y=c(dimensions[3] - (0.01 * yLength), dimensions[3] - (0.01 * yLength)),
          type="l", lwd=3, xpd=TRUE)
   if(scaleSize == 1){
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.03 * yLength),
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.04 * yLength),
          labels=paste0("~ ", scaleSize, " SNP"), cex=cex, xpd=TRUE)
   }else{
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.03 * yLength),
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.04 * yLength),
          labels=paste0("~ ", scaleSize, " SNPs"), cex=cex, xpd=TRUE)
   }
 }
@@ -267,10 +319,10 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
   return(output)
 }
 
-getTipInfo <- function(tipLabels, metadata, linkTable){
+getTipInfo <- function(tipLabels, metadata, linkTable, coverage){
   
   # Initialise a dataframe to store the tip information
-  tipInfo <- data.frame(ID=tipLabels, Species=NA, Date=NA, stringsAsFactors=FALSE)
+  tipInfo <- data.frame(ID=tipLabels, Species=NA, Date=NA, Aliquot=NA, Coverage=NA, stringsAsFactors=FALSE)
   
   # Examine each of the tips
   for(index in seq_along(tipLabels)){
@@ -279,6 +331,7 @@ getTipInfo <- function(tipLabels, metadata, linkTable){
     aliquotCode <- NA
     species <- NA
     date <- NA
+    quality <- NA
     
     # Check if the current tip is associated with the original dataset
     if(grepl(tipLabels[index], pattern="-MBovis")){
@@ -294,8 +347,9 @@ getTipInfo <- function(tipLabels, metadata, linkTable){
         aliquotCode <- linkTable[row, "Aliquot"]
       }else if(sequenceNumber %in% c(14, 23)){
         species <- "Deer"
+        cat(paste("Error for old batch. Couldn't find sequence number: ", sequenceNumber, " ", tipLabels[index], " knew from previous analyses that this was a deer.\n"))
       }else{
-        cat(paste("Error for old batch. Couldn't find sequence number: ", sequenceNumber, "\n\n"))
+        cat(paste("Error for old batch. Couldn't find sequence number: ", sequenceNumber, " ", tipLabels[index], "\n"))
       }
     
     # Get information from most recent sequencing run
@@ -338,9 +392,13 @@ getTipInfo <- function(tipLabels, metadata, linkTable){
       species <- NA
     }
     
+    # Get the isolate's genome coverage information
+    tipInfo[index, "Coverage"] <- coverage[grepl(coverage$IsolateID, pattern=tipLabels[index]), "PercentageCoverage"]
+    
     # Store the current tips information
     tipInfo[index, "Species"] <- species
     tipInfo[index, "Date"] <- date
+    tipInfo[index, "Aliquot"] <- aliquotCode
   }
   
   return(tipInfo)
