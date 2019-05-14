@@ -25,7 +25,7 @@ geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### General settings ####
 
-selection <- "CC" # CC, BB, CB
+selection <- "CB" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 geneticDistanceThreshold <- 15
@@ -175,15 +175,15 @@ runRandomForestAnalysesIncrementallyRemovingMetricsWithMissingData(
 
 #### Examine the metric importance in random forest model ####
 
-plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
-                       nameColours=nameColours,
+plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUse, stepOutput=stepOutput,
+                       fullNames=fullNames, nameColours=nameColours,
                        temporalCol=temporalCol, spatialCol=spatialCol,
-                       networkCol=networkCol, showY=FALSE)
+                       networkCol=networkCol, showAxes=FALSE)
 
-plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
-                       nameColours=nameColours,
+plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUse, stepOutput=stepOutput,
+                       fullNames=fullNames, nameColours=nameColours,
                        temporalCol=temporalCol, spatialCol=spatialCol,
-                       networkCol=networkCol, showY=TRUE)
+                       networkCol=networkCol, showAxes=TRUE)
 
 
 ##### Close PDF
