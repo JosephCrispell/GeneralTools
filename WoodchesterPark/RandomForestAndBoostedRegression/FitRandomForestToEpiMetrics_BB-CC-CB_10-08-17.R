@@ -4,16 +4,14 @@
 # - Flattening a matrix - multiple data from individual animal #
 ################################################################
 
-##################
-# Load libraries #
-##################
+#### Load libraries ####
 
 library(randomForest)
 library(gplots)
+library(gbm)
+library(dismo)
 
-#######################################################
-# Open the Genetic Vs Epidemiological distances table #
-#######################################################
+#### Open the Genetic Vs Epidemiological distances table ####
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -25,13 +23,12 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 file <- paste(path, "GeneticVsEpidemiologicalDistances_05-04-18.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
-####################
-# General settings #
-####################
+#### General settings ####
 
 selection <- "CC" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
+geneticDistanceThreshold <- 15
 
 # Drop out genetic relatedness variable
 if(selection == "BB"){
@@ -40,16 +37,14 @@ if(selection == "BB"){
 }
 
 # Note the full names of metrics and assign them a colour
-fullNames <- noteFullNames()
+fullNames <- noteFullNames(selection)
 temporalCol="darkgoldenrod4"
 spatialCol="red"
 networkCol="blue"
 nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCol,
                                    networkCol=networkCol)
 
-###############
-# Select data #
-###############
+#### Select data ####
 
 ###### Open a PDF
 file <- paste0(path, "ExamineEpiVariableCorrelation_", selection, "_", date, ".pdf")
@@ -61,7 +56,7 @@ par(mfrow=c(1,1))
 geneticVsEpi <- selectAppropriateComparisonsForSelection(selection)
 
 # Only select small genetic distances
-geneticVsEpi <- selectGeneticDistancesBelowThreshold(threshold=15)
+geneticVsEpi <- selectGeneticDistancesBelowThreshold(threshold=geneticDistanceThreshold)
 
 # Remove irrelevant columns
 geneticVsEpi <- removeColumnsIfNotRelevant(geneticVsEpi)
@@ -79,9 +74,7 @@ plotEpidemiologicalMetricDistributionsWithMissingData(
 
 par(mfrow=c(1,1))
 
-###########################
-# Fit Random Forest model #
-###########################
+#### Fit Random Forest model ####
 
 # Build a test and training data set for predictions
 trainRows <- sample(x=1:nrow(geneticVsEpi),
@@ -104,14 +97,34 @@ infoRF <- randomForest(geneticVsEpi[trainRows, "GeneticDistance"] ~ .,
 rSq <- round(infoRF$rsq[length(infoRF$rsq)], digits=2)
 
 # Examine trained model prediction
-predictedGeneticDistances <- predict(infoRF, geneticVsEpi[-trainRows, -c(1, colsToIgnore)])
-corr <- cor(geneticVsEpi[-trainRows, "GeneticDistance"], predictedGeneticDistances)
+predictedGeneticDistancesRF <- predict(infoRF, geneticVsEpi[-trainRows, -c(1, colsToIgnore)])
+corr <- cor(geneticVsEpi[-trainRows, "GeneticDistance"], predictedGeneticDistancesRF)
 plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
-                          predicted=predictedGeneticDistances, rSq=rSq)
+                          predicted=predictedGeneticDistancesRF, rSq=rSq,
+                          main="Predicted vs. actual genetic distances (RF)")
 
-##################################################
-# Examine the extent of the correlated variables #
-##################################################
+#### Fit the Boosted Regression model ####
+
+# Run Model
+stepOutput <- gbm.step(data = geneticVsEpi[trainRows, -colsToIgnore],
+                       gbm.x = colnames(geneticVsEpi[trainRows, -colsToIgnore])[-1], gbm.y = "GeneticDistance",
+                       family = "poisson", tree.complexity = 5,
+                       learning.rate = 0.01, bag.fraction = 0.5,
+                       max.trees = 100000)
+
+# Use the Model to predict
+predictedGeneticDistancesBR <- predict(stepOutput,
+                                       newdata = geneticVsEpi[-trainRows, -colsToIgnore],
+                                       n.trees = stepOutput$n.trees,
+                                       type = "response")
+
+# Examine trained model prediction
+corr <- cor(geneticVsEpi[-trainRows, "GeneticDistance"], predictedGeneticDistancesBR)
+plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
+                          predicted=predictedGeneticDistancesBR, 
+                          main="Predicted vs. actual genetic distances (BR)")
+
+#### Examine the extent of the correlated variables ####
 
 # Examine correlation between epidemiological metrics
 correlationTable <- calculateCorrelationBetweenEpiMetrics(
@@ -122,9 +135,7 @@ threshold <- 0.55
 clusters <- noteClustersOfMetrics(correlationTable, threshold, "black")
 clusterSizes <- getClusterSizes(clusters)
 
-#############################################################################
-# Investigate the effect of metric removal on R squared and metric rankings #
-#############################################################################
+#### Investigate the effect of metric removal on R squared and metric rankings ####
 
 # Remove based upon correlation clusters
 variableImportance <- list()
@@ -162,9 +173,7 @@ runRandomForestAnalysesIncrementallyRemovingMetricsWithMissingData(
   trainRows=trainRows, colToUse=colToUse, geneticVsEpi=geneticVsEpi,
   epiMetricImportance=epiMetricImportance)
 
-########################################################
-# Examine the metric importance in random forest model #
-########################################################
+#### Examine the metric importance in random forest model ####
 
 plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
                        nameColours=nameColours,
@@ -177,21 +186,19 @@ plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames,
                        networkCol=networkCol, showY=TRUE)
 
 
-###### Close PDF
+##### Close PDF
 dev.off()
 
 # Save a copy of the R data generated - so I can come back and remake some plots if necessary
 save.image(file=paste0(path, "FittingRF_", selection, "_", date, ".RData"))
 
-############################################################
-# Create importance figures for each analysis (BB, CC, CB) #
-############################################################
+#### Create importance figures for each analysis (BB, CC, CB) ####
 
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
 # Note the column to use for the importance measure
-colToUse <- "%IncMSE"
+colToUseForRF <- "%IncMSE"
 
 # Assign each metric a colour
 temporalCol="darkgoldenrod4"
@@ -204,7 +211,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 selections <- c("BB", "CC", "CB")
 
 # Set the date analyses were completed on
-dates <- c("25-09-18", "25-09-18", "25-09-18")
+dates <- c("25-09-18", "14-05-19", "25-09-18")
 
 # Examine the analysis for each selection
 for(i in seq_along(selections)){
@@ -226,10 +233,10 @@ for(i in seq_along(selections)){
   pdf(file, height=10, width=10)
   
   # Plot the variable importance
-  plotVariableImportance(infoRF=infoRF, colToUse=colToUse, fullNames=fullNames, 
-                         nameColours=nameColours,
+  plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUseForRF, stepOutput=stepOutput,
+                         fullNames=fullNames, nameColours=nameColours,
                          temporalCol=temporalCol, spatialCol=spatialCol,
-                         networkCol=networkCol, showY=TRUE)
+                         networkCol=networkCol, showAxes=TRUE)
   
   # Remove the infoRF object
   remove(list= c("infoRF"))
@@ -238,10 +245,7 @@ for(i in seq_along(selections)){
   dev.off()
 }
 
-
-#############
-# FUNCTIONS #
-#############
+#### FUNCTIONS ####
 
 removeMetricWithMostMissingData <- function(geneticVsEpi, propMissingData){
   
@@ -475,15 +479,29 @@ removeLeastInformativeMetric <- function(geneticVsEpi, importance){
   return(infoForRFModel)
 }
 
-plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
-                                   temporalCol, spatialCol, networkCol, showY){
+plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames, nameColours,
+                                   temporalCol, spatialCol, networkCol, showAxes){
   
   # Get the variable importance from the RF model
-  variableImportance <- as.data.frame(infoRF$importance)
+  variableImportanceRF <- as.data.frame(infoRF$importance)
   
-  # Order the table by importance
-  variableImportance <- variableImportance[order(variableImportance[, colToUse],
+  # Get the variable importance from the BR model
+  variableImportanceBR <- summary(stepOutput, plotit=FALSE)
+  
+  # Combine the importance tables into one
+  variableImportance <- data.frame(RandomForestImportance=variableImportanceRF[, colToUseForRF], 
+                                   BoostedRegressionImportance=variableImportanceBR[rownames(variableImportanceRF), "rel.inf"], stringsAsFactors=FALSE)
+  rownames(variableImportance) <- rownames(variableImportanceRF)
+
+  # Order the table by importance - RF first, then BR
+  variableImportance <- variableImportance[order(variableImportance$RandomForestImportance, variableImportance$BoostedRegressionImportance,
                                                  decreasing=FALSE), ]
+    
+  # Normalise the Random Forest and Boosted Regression importance values to vary between zero and 1
+  variableImportance$RandomForestImportanceNorm <- variableImportance$RandomForestImportance / 
+    max(variableImportance$RandomForestImportance)
+  variableImportance$BoostedRegressionImportanceNorm <- variableImportance$BoostedRegressionImportance / 
+    max(variableImportance$BoostedRegressionImportance)
   
   # Transpose the table
   transpose <- as.matrix(t(variableImportance))
@@ -491,60 +509,84 @@ plotVariableImportance <- function(infoRF, colToUse, fullNames, nameColours,
   # Get full Variable Names
   variableNames <- getFullVariableNames(rownames(variableImportance), fullNames)
   
-  # Get Variable Colours
-  variableColours <- getVariableColours(variableImportance, nameColours=nameColours)
+  # Get Variable Colours - double up colours (1 for RF and 1 for BR) for side by side bar plot
+  variableColoursDoubled <- getVariableColours(doubleUpRowNames(rownames(variableImportance)),
+                                               nameColours=nameColours)
+  variableColours <- getVariableColours(rownames(variableImportance),
+                                        nameColours=nameColours)
   
   # Create bar plot illustrating the relative variable importance from RF and BR
   par(mfrow=c(1,1))
   
+  # Set the margin sizes according to the comparison being made
   marginSizes <- list(
     "BB" = 37,
     "CC" = 42.5,
     "CB" = 30
   )
-  
-  legendPos <- list(
-    "BB" = c(2, 5),
-    "CC" = c(0.5, 2.5),
-    "CB" = c(8, 1.5)
-  )
-  
   par(mar=c(0,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
   
-  if(showY == TRUE){
-    par(mar=c(2,marginSizes[[selection]],2,0.5)) # bottom, left, top, right
-    
+  # Check if we need extra space for the axes
+  if(showAxes == TRUE){
+    par(mar=c(2,marginSizes[[selection]],3,0.5)) # bottom, left, top, right
   }
   
-  plot <- barplot(transpose[-2,], horiz=TRUE, beside=TRUE,
+  # Create the bar chart for the RF and BR values - normalised values plotted side by side
+  plot <- barplot(transpose[c("RandomForestImportanceNorm", "BoostedRegressionImportanceNorm"),],
+                  horiz=TRUE, beside=TRUE,
                   xaxt="n",
-                  col=variableColours,
+                  col=variableColoursDoubled,
                   main="",
-                  col.axis="white")
+                  col.axis="white",
+                  density=c(25, 75), angle=c(45, 90))
   
-  # Add title
-  mtext("Variable\nImportance", side=3, line=-1, cex=1.25, font=2)
+  # Add a legend to illustrate which bars are the RF and BR ones
+  axisLimits <- par()$usr
+  legend(x=0.35, y=axisLimits[3] + (axisLimits[4] - axisLimits[3])/4,
+         legend=c("Boosted Regression", "Random Forest", "Temporal", "Spatial", "Network"), 
+         density=c(75, 25, 0, 0, 0), angle=c(90, 45), border=c("black", "black", "white", "white", "white"), bty="n",
+         text.col=c("black", "black", temporalCol, spatialCol, networkCol), cex=0.5,
+         xpd=TRUE)
   
-  at <- plot[,1]
-  
+  # Add labels for each bar
+  barPositions <- plot[1,] + (plot[2, ] - plot[1, ])/2
   xLabPosition <- 0
   text(labels=variableNames, 
        col=variableColours,
-       x=rep(xLabPosition,length(variableImportance)),
-       y=at,
-       srt = 0, pos = 2, xpd = TRUE, cex=1.1)
+       x=rep(xLabPosition,nrow(variableImportance)),
+       y=barPositions,
+       srt=0, pos=2, xpd=TRUE, cex=1.1)
   
-  if(showY == TRUE){
-    axis(side=1, line=-0.5, cex.axis=0.85, mgp=c(3, .25, 0))
-    mtext("% Increase MSE", side=1, line=0.75)
+  # If asked add an axis for the BR and the RF values
+  if(showAxes == TRUE){
+    
+    # Add an axis for the Random Forest analysis - to the bottom
+    range <- range(variableImportance$RandomForestImportance)
+    at <- seq(from=range[1], to=range[2], by=(range[2] - range[1])/5)
+    axis(side=1, line=-0.5, cex.axis=0.85, mgp=c(3, .25, 0), at=at/range[2], labels=round(at, digits=0))
+    mtext("% Increase MSE (RF)", side=1, line=0.75, cex=0.75)
+    
+    # Add an axis for the Boosted Regression analysis - to the top
+    range <- range(variableImportance$BoostedRegressionImportance)
+    at <- seq(from=range[1], to=range[2], by=(range[2] - range[1])/5)
+    axis(side=3, line=-0.5, cex.axis=0.85, mgp=c(3, .25, 0), at=at/range[2], labels=round(at, digits=0))
+    mtext("Relative Influence (BR)", side=3, line=0.75, cex=0.75)
+  }
+}
+
+doubleUpRowNames <- function(rowNames){
+  
+  # Create a vector to store each element twice
+  output <- c()
+  
+  # Examine each row name
+  for(name in rowNames){
+    
+    # Store the current row name twice
+    output <- c(output, name, name)
   }
   
-  
-  # Add Legend
-  legend(x=legendPos[[selection]][1], y=legendPos[[selection]][2],
-         legend=c("Temporal", "Spatial", "Network"), 
-         text.col = c(temporalCol, spatialCol, networkCol),
-         bty='n', cex=1)
+  return(output)
 }
 
 runRandomForestAnalysesIncrementallyRemovingMetricsFromCorrelationClusters <- function(
@@ -812,12 +854,10 @@ noteFullNames <- function(selection){
   return(fullNames)
 }
 
-getVariableColours <- function(variableImportance, nameColours){
-  
-  rowNames <- rownames(variableImportance)
-  
+getVariableColours <- function(rowNames, nameColours){
+
   colours <- c()
-  for(index in 1:nrow(variableImportance)){
+  for(index in seq_along(rowNames)){
     colours[index] <- nameColours[[rowNames[index]]]
   }
   
@@ -1215,15 +1255,19 @@ plotHeatmap <- function(correlationTable, fullNames){
   )
 }
 
-plotPredictedVersusActual <- function(actual, predicted, rSq){
+plotPredictedVersusActual <- function(actual, predicted, rSq=NULL, main="Predicted vs. Actual genetic distances"){
   plot(x=predicted, y=actual,
-       las=1, pch=19, col=rgb(0,0,0, 0.1), xlab="Predicted", ylab="Actual")
+       las=1, pch=19, col=rgb(0,0,0, 0.1), xlab="Predicted", ylab="Actual", main=main)
   abline(lm(actual ~ predicted), col="red")
   correlation <- round(cor(actual, predicted), digits=2)
   
-  legend("topleft", c(paste("corr =", correlation),
-                      paste("Rsq = ", rSq)),
-         bty="n", cex = 1)
+  if(is.null(rSq)){
+    legend("topleft", paste("corr =", correlation), bty="n", cex = 1)
+  }else{
+    legend("topleft", c(paste("corr =", correlation),
+                        paste("Rsq = ", rSq)),
+           bty="n", cex = 1)
+  }
 }
 
 findOptimalMtry <- function(response, predictors, mTryInitial, nTrees, plot){

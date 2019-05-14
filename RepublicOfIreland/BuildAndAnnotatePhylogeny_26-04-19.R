@@ -14,7 +14,7 @@ date <- format(Sys.Date(), "%d-%m-%y")
 path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
 
 # Read in table that links original sequence ID to aliquot IDs
-file <- paste0(path, "Mbovis_CattleSamplingInfo_17-07-18.tsv")
+file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
 linkTable <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
 
 # Read in the isolate metadata
@@ -81,7 +81,7 @@ par(mar=c(4,0,0,10))
 plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
 
 # Add tips coloured by species
-tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17), "Deer"=c("black", 15), "NA"=c("grey", 18))
+tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17), "Deer"=c("black", 15))
 tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape"),
           col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
 
@@ -345,9 +345,6 @@ getTipInfo <- function(tipLabels, metadata, linkTable, coverage){
       # Get the current tips aliquot code
       if(length(row) != 0){
         aliquotCode <- linkTable[row, "Aliquot"]
-      }else if(sequenceNumber %in% c(14, 23)){
-        species <- "Deer"
-        cat(paste("Error for old batch. Couldn't find sequence number: ", sequenceNumber, " ", tipLabels[index], " knew from previous analyses that this was a deer.\n"))
       }else{
         cat(paste("Error for old batch. Couldn't find sequence number: ", sequenceNumber, " ", tipLabels[index], "\n"))
       }
@@ -377,7 +374,7 @@ getTipInfo <- function(tipLabels, metadata, linkTable, coverage){
       
       # Note the species and convert multiple "Cow labels to single "Cow label
       species <- metadata[row, "Species"]
-      if(species %in% c("Heifer", "Steer", "Calf", "Bull")){
+      if(species %in% c("Heifer", "Steer", "Calf", "Bull", "Bovine")){
         species <- "Cow"
       }
       
