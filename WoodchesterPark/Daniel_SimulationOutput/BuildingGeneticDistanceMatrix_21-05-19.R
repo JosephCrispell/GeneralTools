@@ -16,7 +16,7 @@ alignment <- as.alignment(sequencesDNAbin)
 #### Build the distance matrix ####
 
 # Build the genetic distance matrix
-distanceMatrix <- as.matrix(dist.dna(sequencesDNAbin, model="JC69"))
+distanceMatrix <- as.matrix(dist.dna(sequencesDNAbin, model="F84")) # F84 is equivalent of HKY model
 
 # Note the names of the sequences used
 names <- colnames(distanceMatrix)
