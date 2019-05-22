@@ -591,35 +591,40 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     analyses <- names(migrationRateEstimates)
     names <- c()
     
-    # Get the AICM values
-    aicmScores <- c()
-    shortenedNames <- c()
-    for(i in 1:length(analyses)){
-      aicmScores[i] <- migrationRateEstimates[[analyses[i]]][["AICM"]][1]
-      
-      parts <- strsplit(analyses[i], split="_")[[1]]
-      shortenedNames[i] <- paste(parts[1], parts[2], sep="_")
-    }
+    # # Get the AICM values
+    # aicmScores <- c()
+    # shortenedNames <- c()
+    # for(i in 1:length(analyses)){
+    #   aicmScores[i] <- migrationRateEstimates[[analyses[i]]][["AICM"]][1]
+    #   
+    #   parts <- strsplit(analyses[i], split="_")[[1]]
+    #   shortenedNames[i] <- paste(parts[1], parts[2], sep="_")
+    # }
     
-    # Convert the AICM scores into weights
-    # Exponential penalises those that are bad
-    # Flips the score
-    modelAICMWeights <- exp((min(aicmScores) - aicmScores)/2)
+    # # Convert the AICM scores into weights
+    # # Exponential penalises those that are bad
+    # # Flips the score
+    # modelAICMWeights <- exp((min(aicmScores) - aicmScores)/2)
+    # 
+    # # Normalise the AICM weights
+    # normalisedModelAICMWeights <- modelAICMWeights / sum(modelAICMWeights)                           
+    # 
+    # # Initialise two arrays to store samples of the posterior sums from each model - sample size relative to AICM weight
+    # badgerToCowRatePosteriorSumSamples<- c()
+    # cowToBadgerRatePosteriorSumSamples <- c()
     
-    # Normalise the AICM weights
-    normalisedModelAICMWeights <- modelAICMWeights / sum(modelAICMWeights)                           
-    
-    # Initialise two arrays to store samples of the posterior sums from each model - sample size relative to AICM weight
-    badgerToCowRatePosteriorSumSamples<- c()
-    cowToBadgerRatePosteriorSumSamples <- c()
-    
-    # Initialise a vectors to store the median and range of the total rates between cattle and badgers
+    # Initialise vectors to store the median and range of the total rates between cattle and badgers
     modelBadgerToCowRateMedians <- c()
     modelBadgerToCowRateLower <- c()
     modelBadgerToCowRateUpper <- c()
     modelCowToBadgerRateMedians <- c()
     modelCowToBadgerRateLower <- c()
     modelCowToBadgerRateUpper <- c()
+    
+    # Initialise vectors to summarise the distribution ratio: badger-to-cattle / cattle-to-cattle
+    modelInterSpeciesRatioMedians <- c()
+    modelInterSpeciesRatioLower <- c()
+    modelInterSpeciesRatioUpper <- c()
     
     # Initialise a vectors to store the mean of the rate flags
     modelBadgerToCowFlagMeans <- c()
@@ -696,6 +701,14 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
         }
       }
       
+      # Calculate the ratio of the inter-species rate sums
+      interSpeciesTransitionRateRatio <- sumRatesBadgerToCow / sumRatesCowToBadger
+      interSpeciesTransitionRateRatio <- interSpeciesTransitionRateRatio[interSpeciesTransitionRateRatio != Inf]
+      modelInterSpeciesRatioMedians[i] <- median(interSpeciesTransitionRateRatio)
+      quantiles <- quantile(interSpeciesTransitionRateRatio, probs=c(0.025, 0.975))
+      modelInterSpeciesRatioLower[i] <- quantiles[[1]]
+      modelInterSpeciesRatioUpper[i] <- quantiles[[2]]
+      
       # Remove any values that are exactly zero
       # - These will result when flag=0 across badger-to-cattle/cattle-to-badger rates estimate
       sumRatesBadgerToCow <- sumRatesBadgerToCow[sumRatesBadgerToCow != 0]
@@ -713,13 +726,13 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
       modelCowToBadgerRateUpper[i] <- quantiles[[2]]
       
       # Sample from these posterior sums in proportion to the current analyses AIC weight
-      badgerToCowRatePosteriorSumSamples <- 
-        c(badgerToCowRatePosteriorSumSamples,
-          sample(sumRatesBadgerToCow, size=round(normalisedModelAICMWeights[i] * length(sumRatesBadgerToCow), digits=0)))
-      cowToBadgerRatePosteriorSumSamples <- 
-        c(cowToBadgerRatePosteriorSumSamples,
-          sample(sumRatesCowToBadger, size=round(normalisedModelAICMWeights[i] * length(sumRatesCowToBadger), digits=0)))
-      
+      # badgerToCowRatePosteriorSumSamples <- 
+      #   c(badgerToCowRatePosteriorSumSamples,
+      #     sample(sumRatesBadgerToCow, size=round(normalisedModelAICMWeights[i] * length(sumRatesBadgerToCow), digits=0)))
+      # cowToBadgerRatePosteriorSumSamples <- 
+      #   c(cowToBadgerRatePosteriorSumSamples,
+      #     sample(sumRatesCowToBadger, size=round(normalisedModelAICMWeights[i] * length(sumRatesCowToBadger), digits=0)))
+
       # Divide the sums of the flags by the number of rates
       flagsBadgerToCow <- sumFlagsBadgerToCow / nBadgerToCow
       flagsCowToBadger <- sumFlagsCowToBadger / nCowToBadger
@@ -786,12 +799,44 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # axis(side=1, at=1:(length(analyses)+1), labels=c(names, ""), las=2, cex.axis=1.25)
     # axis(side=1, at=length(analyses)+1, labels="Weighted model average", las=2, cex.axis=1.5, col.axis="black", tick=FALSE)
     legend("top", legend=c("Badgers-to-Cattle", "Cattle-to-Badgers"), text.col=c("red", "blue"), bty="n")
+
+    # Add a plot label
+    mtext("b", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+    
+    
+    ## Plot the interspecies transmission rate ratio for each model
+    
+    # Get and set the margins
+    currentMar <- par("mar")
+    par(mar=c(17, 5.5, 5, 0.5)) # bottom, left, top, right
+    
+    # Set the Y axis limits - leave space for flag estimates
+    maxValue <- max(modelInterSpeciesRatioMedians)
+    yLim <- c(0, maxValue + (0.2 * maxValue))
+
+    # Create the initial empty plot
+    plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
+         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species transition ratio",
+         las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
+    
+    # Add the Y axis
+    at <- round(seq(yLim[1], maxValue + floor(maxValue/5), by=floor(maxValue/5)), digits=0)
+    axis(side=2, at=at, labels=at, las=1)
+    mtext(side=2, text="Median ratio", line=3.5, cex=1.25)
     
     # Get the axis limits
     axisLimits <- par("usr")
     
+    # Add summaries for the ratio from each analyses
+    points(x=1:length(analyses), y=modelInterSpeciesRatioMedians, pch=19, col=rgb(0,0,0, 1), xpd=TRUE)
+
+    # Axis
+    axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
+    legend("top", legend=c("Badgers-to-Cattle", "-------------------------", "Cattle-to-Badgers"), 
+           text.col="black", bty="n")
+
     # Add a plot label
-    mtext("b", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+    mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
     
     # ## Plot badger -> cattle versus cattle -> badger
     # par(mar=c(5.1, 4.1, 0.5, 2.1))
@@ -809,8 +854,8 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     #        pt.cex=c(2.5, 1.5, 0.5, 0.1))
     # 
     # # Calculate the weighted means for the rate sums between badgers and cattle
-    weightedMedianBadgerToCow <- median(badgerToCowRatePosteriorSumSamples, na.rm=TRUE)
-    weightedMedianCowToBadger <- median(cowToBadgerRatePosteriorSumSamples, na.rm=TRUE)
+    # weightedMedianBadgerToCow <- median(badgerToCowRatePosteriorSumSamples, na.rm=TRUE)
+    # weightedMedianCowToBadger <- median(cowToBadgerRatePosteriorSumSamples, na.rm=TRUE)
     # points(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger,
     #        pch=15, col=rgb(0,0,0, 0.5), cex=2)
     # text(x=weightedMedianBadgerToCow, y=weightedMedianCowToBadger,
@@ -818,7 +863,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     
     par(mar=currentMar)
 
-    return(c(weightedMedianBadgerToCow, weightedMedianCowToBadger))
+    # return(c(weightedMedianBadgerToCow, weightedMedianCowToBadger))
   }
 
 plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
