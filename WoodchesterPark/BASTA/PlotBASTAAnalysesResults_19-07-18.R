@@ -306,7 +306,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   # Create an empty plot
   plot(x=NULL, y=NULL, bty="n", 
        xlim=c(1, 4), ylim=yLim, las=2, xaxt="n", ylab="Number of transitions", xlab="",
-       main="Counting transitions on\n phylogenies", cex.main=2, cex.lab=2, cex.axis=1.25)
+       main="Counting transitions on\n phylogenies", cex.main=2, cex.lab=1.75, cex.axis=1.25)
   axis(side=1, at=1:4, labels=c("Badger-to-badger", "Badger-to-cow", "Cow-to-badger", "Cow-to-cow"), las=2, cex.axis=1.25)
   
   # Add the bars
