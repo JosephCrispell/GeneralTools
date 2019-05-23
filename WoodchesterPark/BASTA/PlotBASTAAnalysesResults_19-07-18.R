@@ -94,11 +94,12 @@ file <- paste(path, "SummaryFiguresOfModelEstimations_", date, ".pdf", sep="")
 pdf(file, height=11, width=10)
 
 # Define the plotting window layout
-layout(matrix(c(1,1,1,2,2,2,
-                1,1,1,2,2,2,
-                1,1,1,2,2,2,
-                4,4,3,3,4,4,
-                4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
+# layout(matrix(c(1,1,1,2,2,2,
+#                 1,1,1,2,2,2,
+#                 1,1,1,2,2,2,
+#                 4,4,3,3,4,4,
+#                 4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
+par(mfrow=c(2,2))
 
 # Examine the model likelihoods
 plotModelAICMScores(migrationRateEstimates, nBootstraps)
@@ -294,7 +295,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   
   # Set the margin sizes
   currentMar <- par("mar")
-  par(mar=c(10, 5.5, 4, 0.1)) # bottom, left, top, right
+  par(mar=c(10, 5.5, 5, 0.1)) # bottom, left, top, right
   
   # Note the columns of interest
   columns <- c("Count_BB", "Count_BC", "Count_CB", "Count_CC")
@@ -333,7 +334,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   axisLimits <- par("usr")
   
   # Add a plot label
-  mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+  mtext("d", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the plotting margins
   par(mar=currentMar)
@@ -754,7 +755,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
 
     # Create the initial empty plot
     plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
-         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species transition rates",
+         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species\ntransition rates",
          las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
     
     # Add the Y axis
@@ -769,17 +770,25 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
 
       # Badgers to cattle
       points(x=c(i-0.1, i-0.1), y=c(modelBadgerToCowRateLower[i], modelBadgerToCowRateUpper[i]), type="l", col=rgb(1,0,0, 1))
-      points(x=i-0.1, y=modelBadgerToCowRateMedians[i], pch=19, col=rgb(1,0,0, 0.75))
-      text(x=i-ifelse(nchar(round(modelBadgerToCowFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
-           y=modelBadgerToCowRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
-           labels=round(modelBadgerToCowFlagMeans[i], digits=2), col="red", cex=0.95, xpd=TRUE)
-      
+      points(x=i-0.1, y=modelBadgerToCowRateMedians[i], pch=19, col=rgb(1,0,0, 1))
+
       # Cattle to Badger
       points(x=c(i+0.1, i+0.1), y=c(modelCowToBadgerRateLower[i], modelCowToBadgerRateUpper[i]), type="l", col=rgb(0,0,1, 1))
-      points(x=i+0.1, y=modelCowToBadgerRateMedians[i], pch=19, col=rgb(0,0,1, 0.75))
+      points(x=i+0.1, y=modelCowToBadgerRateMedians[i], pch=19, col=rgb(0,0,1, 1))
+    }
+    
+    # Add summaries of the flag distribution for each rate
+    for(i in 1:length(analyses)){
+      
+      # Badgers to cattle
+      text(x=i-ifelse(nchar(round(modelBadgerToCowFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
+           y=modelBadgerToCowRateUpper[i] + (0.025 * (axisLimits[4] - axisLimits[3])), 
+           labels=round(modelBadgerToCowFlagMeans[i], digits=2), col="red", cex=0.7, xpd=TRUE)
+      
+      # Cattle to Badger
       text(x=i+ifelse(nchar(round(modelCowToBadgerFlagMeans[i], digits=2)) == 1, 0.1, 0.4), 
-           y=modelCowToBadgerRateUpper[i] + (0.015 * (axisLimits[4] - axisLimits[3])), 
-           labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.95, xpd=TRUE)
+           y=modelCowToBadgerRateUpper[i] + (0.025 * (axisLimits[4] - axisLimits[3])), 
+           labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.7, xpd=TRUE)
     }
     
     # # Model average - badgers to cattle
@@ -816,7 +825,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
 
     # Create the initial empty plot
     plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
-         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species transition ratio",
+         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species\ntransition rates ratio",
          las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
     
     # Add the Y axis
@@ -832,7 +841,11 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
 
     # Axis
     axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
-    legend("top", legend=c("Badgers-to-Cattle", "-------------------------", "Cattle-to-Badgers"), 
+    
+    # Add a legend describing the ratio
+    legend("right", legend=c("              Badgers-to-Cattle", 
+                           " Ratio = ---------------", 
+                           "              Cattle-to-Badgers"), 
            text.col="black", bty="n")
 
     # Add a plot label
