@@ -254,6 +254,11 @@ for(i in seq_along(selections)){
   plotBRPredictorVariableTrends(stepOutput, fullNames, labelCex=0.5)
   #plotRFPredictorVariableTrends(infoRF) # DOESN'T WORK!!!
   
+  # Plot raw data for predcitor versus response
+  plotRawPredictorVersusResponse(predictors=stepOutput$var.names,
+                                 geneticVsEpi, fullNames, labelCex=0.5,
+                                 col=rgb(0,0,0, 0.01))
+  
   # Plot the correlation between predicted and actual values for random forest and boosted regression
   plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
                             predicted=predictedGeneticDistancesRF,
@@ -336,7 +341,58 @@ plotBRPredictorVariableTrends <- function(stepOutput, fullNames, labelCex=1){
     # Create a plot
     plot(x=trendData[, 1], y=trendData$y, type="l", lwd=2, bty="n", ylab="", xlab="", yaxt="n", xaxt="n")
     
-    # Get the full name of rht ecurrent predictor
+    # Get the full name of the current predictor
+    fullName <- fullNames[[predictor]]
+    labelSplit <- FALSE
+    
+    # Get the axis limits of the current plot
+    axisLimits <- par()$usr
+    plotWidth <- axisLimits[2] - axisLimits[1]
+    
+    # Split the full name across multiple lines
+    nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
+    if(nchar(fullName) > nCharInPlot){
+      labelSplit <- TRUE
+      fullName <- paste(substr(fullName, 1, nCharInPlot), "\n", substr(fullName, nCharInPlot+1, nchar(fullName)))
+    }
+    
+    # Add axes labels
+    if(labelSplit){
+      mtext(fullName, side=1, line=0.5, cex=labelCex)
+    }else{
+      mtext(fullName, side=1, line=0, cex=labelCex)
+    }
+  }
+  
+  # Reset plotting parameters
+  par(mar=currentMar, mfrow=c(1,1))
+}
+
+plotRawPredictorVersusResponse <- function(predictors, geneticVsEpi, fullNames, labelCex=1, col=rgb(0,0,0, 0.1)){
+  
+  # Get and set the margins
+  currentMar <- par()$mar
+  par(mar=c(2,0.5,0.5,0.5))
+  
+  # Create a plotting grid
+  nPlotsPerRow <- ceiling(sqrt(length(predictors)))
+  par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
+  
+  for(predictor in predictors){
+    
+    # Get the predictor values
+    predictorValues <- geneticVsEpi[, predictor]
+    responseValues <- geneticVsEpi$GeneticDistance
+    
+    # Remove the -1 values
+    keep <- predictorValues != -1
+    predictorValues <- predictorValues[keep]
+    responseValues <- responseValues[keep]
+    
+    # Create a plot
+    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n", col=col)
+    
+    # Get the full name of the current predictor
     fullName <- fullNames[[predictor]]
     labelSplit <- FALSE
     
@@ -595,6 +651,42 @@ removeLeastInformativeMetric <- function(geneticVsEpi, importance){
   return(infoForRFModel)
 }
 
+plotVariableImportanceAsScatterPlot <- function(variableImportance, temporalCol, spatialCol, networkCol,
+                                                fullNames){
+  
+  # Set the plotting margins
+  currentMar <- par()$mar
+  par(mar=c(4.1, 4.1, 4.1, 0.1))
+  
+  # Plot the variable importance of random forest model against boosted regression
+  plot(x=variableImportance$RandomForestImportance, y=variableImportance$BoostedRegressionImportance, 
+       ylab="Relative Influence (Boosted Regresssion)", xlab="% Increase MSE (Random Forest)",
+       main="Variable importance in regression models",
+       pch=19, bty="n", col=rgb(0,0,0, 0.5), las=1, cex=1.5)
+  
+  # Get the full names of the predictor variables
+  variableNames <- getFullVariableNames(rownames(variableImportance), fullNames)
+  
+  # Get the colours associated with each predictor
+  variableColours <- getVariableColours(rownames(variableImportance),
+                                        nameColours=nameColours)
+  
+  # Add the labels for each point
+  addTextLabels(xCoords=variableImportance$RandomForestImportance, 
+                yCoords=variableImportance$BoostedRegressionImportance,
+                labels=variableNames, avoidPoints=TRUE, cex=0.6, keepLabelsInside=TRUE,
+                col.label=variableColours, lty=3, col.line=rgb(0,0,0, 0.75),
+                col.background=rgb(0,0,0, 0.2))
+  
+  # Add a legend
+  legend("topleft", legend=c("Temporal", "Spatial", "Network"), 
+         text.col=c(temporalCol, spatialCol, networkCol),
+         bty="n")
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+}
+
 plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames, nameColours,
                                    temporalCol, spatialCol, networkCol, showAxes, selection,
                                    geneticVsEpi, trainRows, colsToIgnore){
@@ -699,6 +791,10 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   
   # Reset the margin sizes
   par(mar=currentMar)
+  
+  # Plot the variable importance as a scatter plot
+  plotVariableImportanceAsScatterPlot(variableImportance, temporalCol, spatialCol, networkCol,
+                                      fullNames)
 }
 
 doubleUpRowNames <- function(rowNames){
