@@ -102,7 +102,7 @@ pdf(file, height=11, width=10)
 par(mfrow=c(2,2))
 
 # Examine the model likelihoods
-plotModelAICMScores(migrationRateEstimates, nBootstraps)
+aicmOrder <- plotModelAICMScores(migrationRateEstimates, nBootstraps)
 
 ######################################################################
 # Produce single summary plot of rate estimation: BADGERS <-> CATTLE #
@@ -112,7 +112,7 @@ plotModelAICMScores(migrationRateEstimates, nBootstraps)
 # weighted by the AICM model scores
 weightedMeanEstimates <- 
   calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM(
-    migrationRateEstimates)
+    migrationRateEstimates, aicmOrder)
 
 ##################################################################
 # Plot a summary of the transition counts on the posterior trees #
@@ -563,7 +563,7 @@ plotTransitionRatesBetweenBadgerAndCow <- function(badgerToCow, cowToBadger, cod
 }
 
 calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedByAICM <-
-  function(migrationRateEstimates){
+  function(migrationRateEstimates, order){
     
     # Calculating the weighted mean rates of transitions between badger and cattle demes
     # across BASTA models
@@ -591,6 +591,9 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     # Get the analyses names
     analyses <- names(migrationRateEstimates)
     names <- c()
+    
+    # Order the analyses names by AICM
+    analyses <- analyses[order]
     
     # # Get the AICM values
     # aicmScores <- c()
@@ -843,7 +846,7 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
     axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
     
     # Add a legend describing the ratio
-    legend("right", legend=c("              Badgers-to-Cattle", 
+    legend("top", legend=c("              Badgers-to-Cattle", 
                            " Ratio = ---------------", 
                            "              Cattle-to-Badgers"), 
            text.col="black", bty="n")
@@ -911,20 +914,31 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   # Set the margins
   par(mar=c(17, 8, 5, 0)) # bottom, left, top, right
   
+  # Create an empty plot
+  plot(x=NULL, y=NULL, bty="n", 
+       xlim=c(1, length(analyses)), ylim=yLim,
+       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=2)
+  
+  # Add Y axis
+  axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2, cex.axis=1.25)
+  mtext(side=2, text="AICM score", line=6, cex=1.25)
+  
+  # Order the model names by their AICM score
+  order <- order(aicmScores)
+  names <- names[order]
+  aicmScores <- aicmScores[order]
+  bootstrapMins <- bootstrapMins[order]
+  bootstrapMaxs <- bootstrapMaxs[order]
+
+  # Add X axis
+  axis(side=1, at=1:length(analyses),
+       labels=names, las=2, cex.axis=1.25)
+  
   # Set bar colours to highlight min
   colours <- rep("black", length(aicmScores))
   min <- min(aicmScores)
   minIndex <- which(aicmScores == min)
   colours[minIndex] <- "red"
-  
-  # Create an empty plot
-  plot(x=NULL, y=NULL, bty="n", 
-       xlim=c(1, length(analyses)), ylim=yLim,
-       xaxt="n", yaxt="n", ylab="", xlab="", main="Model AICM score", cex.main=2)
-  axis(side=2, at=seq(yLim[1], yLim[2], by=(yLim[2] - yLim[1])/5), las=2, cex.axis=1.25)
-  mtext(side=2, text="AICM score", line=6, cex=1.25)
-  axis(side=1, at=1:length(analyses),
-       labels=names, las=2, cex.axis=1.25)
   
   # Add the bars
   for(i in 1:length(analyses)){
@@ -954,6 +968,8 @@ plotModelAICMScores <- function(migrationRateEstimates, nBootstraps){
   
   # Reset the margins
   par(mar=c(5.1, 4.1, 4.1, 2.1))
+  
+  return(order)
 }
 
 summarisePosteriorLogTables <- function(path, logTables, code=2, arrowFactor, nBootstraps,
