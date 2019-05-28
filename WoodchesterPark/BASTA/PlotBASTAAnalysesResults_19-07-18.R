@@ -1491,9 +1491,9 @@ plot4Deme <- function(arrowWeights, code){
           code=code, lwd=arrowWeights[["0_1"]])
   }
   # cow-inner -> badger-inner
-  if(arrowWeights[["0_1"]] != 0){
+  if(arrowWeights[["1_0"]] != 0){
     arrows(x0=x[2]+0.05, x1=x[1]+0.05, y0=y[2]-0.1, y1=y[1]+0.1,
-           code=code, lwd=arrowWeights[["0_1"]])
+           code=code, lwd=arrowWeights[["1_0"]])
   }
   
   # badger-outer -> cow-outer
