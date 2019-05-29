@@ -11,6 +11,7 @@ library(gplots)
 library(gbm)
 library(dismo)
 library(codetools) # To fix weird error when loading RData file
+library(plotteR)
 
 #### Open the Genetic Vs Epidemiological distances table ####
 
@@ -194,6 +195,14 @@ dev.off()
 save.image(file=paste0(path, "FittingRF_", selection, "_", date, ".RData"))
 
 #### Create importance figures for each analysis (BB, CC, CB) ####
+
+# Load libraries
+library(randomForest)
+library(gplots)
+library(gbm)
+library(dismo)
+library(codetools) # To fix weird error when loading RData file
+library(plotteR)
 
 # Remove the infoRF and stepOutput objects
 remove(list= c("infoRF", "stepOutput", "trainRows", "geneticVsEpi", "colsToIgnore", "predictedGeneticDistancesRF",
@@ -731,7 +740,7 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   
   # Create bar plot illustrating the relative variable importance from RF and BR
   par(mfrow=c(1,1))
-  
+
   # Set the margin sizes according to the comparison being made
   marginSizes <- list(
     "BB" = 37,
@@ -753,13 +762,15 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   # Add a legend to illustrate which bars are the RF and BR ones
   axisLimits <- par()$usr
   legendInfo <- list(
-    "BB" = c(0.3, 0.8),
+    "BB" = c(0.25, 0.8),
     "CC" = c(0.1, 0.7),
     "CB" = c(0.3, 0.8)
   )
-  legend(x=legendInfo[[selection]][1], y=axisLimits[3] + (axisLimits[4] - axisLimits[3])/4,
-         legend=c("Boosted Regression", "Random Forest", "Temporal", "Spatial", "Network"), 
-         density=c(75, 25, 0, 0, 0), angle=c(90, 45), border=c("black", "black", "white", "white", "white"), bty="n",
+  legend(x=legendInfo[[selection]][1], y=axisLimits[3] + (axisLimits[4] - axisLimits[3])/5,
+         legend=c(paste0("corr = ", round(cor(variableImportance$RandomForestImportance, 
+                                              variableImportance$BoostedRegressionImportance), digits=2)),
+                  "Boosted Regression", "Random Forest", "Temporal", "Spatial", "Network"),
+         density=c(0, 75, 25, 0, 0, 0), angle=c(90, 90, 45), border=c("white", "black", "black", "white", "white", "white"), bty="n",
          text.col=c("black", "black", temporalCol, spatialCol, networkCol), cex=legendInfo[[selection]][2],
          xpd=TRUE)
   
@@ -789,12 +800,58 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
     mtext("Relative Influence (BR)", side=3, line=0.75, cex=0.75)
   }
   
+  ## Add an inset graph comparing the RF and BR values
+  # addLinearComparisonInset(axisLimits, variableImportance, originX=0.3, originY=20,
+  #                          xAxisProp=0.75, yAxisProp=0.2, padProp=0.05, pch=19,
+  #                          col=rgb(0,0,0, 0.5), labCex=0.65)
+  
   # Reset the margin sizes
   par(mar=currentMar)
   
   # Plot the variable importance as a scatter plot
   plotVariableImportanceAsScatterPlot(variableImportance, temporalCol, spatialCol, networkCol,
                                       fullNames)
+}
+
+addLinearComparisonInset <- function(axisLimits, variableImportance, 
+                                     originX, originY, 
+                                     xAxisProp=0.5, yAxisProp=0.5,
+                                     padProp=0.05, labCex=0.75, ...){
+  
+  # Note the axis lengths
+  xLength <- (axisLimits[2] - axisLimits[1]) * xAxisProp
+  yLength <- (axisLimits[4] - axisLimits[3]) * yAxisProp
+  
+  # Create a frame around the inset plot
+  rect(xleft=originX, ybottom=originY, xright=originX+xLength, ytop=originY+yLength,
+       xpd=TRUE)
+  
+  # Adjust the X and Y lengths to pad the axes
+  padX <- padProp * xLength
+  padY <- padProp * yLength
+  xLengthPadded <- xLength - (2*padX)
+  yLengthPadded <- yLength - (2*padY)
+  
+  # Note the range of X and Y axis
+  yRange <- range(variableImportance$BoostedRegressionImportance)
+  xRange <- range(variableImportance$RandomForestImportance)
+  
+  # Calculate a unit on the X and Y axes
+  xUnit <- xLengthPadded / (xRange[2] - xRange[1])
+  yUnit <- yLengthPadded / (yRange[2] - yRange[1])
+  
+  # Add the points
+  points(x=originX + padX + (variableImportance$RandomForestImportance * xUnit),
+         y=originY + padY + (variableImportance$BoostedRegressionImportance * yUnit),
+         xpd=TRUE, ...)
+  
+  # Add X axis label
+  text(x=originX + (0.5*xLength), y=originY - padY,
+       labels="RF variable importance", cex=labCex)
+  
+  # Add Y axis label
+  text(x=originX - padX, y=originY + (0.5*yLength),
+       labels="BR variable importance", cex=labCex, srt=90)
 }
 
 doubleUpRowNames <- function(rowNames){

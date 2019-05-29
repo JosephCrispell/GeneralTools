@@ -2143,7 +2143,8 @@ plotPosteriorSupportForEachDemeAsRoot <- function(logTable, demeStructure){
           cex.names=0.5, las=2)
   
   # Reset Margins
-  par(mar=c(5.1, 4.1, 4.1, 2.1))}
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+}
 
 plotParameterESSValues <- function(logTable, colNamesToPlot){
   
