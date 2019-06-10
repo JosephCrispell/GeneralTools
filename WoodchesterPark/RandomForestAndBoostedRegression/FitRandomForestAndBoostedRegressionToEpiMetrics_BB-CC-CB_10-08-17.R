@@ -32,10 +32,10 @@ trainProp <- 0.5
 colToUse <- "%IncMSE"
 geneticDistanceThreshold <- 15
 
-# Drop out genetic relatedness variable
+# Drop out genetic relatedness variable and same animal
 if(selection == "BB"){
-  col <- which(colnames(geneticVsEpi) == "HostRelatedness")
-  geneticVsEpi <- geneticVsEpi[, -col]
+  cols <- which(colnames(geneticVsEpi) == "HostRelatedness" | colnames(geneticVsEpi) == "SameAnimal")
+  geneticVsEpi <- geneticVsEpi[, -cols]
 }
 
 # Note the full names of metrics and assign them a colour
@@ -55,7 +55,7 @@ pdf(file, height=10, width=10)
 par(mfrow=c(1,1))
 
 # Subset out the selected comparisons
-geneticVsEpi <- selectAppropriateComparisonsForSelection(selection)
+geneticVsEpi <- selectAppropriateComparisonsForSelection(selection, geneticVsEpi)
 
 # Only select small genetic distances
 geneticVsEpi <- selectGeneticDistancesBelowThreshold(threshold=geneticDistanceThreshold)
@@ -986,7 +986,7 @@ selectGeneticDistancesBelowThreshold <- function(threshold){
   return(geneticVsEpi)
 }
 
-selectAppropriateComparisonsForSelection <- function(selection){
+selectAppropriateComparisonsForSelection <- function(selection, geneticVsEpi){
   if(selection != "CB" && selection != "BC"){
     geneticVsEpi <- geneticVsEpi[geneticVsEpi$iSpeciesJSpecies == selection, ]
   }else{
