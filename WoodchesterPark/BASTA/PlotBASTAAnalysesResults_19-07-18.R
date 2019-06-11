@@ -445,9 +445,12 @@ removeBurnIn <- function(transitionCounts, burnInProp=0.1, nReplicates=3){
       # Get the indices assocated with the current analysis
       rows <- which(transitionCounts$Analysis == analysis & transitionCounts$Replicate == rep)
       
+      # Note the order of the rows - based on the posterior sample
+      order <- order(transitionCounts[rows, "Sample"], decreasing=FALSE)
+      
       # Note the first burn-in indices
       burnIn <- round(burnInProp * length(rows), digits=0)
-      indicesToRemove <- rows[1:burnIn]
+      indicesToRemove <- rows[order][1:burnIn]
       
       # Remove the burn-in rows from the transition counts
       transitionCounts <- transitionCounts[-indicesToRemove, ]
