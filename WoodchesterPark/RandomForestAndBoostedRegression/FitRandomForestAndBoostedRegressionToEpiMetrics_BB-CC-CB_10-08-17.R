@@ -180,12 +180,8 @@ runRandomForestAnalysesIncrementallyRemovingMetricsWithMissingData(
 plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUse, stepOutput=stepOutput,
                        fullNames=fullNames, nameColours=nameColours,
                        temporalCol=temporalCol, spatialCol=spatialCol,
-                       networkCol=networkCol, showAxes=FALSE)
-
-plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUse, stepOutput=stepOutput,
-                       fullNames=fullNames, nameColours=nameColours,
-                       temporalCol=temporalCol, spatialCol=spatialCol,
-                       networkCol=networkCol, showAxes=TRUE)
+                       networkCol=networkCol, showAxes=TRUE, selection=selection,
+                       geneticVsEpi=geneticVsEpi, trainRows=trainRows, colsToIgnore=colsToIgnore)
 
 
 ##### Close PDF
@@ -225,7 +221,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 selections <- c("BB", "CC", "CB")
 
 # Set the date analyses were completed on
-dates <- c("14-05-19", "14-05-19", "14-05-19")
+dates <- c("10-06-19", "14-05-19", "14-05-19")
 
 # Examine the analysis for each selection
 for(i in seq_along(selections)){
@@ -683,7 +679,7 @@ plotVariableImportanceAsScatterPlot <- function(variableImportance, temporalCol,
   # Add the labels for each point
   addTextLabels(xCoords=variableImportance$RandomForestImportance, 
                 yCoords=variableImportance$BoostedRegressionImportance,
-                labels=variableNames, avoidPoints=TRUE, cex=0.6, keepLabelsInside=TRUE,
+                labels=variableNames, avoidPoints=TRUE, cex.label=0.6, keepLabelsInside=TRUE,
                 col.label=variableColours, lty=3, col.line=rgb(0,0,0, 0.75),
                 col.background=rgb(0,0,0, 0.2))
   
