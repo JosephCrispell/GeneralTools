@@ -21,16 +21,16 @@ clusterTables <- splitInputTableIntoInfoForClusters(table)
 xLim <- as.Date(c("1988-01-01", "2015-12-31")) # year-month-day
 
 # Create a condensed version of the above plot
-file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_22-11-18.pdf", sep="")
+file <- paste(path, "sampledAnimalLifespansInClusters-CONDENSED_12-06-19.pdf", sep="")
 pdf(file, height=11, width=8)
 
 # Get an array of all the clusters
 clusters <- sort(names(clusterTables))[-length(names(clusterTables))] # Remove last cluster (all isolates)
 
 for(cluster in clusters){
-  
+  cluster <- "1"
   plotAnimalLifespansForClusterSummariseUnSampled(clusterTables, cluster,
-                                                  xLim)
+                                                  xLim, labelCex=3)
 }
 
 dev.off()
@@ -50,7 +50,7 @@ roundToNearestMultiple <- function(value, multiple){
 }
 
 plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, cluster,
-                                                            xLim){
+                                                            xLim, labelCex=1){
 
   # Note the dates within range of interest
   datesInRange <- seq(xLim[1], xLim[2], 1)
@@ -95,13 +95,13 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
     }
     
     # Plot the badger counts
-    plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE)
+    plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE, "a", labelCex=labelCex)
     
     # Plot the cattle counts
-    plotUnSampledCattleCounts(cattleCounts, datesInRange, cluster, FALSE)
+    plotUnSampledCattleCounts(cattleCounts, datesInRange, cluster, FALSE, "b", labelCex=labelCex)
     
     # Plot the lifespans of the sampled animals
-    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
+    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE, "c", labelCex=labelCex)
     
     if((as.numeric(cluster) + 1) %in% c(2, 4)){
 
@@ -139,7 +139,7 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
 }
 
 plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
-                                       addCluster){
+                                       addCluster, label=NULL, labelCex=1){
   
   # Set the plotting margins
   par(mar = c(4.1,4.1,1.2,4.1)) # bottom left top right
@@ -191,12 +191,21 @@ plotSampledAnimalLifespans <- function(sampled, datesInRange, cluster,
            bty="n", cex=1)
   }
   
-  
   # Add the cluster number to plot
   if(addCluster == TRUE){
     mtext(paste("Clade: ", (as.numeric(cluster) + 1)), side=3, 
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
+  }
+  
+  # Add a plot label
+  if(is.null(label) == FALSE){
+    axisLimits <- par("usr")
+    xLength <- axisLimits[2] - axisLimits[1]
+    yLength <- axisLimits[4] - axisLimits[3]
+    labelWidth <- strwidth(label, cex=0.6*labelCex)
+    labelHeight <- strheight(label, cex=0.5*labelCex)
+    text(x=axisLimits[2] - labelWidth, y=axisLimits[4] - labelHeight, labels=label, cex=labelCex)
   }
 }
 
@@ -212,7 +221,7 @@ addLinesForYears <- function(datesInRange){
 }
 
 plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
-                                      addCluster){
+                                      addCluster, label=NULL, labelCex=1){
   
   # Set the plot margins
   par(mar = c(0.1,4.1,3.1,4.1)) # bottom left top right
@@ -226,7 +235,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
   
   # Plot the number of animals reacting to the testing
   plot(x = datesInRange, y=negativeCounts, type="n",
-       ylim=yLim, ylab="Number Badgers Present", main="",
+       ylim=yLim, ylab="N. Badgers Present", main="",
        xaxt="n", xlab="", las=1)
   
   # Add the points for present and positive badgers
@@ -234,7 +243,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
   points(x=datesInRange, y=positiveCounts, type="l", col=rgb(1,0,0, alpha=0.75))
   
   # Plot title
-  mtext("Number of Badgers Encountered by Sampled Badgers",
+  mtext("N. of Badgers Encountered by Sampled Badgers",
         side=3)
   
   # Add lines to highlight years
@@ -250,10 +259,20 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
           at=as.Date(paste(format(datesInRange[length(datesInRange)], "%Y"), "-01-01", sep="")),
           line=1.5, font=2)
   }
+  
+  # Add a plot label
+  if(is.null(label) == FALSE){
+    axisLimits <- par("usr")
+    xLength <- axisLimits[2] - axisLimits[1]
+    yLength <- axisLimits[4] - axisLimits[3]
+    labelWidth <- strwidth(label, cex=0.6*labelCex)
+    labelHeight <- strheight(label, cex=0.5*labelCex)
+    text(x=axisLimits[2] - labelWidth, y=axisLimits[4] - labelHeight, labels=label, cex=labelCex)
+  }
 }
 
 plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
-                                      addCluster){
+                                      addCluster, label=NULL, labelCex=1){
   
   # Set the plot margins
   par(mar = c(0.1,4.1,1.2,4.1)) # bottom left top right
@@ -285,7 +304,11 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   axis(side=4, at=at, las=1,labels=round(labels, digits=0))
   mtext(side=4, text="Number Animals Present", line=3, cex=0.75)
   
-  legend("topright", legend="Total", 
+  # Add legend for right axis
+  axisLimits <- par("usr")
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  legend(x=axisLimits[2]-0.08*xLength, y=axisLimits[4]-0.2*yLength, legend="Total", 
          text.col=rgb(0,0,0, 0.5), bty="n", cex=1)
   
   # Add the points for test reactors
@@ -300,7 +323,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   addLinesForYears(datesInRange)
   
   # Add a legend
-  legend("topleft", legend=c("Inconclusive", "Positive"), 
+  legend("topleft", legend=c("Inconclusive", "Positive", "Total"), 
          text.col=c("blue", "red"), bty="n", cex=1)
   
   # Add the cluster number to plot
@@ -310,6 +333,12 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
           line=1.5, font=2)
   }
   
+  # Add a plot label
+  if(is.null(label) == FALSE){
+    labelWidth <- strwidth(label, cex=0.6*labelCex)
+    labelHeight <- strheight(label, cex=0.7*labelCex)
+    text(x=axisLimits[2] - labelWidth, y=axisLimits[4] - labelHeight, labels=label, cex=labelCex)
+  }
 }
 
 countNegativeAndPositiveBadgersDuringPeriod <- function(unSampled, datesInRange, indexedDates){

@@ -221,7 +221,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 selections <- c("BB", "CC", "CB")
 
 # Set the date analyses were completed on
-dates <- c("10-06-19", "14-05-19", "14-05-19")
+dates <- c("11-06-19", "14-05-19", "14-05-19")
 
 # Examine the analysis for each selection
 for(i in seq_along(selections)){

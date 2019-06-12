@@ -67,6 +67,9 @@ cladeColours <- c("cyan", "magenta", "green", "darkorchid4", "brown")
 plotTree(treeBS, plotBSValues=TRUE,
          nodes=nodesDefiningClades,
          colours=cladeColours, addAncestralStates=TRUE)
+plotTree(treeBS, plotBSValues=TRUE,
+         nodes=nodesDefiningClades,
+         colours=cladeColours)
 plotTree(treeBS, nodes=nodesDefiningClades,
          colours=cladeColours)
 
