@@ -28,7 +28,6 @@ pdf(file, height=11, width=8)
 clusters <- sort(names(clusterTables))[-length(names(clusterTables))] # Remove last cluster (all isolates)
 
 for(cluster in clusters){
-  cluster <- "1"
   plotAnimalLifespansForClusterSummariseUnSampled(clusterTables, cluster,
                                                   xLim, labelCex=3)
 }
@@ -235,7 +234,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
   
   # Plot the number of animals reacting to the testing
   plot(x = datesInRange, y=negativeCounts, type="n",
-       ylim=yLim, ylab="N. Badgers Present", main="",
+       ylim=yLim, ylab="Number Badgers Present", main="",
        xaxt="n", xlab="", las=1)
   
   # Add the points for present and positive badgers
@@ -243,7 +242,7 @@ plotUnSampledBadgerCounts <- function(badgerCounts, datesInRange, cluster,
   points(x=datesInRange, y=positiveCounts, type="l", col=rgb(1,0,0, alpha=0.75))
   
   # Plot title
-  mtext("N. of Badgers Encountered by Sampled Badgers",
+  mtext("Number of Badgers Encountered by Sampled Badgers",
         side=3)
   
   # Add lines to highlight years
@@ -287,7 +286,7 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   
   # Plot the number of animals reacting to the testing
   plot(x = datesInRange, y=inconclusiveCounts, type="n",
-       ylim=yLim, ylab="Number Animals Reacting to SICCT", main="",
+       ylim=yLim, ylab="Number SICCT Reactor Animals", main="",
        xaxt="n", xlab="", las=1)
 
   # Add the lines to indicate number of animals encountered that are present
