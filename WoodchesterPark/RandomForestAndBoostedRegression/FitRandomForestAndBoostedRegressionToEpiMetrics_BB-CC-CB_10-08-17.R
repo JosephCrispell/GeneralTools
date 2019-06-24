@@ -752,7 +752,7 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   
   # Create the bar chart for the RF and BR values - normalised values plotted side by side
   plot <- barplot(transpose[c("RandomForestImportanceNorm", "BoostedRegressionImportanceNorm"),],
-                  horiz=TRUE, beside=TRUE, xaxt="n", col=variableColoursDoubled, main="", col.axis="white",
+                  horiz=TRUE, beside=TRUE, xaxt="n", col=variableColoursDoubled, main="", col.axis=rgb(0,0,0,0),
                   density=c(25, 75), angle=c(45, 90))
   
   # Add a legend to illustrate which bars are the RF and BR ones
