@@ -2,6 +2,7 @@
 
 # Load libraries
 library(rgdal) # For reading in shape files
+library(basicPlotteR) # For setting alpha
 
 # Set the path variable
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
@@ -32,114 +33,155 @@ shapeFileNames <- c("territories_2000.shp",
 territoryCoordsInEachYear <- readTerritoryCoordsFromEachYear(years, shapeFileNames)
 
 # Plot the badger territories
-territoryPlotFile <- paste0(path, "ESM_Figures/BadgerTerritories_", date, ".pdf")
-plotBadgerTerritories(territoryCoordsInEachYear, years, file=territoryPlotFile, lwd=3, border=rgb(0,0,0, 1))
+territoryPlotFile <- paste0(path, "ESM_Figures/BadgerTerritories/BadgerTerritories_", date, ".pdf")
+plotBadgerTerritories(territoryCoordsInEachYear, years, file=territoryPlotFile, lwd=2, border=rgb(0,0,0, 1))
 
 
 #### Plot prevalence through time ####
 
-# Read in the badger capture data
-file <- paste0(path, "BadgerCaptureData/WP_CaptureData_Consolidated_24-06-2019.txt")
-captureData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE, check.names=FALSE)
+# # Read in the badger capture data
+# file <- paste0(path, "BadgerCaptureData/WP_CaptureData_Consolidated_24-06-2019.txt")
+# captureData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE, check.names=FALSE)
+# 
+# # Count the badgers in each status in each year - USING END OF YEAR
+# counts <- countBadgersInEachStatusInEachYear(captureData, yearRange=c(1990, 2010))
+# 
+# # Plot the counts
+# prevalencePlotFile <- paste0(path, "ESM_Figures/BadgerBTBPrevalence_", date, ".pdf")
+# plotBadgerPrevalence(counts, brokenDown=TRUE, file=prevalencePlotFile)
 
-# Count the badgers in each status in each year - USING END OF YEAR
-counts <- countBadgersInEachStatusInEachYear(captureData, yearRange=c(1990, 2010))
+# Read in the counts information - badgers in each status in each social group
+file <- paste0(path, "BadgerCaptureData/InfectionCategoryCounts_2000-2011_10-08-2017.csv")
+counts <- getCountTablesFromFileLinesYears(file)
 
-# Plot the counts
-prevalencePlotFile <- paste0(path, "ESM_Figures/BadgerBTBPrevalence_", date, ".pdf")
-plotBadgerPrevalence(counts, brokenDown=TRUE, file=prevalencePlotFile)
+# Plot the territory outlines for 2001 and colour by prevalence
+for(year in 2000:2011){
+
+  # Build a file name
+  file <- paste0(path, "ESM_Figures/BadgerTerritories/SocialGroupPrevalence_", year, "_", date, ".pdf")
+  
+  plotTerritoriesFromYear(territoryCoordsInEachYear, year=year, alphas=calculatePrevalenceInEachGroup(counts, year=year),
+                          fill="red", lwd=2, file=file)
+}
+
 
 #### FUNCTIONS ####
 
-countBadgersInEachStatusInEachYear <- function(captureData, yearRange){
+calculatePrevalenceInEachGroup <- function(counts, year){
   
-  # Create a vector years we want counts for
-  years <- yearRange[1]:yearRange[2]
+  # Get the number of badgers in each status in each group for the current year
+  nBadgers <- getNumberInEachStatusInEachGroupForGivenYear(counts, year)
+  
+  # Remove the NA group
+  nBadgers <- nBadgers[nBadgers$Group != "NA", ]
+  
+  # Calculate total number in each group
+  nBadgers$Total <- nBadgers$Negative + nBadgers$Exposed + nBadgers$Excretor + nBadgers$Superexcretor
+  
+  # Calculate the prevalence within group
+  nBadgers$Prevalence <- (nBadgers$Exposed + nBadgers$Excretor + nBadgers$Superexcretor) / nBadgers$Total
 
-  # Initialise a table to store the counts
-  counts <- data.frame(matrix(0, nrow=length(years), ncol=5))
-  colnames(counts) <- c("Year", "Negative", "Exposed", "Excretor", "Superexcretor")
-  counts$Year <- years
+  # Create a list reporting prevalence of each group
+  prevalence <- list()
+  for(row in 1:nrow(nBadgers)){
+    prevalence[[nBadgers[row, "Group"]]] <- ifelse(is.nan(nBadgers[row, "Prevalence"]), 0, nBadgers[row, "Prevalence"])
+  }
+  
+  return(prevalence)
+}
 
-  # Examine the capture data for each year
-  for(row in seq_len(nrow(captureData))){
+getNumberInEachStatusInEachGroupForGivenYear <- function(counts, year){
+  
+  # Get a vector of the social group names
+  socialGroups <- colnames(counts$Negative)[-which(colnames(counts$Negative) %in% c("Years", "Total"))]
+  
+  # Identify the row of the current year
+  row <- which(counts$Negative$Years == year)
+  
+  # Initialise a data frame to store the number of badgers in each status
+  output <- data.frame(matrix(0, nrow=length(socialGroups), ncol=5))
+  colnames(output) <- c("Group", "Negative", "Exposed", "Excretor", "Superexcretor")
+  output$Group <- socialGroups
+  rownames(output) <- socialGroups
+  
+  # Examine the counts for each status
+  for(status in c("Negative", "Exposed", "Excretor", "Superexcretor")){
     
-    # Get the capture dates
-    captureDates <- strsplit(captureData[row, "@CaptureDates"], split=";")[[1]]
-    captureDates <- as.Date(captureDates, format="%d-%m-%Y")
+    # Get the counts for the current year
+    values <- as.numeric(counts[[status]][row, socialGroups])
+    
+    # Store the counts
+    output[socialGroups, status] <- values
+  }
+  
+  return(output)
+}
 
-    # Get the disease status dates
-    statuses <- strsplit(captureData[row, "@Statuses"], split=";")[[1]]
+getCountTablesFromFileLinesYears <- function(fileName){
+  
+  connection <- file(fileName, open='r')
+  fileLines <- readLines(connection)
+  close(connection)
+  
+  counts <- list()
+  counts[["Negative"]] <- data.frame(Years=rep(0, length(fileLines) - 1), stringsAsFactors=FALSE)
+  counts[["Exposed"]] <- data.frame(Years=rep(0, length(fileLines) - 1), stringsAsFactors=FALSE)
+  counts[["Excretor"]] <- data.frame(Years=rep(0, length(fileLines) - 1), stringsAsFactors=FALSE)
+  counts[["Superexcretor"]] <- data.frame(Years=rep(0, length(fileLines) - 1), stringsAsFactors=FALSE)
+  
+  # Get the social group names from the header
+  socialGroups <- strsplit(fileLines[1], "\t")[[1]][-1]
+  
+  # Read in the tables
+  for(row in 2:length(fileLines)){
+    cols <- strsplit(fileLines[row], "\t")[[1]]
     
-    # Calculate the period spent in each disease status
-    statusPeriods <- calculatePeriodSpentInEachStatus(captureDates, statuses)
+    counts[["Negative"]][row-1, "Years"] <- as.numeric(cols[1])
+    counts[["Exposed"]][row-1, "Years"] <- as.numeric(cols[1])
+    counts[["Excretor"]][row-1, "Years"] <- as.numeric(cols[1])
+    counts[["Superexcretor"]][row-1, "Years"] <- as.numeric(cols[1])
     
-    # Examine each status and the period spent it
-    for(status in c("Negative", "Exposed", "Excretor", "Superexcretor")){
+    for(col in 2:length(cols)){
       
-      # Are dates available for the current status
-      if(length(statusPeriods[[status]]) < 2){
-        next
-      }
+      parts <- strsplit(cols[col], ":")[[1]]
+      counts[["Negative"]][row-1, col] <- parts[1]
+      counts[["Exposed"]][row-1, col] <- parts[2]
+      counts[["Excretor"]][row-1, col] <- parts[3]
+      counts[["Superexcretor"]][row-1, col] <- parts[4]
       
-      # Examine each of our years of interest
-      for(yearIndex in seq_along(years)){
-
-        # Create a date to mark end of currnt year
-        endOfYear <- paste0(years[yearIndex], "-12-31")
-        
-        # Check if current year in in period for current status
-        if(endOfYear > statusPeriods[[status]][1] && endOfYear < statusPeriods[[status]][2]){
-
-          # Add to count for current status in current year
-          counts[yearIndex, status] <- counts[yearIndex, status] + 1
-        }
-      }
     }
   }
   
-  # Calculate the population total
-  counts$Total <- counts$Negative + counts$Exposed + counts$Excretor + counts$Superexcretor
+  # Add the column names
+  colnames(counts[["Negative"]]) <- c("Years", socialGroups)
+  colnames(counts[["Exposed"]]) <- c("Years", socialGroups)
+  colnames(counts[["Excretor"]]) <- c("Years", socialGroups)
+  colnames(counts[["Superexcretor"]]) <- c("Years", socialGroups)
+  
+  # Add total column
+  counts[["Negative"]]$Total <- calculateTotalForEachYear(counts[["Negative"]])
+  counts[["Exposed"]]$Total <- calculateTotalForEachYear(counts[["Exposed"]])
+  counts[["Excretor"]]$Total <- calculateTotalForEachYear(counts[["Excretor"]])
+  counts[["Superexcretor"]]$Total <- calculateTotalForEachYear(counts[["Superexcretor"]])
   
   return(counts)
 }
 
-calculatePeriodSpentInEachStatus <- function(captureDates, statuses){
+calculateTotalForEachYear <- function(table){
   
-  # Initialise a list to store the periods spent in each status
-  periods <- list("Negative"=c(), "Exposed"=c(), "Excretor"=c(), "Superexcretor"=c())
+  # Initialise a vector to store the sum of counts for each year
+  sums <- c()
   
-  # Store the first date
-  status <- statuses[1]
-  periods[[status]][1] <- as.character(captureDates[1])
-
-  # Examine the capture dates and disease statuses
-  for(i in seq_along(statuses)){
+  # Examine each year
+  for(row in seq_len(nrow(table))){
     
-    # Skip first index
-    if(i == 1){
-      next;
-    }
-    
-    # Check if status has changed
-    if(status != statuses[i]){
-      
-      # Set end date of period status
-      periods[[status]][2] <- as.character(captureDates[i] - 1)
-      
-      # Set start date of new status
-      status <- statuses[i]
-      periods[[status]][1] <- as.character(captureDates[i])
-    }
+    sums[row] <- sum(as.numeric(table[row, 2:ncol(table)]))
   }
   
-  # Store the last date captured
-  periods[[status]][2] <- as.character(captureDates[length(captureDates)])
-  
-  return(periods)
+  return(sums)
 }
 
-plotBadgerPrevalence <- function(captureCounts, xLim=NULL, brokenDown=FALSE, file=NULL){
+plotBadgerPrevalence <- function(counts, file=NULL){
   
   # Open a pdf file if requested
   if(is.null(file) == FALSE){
@@ -150,43 +192,24 @@ plotBadgerPrevalence <- function(captureCounts, xLim=NULL, brokenDown=FALSE, fil
   currentMar <- par("mar")
   par(mar=c(5.1,5.1,1,1))
   
-  # Check if X axis (years) is limited
-  if(is.null(xLim) == FALSE){
-    captureCounts <- captureCounts[captureCounts$Year >= xLim[1] & captureCounts$Year <= xLim[2], ]
-  }
-  
-  # Plot the total counts
-  plot(x=captureCounts$Year, y=captureCounts$Negative, las=1, type="o", pch=19, lwd=2, bty="n",
-       ylim=c(0, max(captureCounts$Negative)), xlab="Year", ylab="", cex.axis=1.5,
+  # Plot the negative counts
+  plot(x=counts$Negative$Years, y=counts$Negative$Total, las=1, type="o", pch=19, lwd=2, bty="n",
+       ylim=c(0, max(counts$Negative$Total)), xlab="Year", ylab="", cex.axis=1.5,
        cex.lab=1.75, xpd=TRUE)
   mtext(side=2, text="Number Captured", cex=1.75, line=3.5)
 
-  # Add infected counts - check if wanyt broekn into categories
-  if(brokenDown){
-    
-    # Plot counts in each infection category
-    points(x=captureCounts$Year, y=captureCounts$Exposed,
-           type="o", col="brown", pch=19, lwd=2)
-    points(x=captureCounts$Year, y=captureCounts$Excretor,
-           type="o", col="green", pch=19, lwd=2)
-    points(x=captureCounts$Year, y=captureCounts$Superexcretor,
-           type="o", col="blue", pch=19, lwd=2)
+  # Plot counts in each infection category
+  points(x=counts$Exposed$Years, y=counts$Exposed$Total,
+         type="o", col="brown", pch=19, lwd=2)
+  points(x=counts$Excretor$Years, y=counts$Excretor$Total,
+         type="o", col="green", pch=19, lwd=2)
+  points(x=counts$Superexcretor$Years, y=counts$Superexcretor$Total,
+         type="o", col="blue", pch=19, lwd=2)
 
-    # Add legend
-    legend("topright", legend=c("Negative", "Exposed", "Excretor", "Super excretor"),
-           text.col=c("black", "brown", "green", "blue"), bty="n", cex=1.5)
+  # Add legend
+  legend("topright", legend=c("Negative", "Exposed", "Excretor", "Super excretor"),
+         text.col=c("black", "brown", "green", "blue"), bty="n", cex=1.5)
 
-  }else{
-    
-    # Plot total infected
-    points(x=captureCounts$Year, y=captureCounts$Exposed + captureCounts$Excretor + captureCounts$`Super excretor`,
-           type="o", col="green", pch=19)
-    
-    # Add legend
-    legend("topright", legend=c("Negative", "Positive"),
-           text.col=c("black", "green"), bty="n", cex=1.5)
-  }
-  
   # Reset the plotting margins
   par(mar=currentMar)
   
@@ -250,6 +273,56 @@ plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, 
   if(is.null(file) == FALSE){
     dev.off()
   }
+}
+
+plotTerritoriesFromYear <- function(territoryCoordsInEachYear, year, fill="black", alphas=NULL, file=NULL, ...){
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    pdf(file)
+  }
+  
+  # Get and set the plotting margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,0,0))
+  
+  # Convert the year to character
+  year <- as.character(year)
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
+       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  
+  # Add plot label
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  text(x=axisLimits[2] - 0.1*xLength, y=axisLimits[4] - 0.1*yLength, labels=year, cex=2)
+  
+  # Examine each social group
+  for(socialGroup in names(territoryCoordsInEachYear[[year]])){
+    
+    # Get the coordinates for current social group's polygon
+    coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
+    
+    # Convert the social group to upper case
+    socialGroup <- toupper(socialGroup)
+    
+    # Plot the coordinates - check if transparency wanted
+    if(is.null(alphas[[socialGroup]])){
+      polygon(coords, ...)
+    }else{
+      polygon(coords, col=setAlpha(fill, alphas[[socialGroup]]), ...)
+    }
+  }
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    dev.off()
+  }
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
 }
 
 readTerritoryCoordsFromEachYear <- function(years, shapeFileNames){

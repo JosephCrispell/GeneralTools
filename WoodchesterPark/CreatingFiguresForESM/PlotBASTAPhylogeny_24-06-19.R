@@ -35,7 +35,7 @@ tree$tip.label <- parseLabels(tree$tip.label)
 
 # Plot the phylogeny
 nodesDefiningClades <- c(292, 316, 187)
-cladeColours <- c("magenta", "green", "darkorchid4")
+cladeColours <- c("magenta", "green", "cyan")
 file <- paste0(path, "ESM_Figures/BASTAPhylogeny_", date, ".pdf")
 plotTree(tree, nodes=nodesDefiningClades, colours=cladeColours, file=file)
 
@@ -43,7 +43,7 @@ plotTree(tree, nodes=nodesDefiningClades, colours=cladeColours, file=file)
 
 file <- paste0(path, "ESM_Figures/BASTATipLocations_", date, ".pdf")
 plotIsolateLocations(tree, badgerInfo=badgerInfo, cattleInfo=cattleInfo, colours=cladeColours, nodes=nodesDefiningClades,
-                     badgerCentre=c(381761.7, 200964.3), expand=7000, file=file)
+                     badgerCentre=c(381761.7, 200964.3), expand=7000, file=file, alpha=0.5)
 
 
 #### Plot the lifespans of the animals in each clade ####
@@ -59,16 +59,22 @@ table <- removeAnimalsNotAssociatedWithBASTAClade(table, tree)
 
 # Plot the lifespan of each animal in cluster
 file <- paste0(path, "ESM_Figures/Clade4_Lifespans_", date, ".pdf")
-plotAnimalLifespans(table, alpha=0.25, lwd=4, file=file)
+plotAnimalLifespans(table, alpha=0.25, lwd=4, file=file, axisCex=1.5)
 
 #### Plot the network relationships between the animals ####
 
+file <- paste0(path, "ESM_Figures/Clade4_Movements_", date, ".pdf")
+plotAnimalMovements(table, badgerCentre=c(381761.7, 200964.3), expand=2000, lwd=4, lineAlpha=0.25, file=file)
 
 
 #### FUNCTIONS ####
 
-plotAnimalMovements <- function(animalInfo, badgerCentre, expand, alpha=0.5){
+plotAnimalMovements <- function(animalInfo, badgerCentre, expand, lineAlpha=1, file=NULL, ...){
   
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    pdf(file)
+  }
   
   # Get and set the plotting margins
   currentMar <- par()$mar
@@ -87,21 +93,89 @@ plotAnimalMovements <- function(animalInfo, badgerCentre, expand, alpha=0.5){
     xCoords <- as.numeric(strsplit(animalInfo[row, "Xs"], split=",")[[1]])
         
     # Get the Y coordinates
+    yCoords <- as.numeric(strsplit(animalInfo[row, "Ys"], split=",")[[1]])
     
     # Remove NA locations
+    NAs <- which(is.na(xCoords) | is.na(yCoords))
+    if(length(NAs) > 0){
+      xCoords <- xCoords[-NAs]
+      yCoords <- yCoords[-NAs]
+    }
     
-    # Remove duplicate locations
+    # Remove sequential duplicate locations
+    indices <- identifySequentialDuplicateLocations(xCoords, yCoords)
+    xCoords <- xCoords[indices]
+    yCoords <- yCoords[indices]
     
-    # Plot each of the movements
-    points(x=xCoords, y=yCoords, type="o", pch=19,
-           ifelse(animalInfo[row, "Species"] == "BADGER", rgb(1,0,0, alpha), rgb(0,0,1, alpha)))
+    # Round locations?
+    xCoords <- round(xCoords, digits=0)
+    yCoords <- round(yCoords, digits=0)
+    
+    # Plot each location of the movements
+    points(x=xCoords, y=yCoords, 
+           pch=ifelse(animalInfo[row, "Species"] == "BADGER", 19, 17),
+           col=ifelse(animalInfo[row, "Species"] == "BADGER", "red", "blue"), 
+           cex=2)
+    
+    # Plot movements as arrows
+    if(length(xCoords) > 1){
+
+      # Plot each movement
+      for(i in 2:length(xCoords)){
+        points(x=c(xCoords[i-1], xCoords[i]), y=c(yCoords[i-1], yCoords[i]), type="l",
+               col=ifelse(animalInfo[row, "Species"] == "BADGER", rgb(1,0,0, lineAlpha), rgb(0,0,1, lineAlpha)), ...)
+      }
+    }
   }
+  
+  # Add scale
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  xPad <- 0.08*xLength
+  points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
+         type="l", lwd=4)
+  text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1 KM", cex=2)
+  
+  # Add Legend
+  legend("bottom", legend=c("Cow", "Badger"), text.col=c("blue", "red"), pch=c(17, 19), cex=2, bty="n", col=c("blue", "red"))
   
   # Reset the plotting margins
   par(mar=currentMar)
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    dev.off()
+  }
 }
 
-plotAnimalLifespans <- function(animalInfo, alpha=0.5, file=NULL, ...){
+identifySequentialDuplicateLocations <- function(xCoords, yCoords){
+  
+  # Initialise a vector to store the indices of the unique locations
+  indices <- c(1)
+  
+  # Initialise variables to store previous 
+  previous <- c(xCoords[1], yCoords[2])
+  
+  # Check if more than one location
+  if(length(xCoords) > 1){
+    
+    # Examine the locations
+    for(i in 2:length(xCoords)){
+      
+      # Compare the current location to the previous
+      if(xCoords[i] != previous[1] || yCoords[i] != previous[2]){
+        indices[length(indices) + 1] <- i
+        previous[1] = xCoords[i]
+        previous[2] = yCoords[i]
+      }
+    }
+  }
+  
+  return(indices)
+}
+
+plotAnimalLifespans <- function(animalInfo, alpha=0.5, axisCex=1, file=NULL, ...){
   
   # Open a pdf file if requested
   if(is.null(file) == FALSE){
@@ -129,7 +203,7 @@ plotAnimalLifespans <- function(animalInfo, alpha=0.5, file=NULL, ...){
   
   # Add X axis
   at <- as.Date(c("1995-01-01", "2000-01-01", "2005-01-01", "2010-01-01"), format="%Y-%m-%d")
-  axis(side=1, at=at, labels=format(at, "%Y"))
+  axis(side=1, at=at, labels=format(at, "%Y"), cex.axis=axisCex)
   
   # Add a line for every animal
   for(row in 1:nrow(animalInfo)){
@@ -150,7 +224,7 @@ plotAnimalLifespans <- function(animalInfo, alpha=0.5, file=NULL, ...){
   }
   
   # Add Legend
-  legend("topleft", legend=c("Cow", "Badger"), text.col=c("blue", "red"), cex=2, bty="n")
+  legend("bottomright", legend=c("Cow", "Badger"), text.col=c("blue", "red"), cex=2, bty="n")
   
   # Open a pdf file if requested
   if(is.null(file) == FALSE){
@@ -288,7 +362,7 @@ noteBadgerIsolateSamplingLocations <- function(metadata){
   return(isolates)
 }
 
-plotIsolateLocations <- function(tree, badgerInfo, cattleInfo, colours, badgerCentre, expand, nodes, file=NULL){
+plotIsolateLocations <- function(tree, badgerInfo, cattleInfo, colours, badgerCentre, expand, nodes, file=NULL, alpha=0.75){
   
   # Open a pdf file if requested
   if(is.null(file) == FALSE){
@@ -302,7 +376,7 @@ plotIsolateLocations <- function(tree, badgerInfo, cattleInfo, colours, badgerCe
   cattleIsolateLocations <- noteCattleIsolateSamplingLocations(cattleInfo)
   
   # Create the clade colours - apply alpha
-  cladeColoursRGB <- setAlpha(colours, alpha=0.75)
+  cladeColoursRGB <- setAlpha(colours, alpha=alpha)
   
   # Note the isolates in each clade
   isolatesInClades <- findIsolatesInClades(tree, nodes)
@@ -472,7 +546,7 @@ plotTree <- function(tree, nodes, colours, scaleSize=5, file=NULL){
   
   # Add Legends
   legend("bottomleft", legend=c("Cow", "Badger"),
-         pch=c(17, 16), cex=1, col=c("blue", "red"), 
+         pch=c(17, 16), cex=2, col=c("blue", "red"), 
          text.col=c("blue", "red"), bty='n')
 
   # Add Scale bar
@@ -480,10 +554,11 @@ plotTree <- function(tree, nodes, colours, scaleSize=5, file=NULL){
   xLength <- axisLimits[2] - axisLimits[1]
   yLength <- axisLimits[4] - axisLimits[3]
   xPad <- 0.05*xLength
+  yPad <- 0.1*yLength
   points(x=c(axisLimits[2] - xPad, axisLimits[2] - xPad - scaleSize), 
-         y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength), 
-         type="l", lwd=3, xpd=TRUE)
-  text(x=axisLimits[2] - xPad - (0.5*scaleSize), y=axisLimits[3] + 0.12*yLength, cex=1, xpd=TRUE,
+         y=c(axisLimits[3] + 0.15*yLength, axisLimits[3] + 0.15*yLength), 
+         type="l", lwd=4, xpd=TRUE)
+  text(x=axisLimits[2] - xPad - (0.5*scaleSize), y=axisLimits[3] + 0.12*yLength, cex=2, xpd=TRUE,
        labels=ifelse(scaleSize > 1, paste0(scaleSize, " SNPs"), paste0(scaleSize, " SNP")))
   
   # Reset margins
