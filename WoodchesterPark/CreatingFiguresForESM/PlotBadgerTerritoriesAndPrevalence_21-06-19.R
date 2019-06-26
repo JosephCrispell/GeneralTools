@@ -36,6 +36,11 @@ territoryCoordsInEachYear <- readTerritoryCoordsFromEachYear(years, shapeFileNam
 territoryPlotFile <- paste0(path, "ESM_Figures/BadgerTerritories/BadgerTerritories_", date, ".pdf")
 plotBadgerTerritories(territoryCoordsInEachYear, years, file=territoryPlotFile, lwd=2, border=rgb(0,0,0, 1))
 
+##########################################################
+##########################################################
+### Plot territories on top of google maps terrain map ###
+##########################################################
+##########################################################
 
 #### Plot prevalence through time ####
 

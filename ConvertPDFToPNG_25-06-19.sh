@@ -16,7 +16,6 @@
 
 # Get a list of all pdf files in current directory
 PDFS=(`ls | grep ".pdf$"`)
-NFILES=
 
 # Examine each PDF
 for (( PDFINDEX=0; PDFINDEX<${#PDFS[@]}; PDFINDEX+=1))
@@ -39,7 +38,7 @@ do
 		PNG=${FILE::-4}"_"$PAGEINDEX".png"
 		
 		# Convert the current page of the current PDF to PNG
-		convert -density 300 $FILE -quality 100 $PNG
+		convert -density 300 $FILE[$PAGEINDEX] -quality 100 $PNG
 
 		# Print progress
 		echo -e "	Created PNG: "$PNG
