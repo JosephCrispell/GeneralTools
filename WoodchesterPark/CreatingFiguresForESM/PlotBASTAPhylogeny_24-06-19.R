@@ -11,6 +11,9 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 # Get today's date
 date <- format(Sys.Date(), "%d-%m-%y")
 
+# Note the X and Y coordinates of the badger centre
+badgerCentre <- c(381761.7, 200964.3)
+
 #### Read in the isolate data ####
 
 # Read in the cattle data
@@ -43,19 +46,31 @@ plotTree(tree, nodes=nodesDefiningClades, colours=cladeColours, file=file)
 
 file <- paste0(path, "ESM_Figures/BASTATipLocations_", date, ".pdf")
 plotIsolateLocations(tree, badgerInfo=badgerInfo, cattleInfo=cattleInfo, colours=cladeColours, nodes=nodesDefiningClades,
-                     badgerCentre=c(381761.7, 200964.3), expand=7000, file=file, alpha=0.5)
+                     badgerCentre=badgerCentre, expand=7000, file=file, alpha=0.5)
 
+
+#### Plot the temporal sampling of the BASTA clade ####
+
+# Read in the sampled animal lifespans
+file <- paste(path, "InterSpeciesClusters/sampledAnimalsLifeHistories_22-11-2018.txt", sep="")
+table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
+
+# Get the sampling dates for the isolates of the animals in BASTA clade
+samplingInfo <- getSamplingDates(table, tree$tip.label)
+
+# Plot the sampling times
+file <- paste0(path, "ESM_Figures/BASTASamplingTimes_", date, ".pdf")
+plotSamplingTimes(samplingInfo, file=file)
 
 #### Plot the lifespans of the animals in each clade ####
 
 # Note the cluster interested in
 cluster <- 4
+clusterTips <- extract.clade(tree, node=187)$tip.label
 
-# Read in the sampled animal lifespans
-file <- paste(path, "InterSpeciesClusters/sampledAnimalsLifeHistories_22-11-2018.txt", sep="")
-table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t")
+# Remove information for animals outside of cluster
 table <- table[is.na(table$Isolates) == FALSE & grepl(table$Clusters, pattern=cluster - 1), ]
-table <- removeAnimalsNotAssociatedWithBASTAClade(table, tree)
+table <- removeAnimalsNotAssociatedWithBASTAClade(table, clusterTips)
 
 # Plot the lifespan of each animal in cluster
 file <- paste0(path, "ESM_Figures/Clade4_Lifespans_", date, ".pdf")
@@ -64,10 +79,94 @@ plotAnimalLifespans(table, alpha=0.25, lwd=4, file=file, axisCex=1.5)
 #### Plot the network relationships between the animals ####
 
 file <- paste0(path, "ESM_Figures/Clade4_Movements_", date, ".pdf")
-plotAnimalMovements(table, badgerCentre=c(381761.7, 200964.3), expand=2000, lwd=4, lineAlpha=0.25, file=file)
+plotAnimalMovements(table, badgerCentre=badgerCentre, expand=2050, lwd=4, lineAlpha=0.25, file=file)
 
 
 #### FUNCTIONS ####
+
+plotSamplingTimes <- function(samplingInfo, file=NULL){
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    pdf(file, width=20, height=7)
+  }
+  
+  # Set the plotting margins
+  par(mar=c(5.1, 1, 1, 1))
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, xlim=range(samplingInfo$SamplingDate), ylim=c(1,2), bty="n", yaxt="n", ylab="", xaxt="n", xlab="")
+  
+  # Add X axis
+  at <- as.Date(paste0(seq(from=2000, to=2012, by=2), "-06-15"), format="%Y-%m-%d")
+  axis(side=1, at=at, labels=FALSE)
+  axis(side=1, at=at, labels=format(at, "%Y"), cex.axis=4, line=2, tick=FALSE)
+  
+  # Add Badger sampling times
+  badgerInfo <- samplingInfo[samplingInfo$Species == "BADGER", ]
+  points(x=range(badgerInfo$SamplingDate), y=c(1.25,1.25), type="l", lwd=4)
+  points(x=badgerInfo$SamplingDate, y=rep(1.25, nrow(badgerInfo)), pch=19, col=rgb(1,0,0, 0.5), cex=5)
+  
+  # Add Badger sampling times
+  cowInfo <- samplingInfo[samplingInfo$Species == "COW", ]
+  points(x=range(cowInfo$SamplingDate), y=c(1.75,1.75), type="l", lwd=4)
+  points(x=cowInfo$SamplingDate, y=rep(1.75, nrow(cowInfo)), pch=17, col=rgb(0,0,1, 0.5), cex=5)
+  
+  # Close PDF
+  if(is.null(file) == FALSE){
+    dev.off()
+  }
+}
+
+getSamplingDates <- function(animalInfo, tipLabels){
+  
+  # Intialise a data.frame to store isolate IDs, sampling date and species
+  samplingInfo <- data.frame("IsolateID"=rep("", length(tipLabels)), 
+                             "SamplingDate"=rep("", length(tipLabels)),
+                             "Species"=rep("", length(tipLabels)), stringsAsFactors=FALSE)
+  count <- 0
+  
+  # Examine each animal's information
+  for(row in 1:nrow(animalInfo)){
+    
+    # Get the isolate IDs for the current animal
+    ids <- strsplit(animalInfo[row, "Isolates"], split=",")[[1]]
+    
+    # Skip animals without isolate in BASTA tree
+    if(length(which(ids %in% tipLabels)) == 0){
+      next
+    }
+    
+    # Increment the row count for output table
+    count <- count + 1
+    
+    # Check if cow
+    if(animalInfo[row, "Species"] == "COW"){
+      samplingInfo[count, "IsolateID"] <- animalInfo[row, "Isolates"]
+      samplingInfo[count, "SamplingDate"] <- animalInfo[row, "SamplingDates"]
+      samplingInfo[count, "Species"] <- animalInfo[row, "Species"]
+    
+    # This one is a badger
+    }else{
+      
+      # Get the sampling dates
+      dates <- strsplit(animalInfo[row, "SamplingDates"], split=",")[[1]]
+
+      # Find the sampling date for the isolate that was used in BASTA clade
+      isolateIndex <- which(ids %in% tipLabels)
+      
+      # Store the sampling information for the current badgers isolate
+      samplingInfo[count, "IsolateID"] <- ids[isolateIndex]
+      samplingInfo[count, "SamplingDate"] <- dates[isolateIndex]
+      samplingInfo[count, "Species"] <- animalInfo[row, "Species"]
+    }
+  }
+  
+  # Convert the sampling date column to dates
+  samplingInfo$SamplingDate <- as.Date(samplingInfo$SamplingDate, format="%d-%m-%Y")
+  
+  return(samplingInfo)
+}
 
 plotAnimalMovements <- function(animalInfo, badgerCentre, expand, lineAlpha=1, file=NULL, ...){
   
@@ -102,14 +201,15 @@ plotAnimalMovements <- function(animalInfo, badgerCentre, expand, lineAlpha=1, f
       yCoords <- yCoords[-NAs]
     }
     
+    # Ignore animal if no non-NA locations available
+    if(length(xCoords) == 0){
+      next
+    }
+    
     # Remove sequential duplicate locations
     indices <- identifySequentialDuplicateLocations(xCoords, yCoords)
     xCoords <- xCoords[indices]
     yCoords <- yCoords[indices]
-    
-    # Round locations?
-    xCoords <- round(xCoords, digits=0)
-    yCoords <- round(yCoords, digits=0)
     
     # Plot each location of the movements
     points(x=xCoords, y=yCoords, 
@@ -202,7 +302,7 @@ plotAnimalLifespans <- function(animalInfo, alpha=0.5, axisCex=1, file=NULL, ...
   plot(x=NULL, y=NULL, xlim=dateRange, ylim=c(1, nrow(animalInfo)), bty="n", xaxt="n", xlab="")
   
   # Add X axis
-  at <- as.Date(c("1995-01-01", "2000-01-01", "2005-01-01", "2010-01-01"), format="%Y-%m-%d")
+  at <- as.Date(c("1995-06-15", "2000-06-15", "2005-06-15", "2010-06-15"), format="%Y-%m-%d")
   axis(side=1, at=at, labels=format(at, "%Y"), cex.axis=axisCex)
   
   # Add a line for every animal
@@ -267,7 +367,7 @@ getDateRange <- function(animalInfo){
   return(c(start, end))
 }
 
-removeAnimalsNotAssociatedWithBASTAClade <- function(clusterInfo, tree){
+removeAnimalsNotAssociatedWithBASTAClade <- function(clusterInfo, tipLabels){
   
   remove <- c()
   for(row in 1:nrow(table)){
@@ -276,7 +376,7 @@ removeAnimalsNotAssociatedWithBASTAClade <- function(clusterInfo, tree){
     isolates <- strsplit(table[row, "Isolates"], split=",")[[1]]
     
     # Count how many isolates were in BASTA analyses
-    nFound <- length(which(isolates %in% tree$tip.label))
+    nFound <- length(which(isolates %in% tipLabels))
     
     # Ignore animals if no isolates found
     if(nFound < 1){

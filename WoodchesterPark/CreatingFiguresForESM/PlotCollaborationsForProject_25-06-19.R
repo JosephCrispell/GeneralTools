@@ -60,6 +60,13 @@ for(i in seq_along(xCoords)){
 }
 points(x=xCoords, y=yCoords, pch=19, col="blue", cex=2)
 
+# Plot the UK and ROI outlines
+plotPolygons(ukPolygons, roiPolygons, xLim=c(-10.5,1.6), yLim=c(50,61), lwd=1.5)
+
+# Plot the locations of interest
+# UCD, Glasgow, Roslin, AFBNI, Woodchester & Weybridge
+points(x=-2.277601, y=51.710962, pch=19, col="blue", cex=1)
+
 # Reset the plotting margins
 par(mar=currentMar)
 

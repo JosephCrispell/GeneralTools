@@ -47,15 +47,18 @@ map <- openmap(upperLeft=c(rangeLong[1], rangeLat[1]),
                lowerRight=c(rangeLong[2], rangeLat[2]),
                type="bing")
 
-# Convert the territory coords from X and Y on UK grid to X an dY (Eastings and Northings) on Spherical Mercator projection
-territoryCoordsInEachYearSphericalMercator <- convertTerritoryCoordinatesToSphericalMercator(territoryCoordsInEachYear)
+# Convert from
+mapUKGrid <- openproj(map, projection=CRS("+init=epsg:27700"))
 
 #### Plot all territories in single figure ####
 
-# Plot the badger territories
+# Open a pdf
 territoryPlotFile <- paste0(path, "ESM_Figures/BadgerTerritories/BadgerTerritories_", date, ".pdf")
-plotBadgerTerritories(territoryCoordsInEachYearSphericalMercator, years, file=territoryPlotFile, lwd=2,
-                      border=rgb(1,0,0, 0.5), map=map)
+pdf(territoryPlotFile)
+
+# Plot the badger territories
+plotBadgerTerritories(territoryCoordsInEachYear, years, lwd=2,
+                      border=rgb(1,0,0, 0.5), map=mapUKGrid)
 
 #### Plot prevalence through time ####
 
@@ -75,20 +78,19 @@ file <- paste0(path, "BadgerCaptureData/InfectionCategoryCounts_2000-2011_10-08-
 counts <- getCountTablesFromFileLinesYears(file)
 
 # Plot Woodchester Map without any territories
-file <- paste0(path, "ESM_Figures/BadgerTerritories/WoodchesterPark_", date, ".pdf")
-plotBadgerTerritories(territoryCoordsInEachYearSphericalMercator, years, file=file, lwd=2,
-                      border=rgb(1,0,0, 0), map=map)
+plotBadgerTerritories(territoryCoordsInEachYear, years, lwd=2,
+                      border=rgb(1,0,0, 0), map=mapUKGrid)
 
 # Plot the territory outlines for 2001 and colour by prevalence
 for(year in 2000:2011){
 
-  # Build a file name
-  file <- paste0(path, "ESM_Figures/BadgerTerritories/SocialGroupPrevalence_", year, "_", date, ".pdf")
-  
-  plotTerritoriesFromYear(territoryCoordsInEachYearSphericalMercator, year=year,
+  plotTerritoriesFromYear(territoryCoordsInEachYear, year=year,
                           alphas=calculatePrevalenceInEachGroup(counts, year=year),
-                          fill="red", lwd=2, file=file, map=map)
+                          fill="red", lwd=2, map=mapUKGrid)
 }
+
+# Close the PDF file
+dev.off()
 
 #### FUNCTIONS ####
 
