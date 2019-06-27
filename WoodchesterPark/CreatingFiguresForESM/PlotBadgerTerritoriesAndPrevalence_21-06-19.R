@@ -1,8 +1,10 @@
 #### Preparation ####
 
 # Load libraries
-library(rgdal) # For reading in shape files
+library(rgdal) # For reading in shape files and converting between projections
 library(basicPlotteR) # For setting alpha
+library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
+
 
 # Set the path variable
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
@@ -10,7 +12,7 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
 
-#### Plot badger territories through time ####
+#### Get badger territories through time ####
 
 # Note the years that territory shape files are available for
 years <- c(2000:2011)
@@ -32,15 +34,28 @@ shapeFileNames <- c("territories_2000.shp",
 # Read in the polygon coordinates for each social gropu in each year
 territoryCoordsInEachYear <- readTerritoryCoordsFromEachYear(years, shapeFileNames)
 
+#### Get satellite image of Woodchester Park ####
+
+# Calculate the plotting area boundaries in latitude and longitudes
+coordRanges <- convertXYToLatLongs(x=territoryCoordsInEachYear$rangeX, y=territoryCoordsInEachYear$rangeY)
+rangeLat <- coordRanges[, "Latitude"]
+rangeLong <- coordRanges[, "Longitude"]
+
+# Get a satellite image of the area
+# Maps are initially put in a sperical mercator projection which is the standard for most (all?) map tiling systems
+map <- openmap(upperLeft=c(rangeLong[1], rangeLat[1]), 
+               lowerRight=c(rangeLong[2], rangeLat[2]),
+               type="bing")
+
+# Convert the territory coords from X and Y on UK grid to X an dY (Eastings and Northings) on Spherical Mercator projection
+territoryCoordsInEachYearSphericalMercator <- convertTerritoryCoordinatesToSphericalMercator(territoryCoordsInEachYear)
+
+#### Plot all territories in single figure ####
+
 # Plot the badger territories
 territoryPlotFile <- paste0(path, "ESM_Figures/BadgerTerritories/BadgerTerritories_", date, ".pdf")
-plotBadgerTerritories(territoryCoordsInEachYear, years, file=territoryPlotFile, lwd=2, border=rgb(0,0,0, 1))
-
-##########################################################
-##########################################################
-### Plot territories on top of google maps terrain map ###
-##########################################################
-##########################################################
+plotBadgerTerritories(territoryCoordsInEachYearSphericalMercator, years, file=territoryPlotFile, lwd=2,
+                      border=rgb(1,0,0, 0.5), map=map)
 
 #### Plot prevalence through time ####
 
@@ -59,18 +74,238 @@ plotBadgerTerritories(territoryCoordsInEachYear, years, file=territoryPlotFile, 
 file <- paste0(path, "BadgerCaptureData/InfectionCategoryCounts_2000-2011_10-08-2017.csv")
 counts <- getCountTablesFromFileLinesYears(file)
 
+# Plot Woodchester Map without any territories
+file <- paste0(path, "ESM_Figures/BadgerTerritories/WoodchesterPark_", date, ".pdf")
+plotBadgerTerritories(territoryCoordsInEachYearSphericalMercator, years, file=file, lwd=2,
+                      border=rgb(1,0,0, 0), map=map)
+
 # Plot the territory outlines for 2001 and colour by prevalence
 for(year in 2000:2011){
 
   # Build a file name
   file <- paste0(path, "ESM_Figures/BadgerTerritories/SocialGroupPrevalence_", year, "_", date, ".pdf")
   
-  plotTerritoriesFromYear(territoryCoordsInEachYear, year=year, alphas=calculatePrevalenceInEachGroup(counts, year=year),
-                          fill="red", lwd=2, file=file)
+  plotTerritoriesFromYear(territoryCoordsInEachYearSphericalMercator, year=year,
+                          alphas=calculatePrevalenceInEachGroup(counts, year=year),
+                          fill="red", lwd=2, file=file, map=map)
 }
 
-
 #### FUNCTIONS ####
+
+convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  latLong <- "+init=epsg:4326"
+  
+  # Create a coordinates variable
+  coords <- cbind(Easting = x, Northing = y)
+  
+  # Create a SpatialPointsDataFrame
+  spatialDF <- SpatialPoints(coords, proj4string = CRS(ukGrid))
+  
+  # Convert the Eastings and Northings to Latitude and Longitude
+  spatialDFLatLongs <- spTransform(spatialDF, CRS(latLong))
+  
+  # Create a table to store the converted points
+  output <- data.frame(Longitude=spatialDFLatLongs@coords[,"Northing"],
+                       Latitude=spatialDFLatLongs@coords[,"Easting"])
+  
+  # Return the lat longs
+  return(output)
+}
+
+plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, file=NULL, map=NULL, ...){
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    pdf(file)
+  }
+  
+  # Get and set the plotting margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,0,0))
+  
+  # Check if map provided for plotting
+  if(is.null(map) == FALSE){
+    plot(map, asp=1)
+  }else{
+    
+    # Create an empty plot
+    plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
+         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  }
+  
+  # Examine each year
+  for(year in years){
+    
+    # Skip 2006 - territories are all messed up
+    if(year == 2006){
+      next
+    }
+    
+    # Convert year to character to act as key
+    year <- as.character(year)
+    
+    # Pause - if asked
+    if(is.null(sleep) == FALSE){
+      Sys.sleep(sleep)
+    }
+    
+    # Examine each social group
+    for(socialGroup in names(territoryCoordsInEachYear[[year]])){
+      
+      # Check only one polygon available for current territory
+      if(length(territoryCoordsInEachYear[[year]][[socialGroup]]) > 1){
+        stop(paste0("More than one polygon available for ", socialGroup))
+      }
+      
+      # Get the coordinates for current social group's polygon
+      coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
+      
+      # Plot the coordinates
+      polygon(coords, ...)
+    }
+  }
+  
+  # Add scale
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  xPad <- 0.08*xLength
+  points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
+         type="l", lwd=4)
+  text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1KM", cex=2)
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+  
+  # Close the pdf if requested
+  if(is.null(file) == FALSE){
+    dev.off()
+  }
+}
+
+convertXYToSphericalMercatorProjection <- function(x, y, grid="+init=epsg:27700"){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  projection <- "+init=epsg:3857"
+  
+  # Create a coordinates variable
+  coords <- cbind(X = x, Y = y)
+  
+  # Create a SpatialPointsDataFrame
+  spatialDF <- SpatialPoints(coords, proj4string = CRS(grid))
+  
+  # Convert the Eastings and Northings to Latitude and Longitude
+  spatialDF<- spTransform(spatialDF, CRS(projection))
+  
+  # Create a table to store the converted points
+  output <- data.frame(X=spatialDF@coords[,"X"], Y=spatialDF@coords[,"Y"])
+  
+  # Return the lat longs
+  return(output)
+}
+
+convertTerritoryCoordinatesToSphericalMercator <- function(territoryCoordsInEachYear){
+  
+  # Initialise a list to store the coordinates as latitude and longitude
+  output <- list()
+  
+  # Convert the range values to latitude and longitude
+  coordRanges <- convertXYToSphericalMercatorProjection(x=territoryCoordsInEachYear$rangeX, y=territoryCoordsInEachYear$rangeY)
+  output$rangeX <- coordRanges[, "X"]
+  output$rangeY <- coordRanges[, "Y"]
+  
+  # Examine each year
+  nYears <- length(territoryCoordsInEachYear) - 2
+  for(year in names(territoryCoordsInEachYear)[1:nYears]){
+    
+    # Initialise a list for the current year
+    output[[year]] <- list()
+    
+    # Examine every social group
+    for(socialGroup in names(territoryCoordsInEachYear[[year]])){
+      
+      # Get the coordinates for the current social gropu in the current year
+      coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
+      
+      # Convert the coodinates to latitudes and longitudes
+      coords <- convertXYToSphericalMercatorProjection(x=coords[, 1], y=coords[, 2])
+      
+      # Store the latitude and longitudes
+      output[[year]][[socialGroup]][[1]] <- coords
+    }
+  }
+  
+  return(output)
+}
+
+plotTerritoriesFromYear <- function(territoryCoordsInEachYear, year, fill="black", alphas=NULL, file=NULL, map=NULL, ...){
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    pdf(file)
+  }
+  
+  # Get and set the plotting margins
+  currentMar <- par("mar")
+  par(mar=c(0,0,0,0))
+  
+  # Convert the year to character
+  year <- as.character(year)
+  
+  # Check if map provided for plotting
+  if(is.null(map) == FALSE){
+    plot(map, asp=1)
+  }else{
+    
+    # Create an empty plot
+    plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
+         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  }
+  
+  # Add plot label
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  text(x=axisLimits[2] - 0.1*xLength, y=axisLimits[4] - 0.1*yLength, labels=year, cex=2)
+  
+  # Examine each social group
+  for(socialGroup in names(territoryCoordsInEachYear[[year]])){
+    
+    # Get the coordinates for current social group's polygon
+    coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
+    
+    # Convert the social group to upper case
+    socialGroup <- toupper(socialGroup)
+    
+    # Plot the coordinates - check if transparency wanted
+    if(is.null(alphas[[socialGroup]])){
+      polygon(coords, ...)
+    }else{
+      polygon(coords, col=setAlpha(fill, alphas[[socialGroup]]), ...)
+    }
+  }
+  
+  # Add scale
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  xPad <- 0.08*xLength
+  points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
+         type="l", lwd=4)
+  text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1KM", cex=2)
+  
+  # Open a pdf file if requested
+  if(is.null(file) == FALSE){
+    dev.off()
+  }
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+}
 
 calculatePrevalenceInEachGroup <- function(counts, year){
   
@@ -222,112 +457,6 @@ plotBadgerPrevalence <- function(counts, file=NULL){
   if(is.null(file) == FALSE){
     dev.off()
   }
-}
-
-plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, file=NULL, ...){
-  
-  # Open a pdf file if requested
-  if(is.null(file) == FALSE){
-    pdf(file)
-  }
-  
-  # Get and set the plotting margins
-  currentMar <- par("mar")
-  par(mar=c(0,0,0,0))
-  
-  # Create an empty plot
-  plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
-       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
-  
-  # Examine each year
-  for(year in years){
-    
-    # Skip 2006 - territories are all messed up
-    if(year == 2006){
-      next
-    }
-    
-    # Convert year to character to act as key
-    year <- as.character(year)
-    
-    # Pause - if asked
-    if(is.null(sleep) == FALSE){
-      Sys.sleep(sleep)
-    }
-    
-    # Examine each social group
-    for(socialGroup in names(territoryCoordsInEachYear[[year]])){
-      
-      # Check only one polygon available for current territory
-      if(length(territoryCoordsInEachYear[[year]][[socialGroup]]) > 1){
-        stop(paste0("More than one polygon available for ", socialGroup))
-      }
-      
-      # Get the coordinates for current social group's polygon
-      coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
-      
-      # Plot the coordinates
-      polygon(coords, ...)
-    }
-  }
-  
-  # Reset the plotting margins
-  par(mar=currentMar)
-  
-  # Close the pdf if requested
-  if(is.null(file) == FALSE){
-    dev.off()
-  }
-}
-
-plotTerritoriesFromYear <- function(territoryCoordsInEachYear, year, fill="black", alphas=NULL, file=NULL, ...){
-  
-  # Open a pdf file if requested
-  if(is.null(file) == FALSE){
-    pdf(file)
-  }
-  
-  # Get and set the plotting margins
-  currentMar <- par("mar")
-  par(mar=c(0,0,0,0))
-  
-  # Convert the year to character
-  year <- as.character(year)
-  
-  # Create an empty plot
-  plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
-       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
-  
-  # Add plot label
-  axisLimits <- par()$usr
-  xLength <- axisLimits[2] - axisLimits[1]
-  yLength <- axisLimits[4] - axisLimits[3]
-  text(x=axisLimits[2] - 0.1*xLength, y=axisLimits[4] - 0.1*yLength, labels=year, cex=2)
-  
-  # Examine each social group
-  for(socialGroup in names(territoryCoordsInEachYear[[year]])){
-    
-    # Get the coordinates for current social group's polygon
-    coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
-    
-    # Convert the social group to upper case
-    socialGroup <- toupper(socialGroup)
-    
-    # Plot the coordinates - check if transparency wanted
-    if(is.null(alphas[[socialGroup]])){
-      polygon(coords, ...)
-    }else{
-      polygon(coords, col=setAlpha(fill, alphas[[socialGroup]]), ...)
-    }
-  }
-  
-  # Open a pdf file if requested
-  if(is.null(file) == FALSE){
-    dev.off()
-  }
-  
-  # Reset the plotting margins
-  par(mar=currentMar)
 }
 
 readTerritoryCoordsFromEachYear <- function(years, shapeFileNames){
