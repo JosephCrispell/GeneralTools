@@ -315,15 +315,13 @@ plotUnSampledCattleCounts <- function(cattleCounts, datesInRange, cluster,
   points(x=datesInRange, y=positiveCounts, type="l", col=rgb(1,0,0, alpha=0.75))
   
   # Plot title
-  mtext("Number of Cattle Encountered by Sampled Cattle",
-        side=3)
+  mtext("Number of Cattle Encountered by Sampled Cattle", side=3)
   
   # Add lines to highlight years
   addLinesForYears(datesInRange)
   
   # Add a legend
-  legend("topleft", legend=c("Inconclusive", "Positive", "Total"), 
-         text.col=c("blue", "red"), bty="n", cex=1)
+  legend("topleft", legend=c("Inconclusive", "Positive"), text.col=c("blue", "red"), bty="n", cex=1)
   
   # Add the cluster number to plot
   if(addCluster == TRUE){
