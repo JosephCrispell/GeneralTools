@@ -17,10 +17,16 @@
 # Get a list of all pdf files in current directory
 PDFS=(`ls | grep ".pdf$"`)
 
-# Examine each PDF
-for (( PDFINDEX=0; PDFINDEX<${#PDFS[@]}; PDFINDEX+=1))
-do
+# Check if PDF file provided
+if [ "$#" == 1 ]
+then
+	PDFS=($1)
+fi
 
+# Examine each PDF
+for (( PDFINDEX=0; PDFINDEX<${#PDFS[@]}; PDFINDEX+=1 ))
+do
+#
 	# Get the current file
 	FILE=${PDFS[$PDFINDEX]}
 
@@ -31,7 +37,7 @@ do
 	echo -e "\e[0;34m Beginning to convert PDF: \e[0m"$FILE"\e[0;34m N. pages: \e[0m"$NPAGES
 
 	# Examine every page of current PDF
-	for (( PAGEINDEX=0; PAGEINDEX<$NPAGES; PAGEINDEX+=1))
+	for (( PAGEINDEX=0; PAGEINDEX<$NPAGES; PAGEINDEX+=1 ))
 	do
 
 		# Build name for PNG file

@@ -766,8 +766,8 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
          legend=c(paste0("corr = ", round(cor(variableImportance$RandomForestImportance, 
                                               variableImportance$BoostedRegressionImportance), digits=2)),
                   "Boosted Regression", "Random Forest", "Temporal", "Spatial", "Network"),
-         density=c(0, 75, 25, 0, 0, 0), angle=c(90, 90, 45), border=c("white", "black", "black", "white", "white", "white"), bty="n",
-         text.col=c("black", "black", temporalCol, spatialCol, networkCol), cex=legendInfo[[selection]][2],
+         density=c(0, 75, 25, 0, 0, 0), angle=c(90, 90, 45), border=c("white", "black", "black", "white", "white", "white"), 
+         bty="n", text.col=c("black", "black", "black", temporalCol, spatialCol, networkCol), cex=legendInfo[[selection]][2],
          xpd=TRUE)
   
   # Add labels for each bar

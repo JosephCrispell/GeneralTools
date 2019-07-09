@@ -7,6 +7,9 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 spoligotypes <- read.table(paste0(path, "Spoligo_APHA_2013-09-09.csv"), header=TRUE, sep=",",
                            stringsAsFactors=FALSE, fill=TRUE)
 
+# Quickly calculate the prevalence of each strain
+table(spoligotypes$Genotype) / nrow(spoligotypes)
+
 #### Select data for cattle within 15km of Woodchester Park ####
 
 # Note the coordinates of the badger centre
