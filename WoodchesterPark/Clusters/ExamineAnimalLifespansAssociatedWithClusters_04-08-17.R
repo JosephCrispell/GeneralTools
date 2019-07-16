@@ -114,20 +114,20 @@ plotAnimalLifespansForClusterSummariseUnSampled <- function(clusterTables, clust
     par(mfrow=c(2,1))
     
     # Plot the badger counts
-    plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE)
+    plotUnSampledBadgerCounts(badgerCounts, datesInRange, cluster, TRUE, "a", labelCex=labelCex)
 
     # Plot the lifespans of the sampled animals
-    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
+    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE, "b", labelCex=labelCex)
     
   }else if(unSampledBadgersPresent == FALSE && unSampledCattlePresent == TRUE){
     
     par(mfrow=c(2,1))
 
     # Plot the cattle counts
-    plotUnSampledCattleCounts(cattleCounts, datesInRange, cluster, TRUE)
+    plotUnSampledCattleCounts(cattleCounts, datesInRange, cluster, TRUE, "a", labelCex=labelCex)
     
     # Plot the lifespans of the sampled animals
-    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE)
+    plotSampledAnimalLifespans(sampled, datesInRange, cluster, FALSE, "b", labelCex=labelCex)
   }else{
     
     par(mfrow=c(1,1))
