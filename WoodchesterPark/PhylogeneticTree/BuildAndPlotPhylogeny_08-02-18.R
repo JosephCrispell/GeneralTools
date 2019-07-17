@@ -1141,7 +1141,7 @@ plotTree <- function(treeBS, nodes, colours, plotBSValues=FALSE, addAncestralSta
   
   # Add Scale bar
   points(x=c(-20, 30), y=c(-130, -130), type="l", lwd=3, xpd=TRUE)
-  text(x=5, y=-135, labels="50 SNPs", cex=1, xpd=TRUE)
+  text(x=5, y=-135, labels="50 SNVs", cex=1, xpd=TRUE)
   
   # Add Clade labels - and highlighting semicircles
   for(i in seq_along(nodesDefiningClades)){ #  c(528, 539, 638, 497, 630)

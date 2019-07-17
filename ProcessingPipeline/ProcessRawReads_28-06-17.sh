@@ -536,7 +536,7 @@ do
 		# -f Flag: onlu include reads with all of the FLAGS in INT present
 		samtools view $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
 		perl $PICKREADS 10 $UNMAPPEDFILE $RANDOMREADS # Pick 10 random unmapped reads
-		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote
+		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote # CHANGE THE NUMBER OF ALIGNMENTS!?! -num_alignments OR -max_target_seqs
 		perl $EXAMINEBLASTOUTPUT 1 $BLASTOUTPUT > $BLASTHITS
 
 		# Remove the unneccesary files
