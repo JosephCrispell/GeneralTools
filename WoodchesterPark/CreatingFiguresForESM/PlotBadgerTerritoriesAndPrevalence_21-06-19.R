@@ -110,8 +110,8 @@ convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
   spatialDFLatLongs <- spTransform(spatialDF, CRS(latLong))
   
   # Create a table to store the converted points
-  output <- data.frame(Longitude=spatialDFLatLongs@coords[,"Northing"],
-                       Latitude=spatialDFLatLongs@coords[,"Easting"])
+  output <- data.frame(Longitude=spatialDFLatLongs@coords[,"Easting"],
+                       Latitude=spatialDFLatLongs@coords[,"Northing"])
   
   # Return the lat longs
   return(output)

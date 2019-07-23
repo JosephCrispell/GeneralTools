@@ -4,14 +4,17 @@ library(ape)
 library(phangorn)
 library(phytools)
 library(geiger)
+library(rgdal) # Convert X and Y to lat longs and reading in shape files
+library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
 
-#### Load data ####
+#### Load sampling information ####
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -28,6 +31,46 @@ nSites <- getNSitesInFASTA(fastaFile)
 # Read in the coverage information
 coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_19-03-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+#### Load the spatial data ####
+
+### Read in the badger shape file
+shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\badgers.shp")
+badgerShapeFile <- readOGR(dsn=shapeFile)
+
+# Extract the location data - X and Y coords
+badgerLocations <- data.frame("Aliquot"=as.character(badgerShapeFile$ALIQUOT),
+                              "X"=badgerShapeFile$X_COORD,
+                              "Y"=badgerShapeFile$Y_COORD, stringsAsFactors=FALSE)
+
+# Convert the X and Y coords to longitudes and latitudes
+latLongs <- convertXYToLatLongs(x=badgerLocations$X, y=badgerLocations$Y)
+badgerLocations$Lat <- latLongs$Latitude
+badgerLocations$Long <- latLongs$Longitude
+
+### Read in the deer shape file
+shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\deer.shp")
+deerShapeFile <- readOGR(dsn = shapeFile)
+
+# Store the latitude and longitude
+deerLocations <- data.frame("Aliquot"=as.character(deerShapeFile$ALIQUOT), 
+                            "Lat"=deerShapeFile$LAT,
+                            "Long"=deerShapeFile$LONG)
+
+# Convert longitudes and latitudes to X and Y coordinates
+coords <- convertLatLongsToXY(latitudes=deerLocations$Lat, longitudes=deerLocations$Long)
+deerLocations$X <- coords$X
+deerLocations$Y <- coords$Y
+
+### Read in the cattle herd shape file
+shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\farms_common.shp")
+cattleShapeFile <- readOGR(dsn = shapeFile)
+
+# Extract the polygon coords
+landParcelCoords <- getPolygonCoords(cattleShapeFile)
+
+# Extract the sampld herd information
+herdInfo <- cattleShapeFile@data
 
 #### Build phylogeny ####
 
@@ -100,6 +143,32 @@ par(mar=currentMar)
 # Close the output pdf
 dev.off()
 
+#### Plot the sampling locations ####
+
+# Add tip locations to tip info for badgers and deer
+tipInfo <- addBadgerAndDeerLocationsToTipInfo(tipInfo, badgerLocations, deerLocations)
+
+# Note the herd IDs associated with each cow
+tipInfo <- addHerdIDsToTipInfo(tipInfo, herdInfo)
+
+
+# Get a satellite image of the area
+map <- getSatelliteImage(upperLeft=c(53.155281,-6.2725187), 
+                         lowerRight=c(52.9964272,-5.9834407))
+
+# Plot the satellite image
+par(mar=c(0,0,0,0))
+plot(map)
+
+# Plot the badger and deer sampling locations
+points(tipInfo$X, tipInfo$Y, 
+     pch=ifelse(tipInfo$Species == "Badger", 21, 22),
+     bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
+     col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=2)
+
+# Add the cattle herd land parcels
+plotHerdLandParcels(tipInfo, landParcelCoords)
+
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
 # Get the metadata for the aliquots that haven't been sequenced
@@ -109,7 +178,219 @@ notSequencedInfo <- metadata[metadata$Aliquot %in% tipInfo$Aliquot == FALSE, ]
 notSequencedFile <- paste0(path, "AliquotsNotSequenced_", date, ".csv")
 write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, sep=",", row.names=FALSE)
 
-#### FUNCTIONS ####
+#### FUNCTIONS - Satellite image ####
+
+getSatelliteImage <- function(upperLeft, lowerRight){
+  
+  # Get a satellite image of the area
+  # Maps are initially put in a sperical mercator projection which is the standard for most (all?) map tiling systems
+  map <- openmap(upperLeft,lowerRight, type="bing")
+  
+  # Convert from
+  mapROIGrid <- openproj(map, projection=CRS("+init=epsg:29903"))
+  
+  return(mapROIGrid)
+}
+
+#### FUNCTIONS - Shape files ####
+
+plotHerdLandParcels <- function(tipInfo, landParcelCoords, ...){
+  
+  # Plot the cattle herd land parcels
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Skip badgers and deer
+    if(tipInfo[row, "Species"] != "Cow"){
+      next
+    }
+    
+    # Get herd code
+    herdCode <- tipInfo[row, "HerdCode"]
+    
+    # Skip if herd code not available - send warning
+    if(is.na(herdCode)){
+      
+      # Send warning message
+      warning(paste0("No herd code available for aliquot: ", tipInfo[row, "Aliquot"]))
+      next
+    }
+    
+    # Examine the land parcel polygons for the current herd
+    for(fieldIndex in seq_len(length(landParcelCoords[[herdCode]]))){
+      
+      # Plot the current polygon
+      polygon(landParcelCoords[[herdCode]][[fieldIndex]][, c("X", "Y")], ...)
+    }
+  }
+}
+
+addHerdIDsToTipInfo <- function(tipInfo, herdInfo){
+  
+  # Add an empty herd code column
+  tipInfo$HerdCode <- NA
+  
+  # Examine each of the tips
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Skip badgers and deer
+    if(tipInfo[row, "Species"] != "Cow"){
+      next
+    }
+    
+    # Get the current tips aliquot
+    aliquot <- tipInfo[row, "Aliquot"]
+    
+    # Get the row in the herd info table for the current aliquot
+    rowInHerdInfo <- which(herdInfo$ALIQUOT == aliquot)
+    
+    # Store the herd ID
+    if(length(rowInHerdInfo) > 0){
+      tipInfo[row, "HerdCode"] <- as.character(herdInfo[rowInHerdInfo, "HERD_CODE"] - 1)
+    }
+  }
+  
+  return(tipInfo)
+}
+
+addBadgerAndDeerLocationsToTipInfo <- function(tipInfo, badgerLocations, deerLocations){
+  
+  # Add extra columns to store the location information
+  tipInfo$X <- NA
+  tipInfo$Y <- NA
+  tipInfo$Longitude <- NA
+  tipInfo$Latitude <- NA
+  
+  # Examine each of tips
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Check if current tip associated with badger
+    if(tipInfo[row, "Species"] == "Badger"){
+    
+      # Get the current tips aliquot
+      aliquot <- tipInfo[row, "Aliquot"]
+      
+      # Get the row in the locations table for the current aliquot
+      locationRow <- which(badgerLocations$Aliquot == aliquot)
+      
+      # Store the sampling location for the current badger
+      tipInfo[row, "X"] <- badgerLocations[locationRow, "X"]
+      tipInfo[row, "Y"] <- badgerLocations[locationRow, "Y"]
+      tipInfo[row, "Longitude"] <- badgerLocations[locationRow, "Long"]
+      tipInfo[row, "Latitude"] <- badgerLocations[locationRow, "Lat"]
+    
+    # Check if current tip associated with deer
+    }else if(tipInfo[row, "Species"] == "Deer"){
+      
+      # Get the current tips aliquot
+      aliquot <- tipInfo[row, "Aliquot"]
+      
+      # Get the row in the locations table for the current aliquot
+      locationRow <- which(deerLocations$Aliquot == aliquot)
+      
+      # Store the sampling location for the current badger
+      tipInfo[row, "X"] <- deerLocations[locationRow, "X"]
+      tipInfo[row, "Y"] <- deerLocations[locationRow, "Y"]
+      tipInfo[row, "Longitude"] <- deerLocations[locationRow, "Long"]
+      tipInfo[row, "Latitude"] <- deerLocations[locationRow, "Lat"]
+    }
+  }
+  
+  return(tipInfo)
+}
+
+getPolygonCoords <- function(spatialDataFrame){
+  
+  # Got some good information from: https://stackoverflow.com/questions/29803253/r-extracting-coordinates-from-spatialpolygonsdataframe
+  # Also from my blog: https://josephcrispell.github.io/BlogPosts/GetPolygonsFromShapeFile_11-10-17/GetPolygonsFromShapeFile_11-10-17.html
+  # WHICH NEEDS UPDATED!!!!
+  
+  
+  # Note the number of polygon sets - one for each ID
+  nSets <- length(cattleShapeFile@polygons)
+  
+  # Initialise a list to store the IDs and coordinates of each polygon
+  output <- list()
+  
+  # Loop through all the sets of polygons
+  for(setIndex in seq_len(nSets)){
+    
+    # Get the ID of the current polygon set
+    id <- cattleShapeFile@polygons[[setIndex]]@ID
+    
+    # Note the number of polygons in the current set
+    nPolygons <- length(cattleShapeFile@polygons[[setIndex]]@Polygons)
+    
+    # Initialise a list to store the coordinates of each polygon in current set
+    polygons <- list()
+    
+    # Examine each polygon in current set
+    for(polygonIndex in seq_len(nPolygons)){
+      
+      # Get the coordinates for the current polygon
+      coords <- cattleShapeFile@polygons[[setIndex]]@Polygons[[polygonIndex]]@coords
+      colnames(coords) <- c("X", "Y")
+      
+      # Convert them to latitude and longitude
+      latLongs <- convertXYToLatLongs(x=coords[, 1], y=coords[, 2])
+      
+      # Store the latitude and longitudes and X and Y coords
+      polygons[[polygonIndex]] <- cbind(latLongs, coords)
+    }
+    
+    # Store the polygon coordinates
+    output[[id]] <- polygons
+  }
+  
+  return(output)
+}
+
+convertXYToLatLongs <- function(x, y, grid="+init=epsg:29903"){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  latLong <- "+init=epsg:4326"
+  
+  # Create a coordinates variable
+  coords <- cbind(X = x, Y = y)
+  
+  # Create a SpatialPointsDataFrame
+  spatialDF <- SpatialPoints(coords, proj4string = CRS(grid))
+  
+  # Convert the X and Ys to Longitudes and Latitudes
+  spatialDFLatLongs <- spTransform(spatialDF, CRS(latLong))
+  
+  # Create a table to store the converted points
+  output <- data.frame(Latitude=spatialDFLatLongs@coords[,"Y"],
+                       Longitude=spatialDFLatLongs@coords[,"X"])
+  
+  # Return the lat longs
+  return(output)
+}
+
+convertLatLongsToXY <- function(latitudes, longitudes, latLong="+init=epsg:4326"){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  grid="+init=epsg:29903"
+  
+  # Create a coordinates variable
+  coords <- cbind(Longitude=longitudes, Latitude=latitudes)
+  
+  # Create a SpatialPointsDataFrame
+  spatialDF <- SpatialPoints(coords, proj4string = CRS(latLong))
+  
+  # Convert the latitude and longitudes to X and Y coordinates
+  spatialDFLatLongs <- spTransform(spatialDF, CRS(grid))
+  
+  # Create a table to store the converted points
+  output <- data.frame(X=spatialDFLatLongs@coords[,"Longitude"],
+                       Y=spatialDFLatLongs@coords[,"Latitude"])
+  
+  # Return the X and Y coordinates
+  return(output)
+}
+
+#### FUNCTIONS - Phylogeny ####
 
 pickDuplicatedTipToRemove <- function(duplicatedTipInfo){
   
