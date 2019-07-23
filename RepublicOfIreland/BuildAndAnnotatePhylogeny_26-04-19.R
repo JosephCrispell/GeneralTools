@@ -169,6 +169,16 @@ points(tipInfo$X, tipInfo$Y,
 # Add the cattle herd land parcels
 plotHerdLandParcels(tipInfo, landParcelCoords)
 
+# Working on getting field centroids
+library(rgeos)
+
+centroids <- gCentroid(cattleShapeFile, byid=TRUE) # Gives centroids for each farm - not field
+
+
+
+
+
+
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
 # Get the metadata for the aliquots that haven't been sequenced
