@@ -109,7 +109,6 @@ tree <- drop.tip(tree, remove)
 # Update the tip information
 tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 
-
 #### Plot the phylogeny ####
 
 # Open an output PDF
@@ -151,31 +150,52 @@ tipInfo <- addBadgerAndDeerLocationsToTipInfo(tipInfo, badgerLocations, deerLoca
 # Note the herd IDs associated with each cow
 tipInfo <- addHerdIDsToTipInfo(tipInfo, herdInfo)
 
+# Calculate the centroids of each herd's field
+herdCentroids <- calculateLandParcelCentroids(landParcelCoords)
+
+# Get the bounds of all the spatial data
+
+
+# Get the bounds off all the spatial data and convert to lat longs
+bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
+                                           cattleShapeFile@bbox)
+boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],
+                                       y=bounds[2, ])
 
 # Get a satellite image of the area
-map <- getSatelliteImage(upperLeft=c(53.155281,-6.2725187), 
-                         lowerRight=c(52.9964272,-5.9834407))
+map <- getSatelliteImage(upperLeft=c(boundsLongsLats[2, 1], boundsLongsLats[1, 2]), 
+                         lowerRight=c(boundsLongsLats[1, 1], boundsLongsLats[2, 2]))
+
+# Open an output PDF
+outputPlotFile <- paste0(path, "SamplingLocations_", date, ".pdf")
+pdf(outputPlotFile)
 
 # Plot the satellite image
-par(mar=c(0,0,0,0))
 plot(map)
+
+# Add the cattle herd land parcels
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, col=rgb(0,1,0, 0.1),
+                    border=rgb(0,0,0,1), plotHerds=FALSE, plotLines=FALSE)
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, 
+                    connectingLineColour=rgb(0,0,1, 0.25), plotPolygons=FALSE,
+                    plotHerds=FALSE)
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
+                    plotLines=FALSE)
 
 # Plot the badger and deer sampling locations
 points(tipInfo$X, tipInfo$Y, 
      pch=ifelse(tipInfo$Species == "Badger", 21, 22),
      bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
-     col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=2)
+     col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
 
-# Add the cattle herd land parcels
-plotHerdLandParcels(tipInfo, landParcelCoords)
-
-# Working on getting field centroids
-library(rgeos)
-
-centroids <- gCentroid(cattleShapeFile, byid=TRUE) # Gives centroids for each farm - not field
+dev.off()
 
 
 
+
+
+
+#### Plot phylogeny linked to spatial locations ####
 
 
 
@@ -204,7 +224,59 @@ getSatelliteImage <- function(upperLeft, lowerRight){
 
 #### FUNCTIONS - Shape files ####
 
-plotHerdLandParcels <- function(tipInfo, landParcelCoords, ...){
+calculateBoundsForAllSpatialData <- function(badgerBounds, deerBounds, cattleBounds){
+  
+  # Initialise a dataframe to store the overall bounds
+  bounds <- cattleBounds
+  
+  # Calculate the bounds across the badger, deer and cattle locations
+  bounds[1, ] <- range(badgerBounds[1, ], deerBounds[1, ], cattleBounds[1, ])
+  bounds[2, ] <- range(badgerBounds[2, ], deerBounds[2, ], cattleBounds[2, ])
+  
+  return(bounds)
+}
+
+calculateLandParcelCentroids <- function(landParcelCoords){
+  
+  # Initialise a list to store the centroids associated with each herd
+  herdCentroids <- list()
+  
+  # Examine each of the herd
+  for(herd in names(landParcelCoords)){
+    
+    # Initialise two vectors to store the X and Y coordinates of each field's centroid
+    centroidsX <- c()
+    centroidsY <- c()
+    
+    # Examine the field polygons for the current herd
+    for(fieldIndex in seq_len(length(landParcelCoords[[herd]]))){
+      
+      # Get the polygon coordinates for the current field
+      coords <- landParcelCoords[[herd]][[fieldIndex]]
+      
+      # Calculate the centroid for the current field
+      centroidsX[fieldIndex] <- mean(coords$X)
+      centroidsY[fieldIndex] <- mean(coords$Y)
+    }
+    
+    # Calculate the overall centroid for the current herd
+    overallX <- mean(centroidsX)
+    overallY <- mean(centroidsY)
+    
+    # Store the calculated centroids
+    herdCentroids[[herd]] <- list(
+      "X"=overallX,
+      "Y"=overallY,
+      "CentroidXs"=centroidsX,
+      "CentroidYs"=centroidsY)
+  }
+  
+  return(herdCentroids)
+}
+
+plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
+                                connectingLineColour, plotPolygons=TRUE,
+                                plotLines=TRUE, plotHerds=TRUE, ...){
   
   # Plot the cattle herd land parcels
   for(row in seq_len(nrow(tipInfo))){
@@ -229,7 +301,24 @@ plotHerdLandParcels <- function(tipInfo, landParcelCoords, ...){
     for(fieldIndex in seq_len(length(landParcelCoords[[herdCode]]))){
       
       # Plot the current polygon
-      polygon(landParcelCoords[[herdCode]][[fieldIndex]][, c("X", "Y")], ...)
+      if(plotPolygons){
+        polygon(landParcelCoords[[herdCode]][[fieldIndex]][, c("X", "Y")], ...)
+      }
+      
+      # Connect current field to overall herd centre
+      if(plotLines){
+        points(x=c(herdCentroids[[herdCode]]$X, 
+                   herdCentroids[[herdCode]]$CentroidXs[fieldIndex]),
+               y=c(herdCentroids[[herdCode]]$Y, 
+                   herdCentroids[[herdCode]]$CentroidYs[fieldIndex]),
+               type="l", col=connectingLineColour)
+      }
+    }
+    
+    # Plot a symbol at the current herd's overall centre
+    if(plotHerds){
+      points(x=herdCentroids[[herdCode]]$X, y=herdCentroids[[herdCode]]$Y,
+             pch=24, bg=rgb(0,0,1, 0.75), col="white")
     }
   }
 }
