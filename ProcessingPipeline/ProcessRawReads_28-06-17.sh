@@ -14,14 +14,18 @@
 ####################
 
 function checkIfHelpStatementRequested {
-	if [ "$#" -ne 6 ]
+
+	# Get the number of arguments from the inpur parameter
+	NUMARGS=$1
+
+	# Check if correct number of input arguments were provided
+	if [ $NUMARGS -ne 5 ]
 	then
 		echo -e "\e[0;34m bash script designed to process paired raw read FASTQ files \e[0m"
 		echo " Command line structure:"
-		echo "	bash ProcessRawReads.sh fileEnding trimGalore prinseq pathToRef pickRandomReads examineBlastOutput"
+		echo "	bash ProcessRawReads.sh fileEnding cutadapt pathToRef pickRandomReads examineBlastOutput"
 		echo "		fileEnding: 		The ending of each FASTQ file that is common to all"
-		echo "		trimGalore:		Would you like to use trim_galore to remove adaptors? [pathToTrimGalore/false]"
-		echo "		prinseq:		Would you like to use prinseq to trim the reads? [pathToPrinseq/false]"
+		echo "		cutadapt:		Would you like to use cutadapt to remove adaptors and trim the reads? [pathToCutadapt/false]"
 		echo "		pathToRef:		Provide full path to indexed (bwa index) reference fasta sequence"
 		echo "		pickRandomReads:	Provide full path to perl script that randomly picks unmapped reads to blast"
 		echo "		examineBlastOutput:	Provide full path to perl script that examines blast output"
@@ -37,7 +41,7 @@ function checkIfHelpStatementRequested {
 		echo "	Needs access and sudo rights to the internet to run BLAST searches on de novo assembled unmapped reads of poorly mapped"
 		echo "	Threshold for BLASTING unmapped reads is hard coded = 0.9. Edit script to change."
 		echo "	Uses the 1st column of file names to create unique file name"
-		echo "	If wanting to specify Prinseq settings outside of this bash script. Put settings into file with start: PrinseqSettings. Use same format as used in this script"
+		echo "	If wanting to specify Cutadapt settings outside of this bash script. Put settings into file with start: CutadaptSettings. Use same format as used in this script"
 
 		# Exit without an error
 		exit 0
@@ -127,33 +131,49 @@ function checkToolsAreInstalled {
 	fi
 }
 
-function checkForPrinseqSettingsFile {
+function checkForCutadaptSettingsFile {
 
-	# Check for Prinseq settings file
-	FOUNDPRINSEQSETTINGS=`ls | grep "PrinseqSettings" | wc -l`
-	if [ $FOUNDPRINSEQSETTINGS == "1" ]
+	# Check for Cutadapt settings file
+	FOUNDCUTADAPTSETTINGS=`ls | grep "CutadaptSettings" | wc -l`
+	if [ $FOUNDCUTADAPTSETTINGS == "1" ]
 	then
 
-		# Get the Prinseq settings file
-		PRINSEQSETTINGS=`ls | grep "PrinseqSettings"`
+		# Get the Cutadapt settings file
+		CUTADAPTSETTINGS=`ls | grep "CutadaptSettings"`
 
-		# Notify that found Prinseq Settings
+		# Notify that found Cutadapt Settings
 		echo
-		echo "Found Prinseq settings in "$PRINSEQSETTINGS
+		echo "Found Cutadapt settings in "$CUTADAPTSETTINGS
 
 		# Read settings from file
 		while read LINE
 		do
 
+			# First adapter sequence - Illumina universal adapter
+			if [ `echo $LINE | grep "UNIVERSALADAPTER1" | wc -l` == "1" ]
+			then
+				UNIVERSALADAPTER1=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
+
+				# Remove quotes from string
+				UNIVERSALADAPTER1="${UNIVERSALADAPTER1//\"/}"
+
+			# First adapter sequence - Nextera Transposase sequence
+			elif [ `echo $LINE | grep "UNIVERSALADAPTER2" | wc -l` == "1" ]
+			then
+				UNIVERSALADAPTER2=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
+
+				# Remove quotes from string
+				UNIVERSALADAPTER2="${UNIVERSALADAPTER2//\"/}"
+
 			# Read length filter
-			if [ `echo $LINE | grep "LENGTH" | wc -l` == "1" ]
+			elif [ `echo $LINE | grep "LENGTH" | wc -l` == "1" ]
 			then
 				LENGTH=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 
 			# Read mean quality filter
-			elif [ `echo $LINE | grep "MEANQUAL" | wc -l` == "1" ]
+			elif [ `echo $LINE | grep "QUAL" | wc -l` == "1" ]
 			then
-				MEANQUAL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
+				QUAL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 
 			# Number of sites to trim off left
 			elif [ `echo $LINE | grep "TRIML=" | wc -l` == "1" ]
@@ -165,85 +185,46 @@ function checkForPrinseqSettingsFile {
 			then
 				TRIMR=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 
-			# Quality filter for sliding window working from left
-			elif [ `echo $LINE | grep "TRIMQUALL" | wc -l` == "1" ]
+			# Threshold for proportion of Ns in reads
+			elif [ `echo $LINE | grep "PROPN=" | wc -l` == "1" ]
 			then
-				TRIMQUALL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-
-			# Quality filter for sliding window working from right
-			elif [ `echo $LINE | grep "TRIMQUALR" | wc -l` == "1" ]
-			then
-				TRIMQUALR=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-
-			# Summary statistic for sliding window
-			elif [ `echo $LINE | grep "TRIMTYPE" | wc -l` == "1" ]
-			then
-				TRIMTYPE=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-				TRIMTYPE="${TRIMTYPE//\"/}"
-
-			# Sliding window size
-			elif [ `echo $LINE | grep "WINDSIZE" | wc -l` == "1" ]
-			then
-				WINDSIZE=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-
-			# Size of nucleotide repeat to filter from left
-			elif [ `echo $LINE | grep "TRIMLTAIL" | wc -l` == "1" ]
-			then
-				TRIMLTAIL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
-
-			# Size of nucleotide repeat to filter from right
-			elif [ `echo $LINE | grep "TRIMRTAIL" | wc -l` == "1" ]
-			then
-				TRIMRTAIL=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
+				PROPN=`echo $LINE | awk '{ split($0, array, "="); split(array[2], output, " "); print output[1] }'`
 			fi
 
-		done <$PRINSEQSETTINGS
+		done <$CUTADAPTSETTINGS
 
-		echo "Using the following Prinseq settings:"
-		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
-		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
-		echo "	TRIML = "$TRIML"	Trim sequence at the 5' end by x positions"
-		echo "	TRIMR = "$TRIMR"	Trim sequence at the 3' end by x positions"
-		echo "	TRIMQUALL = "$TRIMQUALL"	Trim sequence by quality score from the 5' end with this threshold score"
-		echo "	TRIMQUALR = "$TRIMQUALR"	Trim sequence by quality score from the 3' end with this threshold score"
-		echo "	TRIMTYPE = "$TRIMTYPE"	Type of quality score calculation to use [min, mean, max, sum]"
-		echo "	WINDSIZE = "$WINDSIZE"	The sliding window size used to calculate quality score by type"
-		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
-		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
-
-	else
-
-		echo
-		echo "Using the following Prinseq settings:"
-		echo "	READLENGTH = "$LENGTH"	The minimum length of read to be accepted"
-		echo "	MEANQUAL = "$MEANQUAL"	Filter sequence if mean quality score below x"
-		echo "	TRIML = "$TRIML"	Trim sequence at the 5' end by x positions"
-		echo "	TRIMR = "$TRIMR"	Trim sequence at the 3' end by x positions"
-		echo "	TRIMQUALL = "$TRIMQUALL"	Trim sequence by quality score from the 5' end with this threshold score"
-		echo "	TRIMQUALR = "$TRIMQUALR"	Trim sequence by quality score from the 3' end with this threshold score"
-		echo "	TRIMTYPE = "$TRIMTYPE"	Type of quality score calculation to use [min, mean, max, sum]"
-		echo "	WINDSIZE = "$WINDSIZE"	The sliding window size used to calculate quality score by type"
-		echo "	TRIMLTAIL = "$TRIMLTAIL"	Trim poly A/T > X length at 5' end"
-		echo "	TRIMRTAIL = "$TRIMRTAIL"	Trim poly A/T > X length at 3' end"
 	fi
+
+	echo "Using the following Cutadapt settings:"
+	echo "	UNIVERSALADAPTER1 = "$UNIVERSALADAPTER1"	Illumina universal adapter sequence"
+	echo "	UNIVERSALADAPTER2 = "$UNIVERSALADAPTER2"	Nextera Transposase sequence"
+	echo "	READLENGTH = "$LENGTH"				The minimum length of read to be accepted"
+	echo "	QUAL = "$QUAL"				Trim low-quality bases from 5' and 3' ends"
+	echo "	TRIML = "$TRIML"				Trim sequence at the 5' end by x positions"
+	echo "	TRIMR = "$TRIMR"				Trim sequence at the 3' end by x positions"
+	echo "	PROPN = "$PROPN"				Discard reads with more than this proportion of Ns"
 }
 
 ###########################
 # Print Help if requested #
 ###########################
 
-checkIfHelpStatementRequested $1
+NUMARGS=$#
+checkIfHelpStatementRequested $NUMARGS
 
 #############################
 # Get the input information #
 #############################
 
+# Get the command line information
 FILEENDING=$1 # Get the common FASTQ file ending
-TRIMGALORE=$2 # Note whether to remove adaptors with trim_galore
-PRINSEQ=$3 # Get the path to the prinseq tool
-REFERENCE=$4 # Get the path to the Reference fasta file
-PICKREADS=$5 # Get path to perl script that extracts reads from SAM file
-EXAMINEBLASTOUTPUT=$6 # Get path to perl script that examines blast output
+CUTADAPT=$2 # Note whether to trim reads and remove adapters
+REFERENCE=$3 # Get the path to the Reference fasta file
+PICKREADS=$4 # Get path to perl script that extracts reads from SAM file
+EXAMINEBLASTOUTPUT=$5 # Get path to perl script that examines blast output
+
+# Get number of threads of computer
+NTHREADS=`nproc --all`
 
 # Create the output isolate mapping file
 DATE=`date +"%d-%m-%y"`
@@ -252,8 +233,7 @@ SAMSUMMARY="isolateMappingSummary_"$DATE".txt" # Get the name of the file to inp
 # Report input settings
 echo -e "\e[0;34m The following input information was provided: \e[0m"
 echo -e "\e[0;32m 	Searching for FASTQ files with ending: \e[0m"$FILEENDING
-echo -e "\e[0;32m 	Path to trim_galore tool: \e[0m"$TRIMGALORE
-echo -e "\e[0;32m 	Path to prinseq tool: \e[0m"$PRINSEQ
+echo -e "\e[0;32m 	Path to cutadapt tool: \e[0m"$CUTADAPT
 echo -e "\e[0;32m 	Path to M. bovis reference sequence: \e[0m"$REFERENCE
 echo -e "\e[0;32m 	Path to perl script that extracts sequences from FASTA: \e[0m"$PICKREADS
 echo -e "\e[0;32m 	Path to perl script that examines BLAST output: \e[0m"$EXAMINEBLASTOUTPUT
@@ -268,23 +248,20 @@ echo "Isolate	NumberMappedReads	NumberUnmappedReads	NumberMultimappedReads" > $S
 ##########################
 
 
-if [ ! $PRINSEQ == "false" ]
+if [ ! $CUTADAPT == "false" ]
 then
 
 	# Define Prinseq settings - USE THIS FORMAT FOR INPUT FILE IF USING ONE
-	LENGTH=50			# The minimum length of read to be accepted
-	MEANQUAL=20			# Filter sequence if mean quality score below x
-	TRIML=20			# Trim sequence at the 5' end by x positions
-	TRIMR=5				# Trim sequence at the 3' end by x positions
-	TRIMQUALL=20		# Trim sequence by quality score from the 5' end with this threshold
-	TRIMQUALR=20		# Trim sequence by quality score from the 3' end with this threshold score
-	TRIMTYPE="mean"		# Type of quality score calculation to use [min, mean, max, sum]
-	WINDSIZE=10			# The sliding window size used to calculate quality score by type
-	TRIMLTAIL=5			# Trim poly A/T > X length at 5' end
-	TRIMRTAIL=5			# Trim poly A/T > X length at 3' end
+	UNIVERSALADAPTER1="AGATCGGAAGAG" # Illumina universal adapter sequence (source: https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt)
+	UNIVERSALADAPTER2="CTGTCTCTTATA" # Nextera Transposase sequence (source:https://github.com/s-andrews/FastQC/blob/master/Configuration/adapter_list.txt)
+	LENGTH=50                        # The minimum length of read to be accepted
+	QUAL=25                          # Trim low-quality bases from 5' and 3' ends
+	PROPN=0.5                        # Discard reads with more than this proportion of Ns
+	TRIML=20                         # Trim sequence at the 5' end by x positions
+	TRIMR=5                          # Trim sequence at the 3' end by x positions
 
 	# Check if Prinseq settings file is available with settings
-	checkForPrinseqSettingsFile $PRINSEQ
+	checkForCutadaptSettingsFile $CUTADAPT
 fi
 
 
@@ -356,15 +333,29 @@ do
 	FILE1=`echo ${FILE1:0:-3}` # Remove the .gz from the file name
 	FILE2=`echo ${FILE2:0:-3}`
 
-	####### Removing the adapter sequence #######
-	# --paired: Used paired-end reads
-	if [ ! $TRIMGALORE == "false" ]
+	####### Removing adapter sequences and trim reads #######
+
+	if [ ! $CUTADAPT == "false" ]
 	then
-		echo -e "\e[0;34m Removing adapter sequences if present... \e[0m"
-		$TRIMGALORE --paired $FILE1 $FILE2
+		echo -e "\e[0;34m Trimming reads with cutadapt... \e[0m"
+		
+		# Build the trimmed output files
+		TRIMMED1=$PAIRID"_"$RUN"_forward_trimmed.fastq"
+		TRIMMED2=$PAIRID"_"$RUN"_reverse_trimmed.fastq"
+
+		# Trim the reads and remove adapters with cutadapt
+		# -b[-B]             Adapter sequence to remove - can be ligated to 3' or 5' end on FORWARD[REVERSE] read
+		# -o[-p]             Output file name for trimmed FORWARD[REVERSE] reads
+		# -u[-U]             Remove bases from FORWARD[REVERSE] read. If positive - remove from beginning. If negative - remove from end.
+		# --minimum-length   Discard reads shorter than this
+		# --trim-n           Trim N's on ends of reads
+		# --max-n            Discard reads with more than this number of N bases. If ranges between 0 and 1 - interpreted as a fraction of read length
+		# --quality-cutoff   Trim low-quality bases from 5' and 3' ends of each read before adapter removal. Two values=5',3'
+		# --cores            Number of CPU cores to use
+		cutadapt -b $UNIVERSALADAPTER1 -B $UNIVERSALADAPTER1 -b $UNIVERSALADAPTER2 -B $UNIVERSALADAPTER2 -o $TRIMMED1 -p $TRIMMED2 $FILE1 $FILE2 --minimum-length=$LENGTH --trim-n --max-n=$PROPN --quality-cutoff=$QUAL","$QUAL -u $TRIML -u "-"$TRIMR -U $TRIML -U "-"$TRIMR --cores=$NTHREADS
 
 		# Zip original fastq files
-		if [ type "pigz" > /dev/null 2>&1; ]
+		if type "pigz" > /dev/null 2>&1;
 		then
 			pigz $FILE1
 			pigz $FILE2
@@ -374,72 +365,20 @@ do
 		fi
 
 		# Get the output files from trim galore
-		echo -e "\e[0;34m Adapter sequences removed. \e[0m"
-		FILE1=`ls | grep $PAIRID".*_val_1"`
-		FILE2=`ls | grep $PAIRID".*_val_2"`
-
-		# Remove the unecessary output files
-		rm *trim*
+		echo -e "\e[0;34m Finished read trimming and adapter removal. \e[0m"
+		FILE1=$TRIMMED1
+		FILE2=$TRIMMED2
 
 		# Check found the correct files
 		echo "	$FILE1"
 		echo "	$FILE2"
 	fi
 
-	####### Trim the Reads #######
-	# Using program Prinseq -> Trimming reads to remove low quality bases according to the Phred Scoring system
-	# min_len: The minimum length of read to be accepted
-	# min_qual_mean: Filter sequence if mean quality score below x
-	# trim_left: Trim sequence at the 5' end by x positions
-	# trim_right: Trim sequence at the 3' end by x positions	# trim_qual_left: Trim sequence by quality score from the 5' end with this threshold score
-	# trim_qual_left: Trim sequence by quality score from the 3' end with this threshold score
-	# trim_qual_right: Trim sequence by quality score from the 3' end with this threshold score
-	# trim_qual_type: Type of quality score calculation to use [min, mean, max, sum]
-	# trim_qual_window: The sliding window size used to calculate quality score by type. To stop at the first base that fails the rule defined,
-	#					use a window size of 1
-	if [ ! $PRINSEQ == "false" ]
-	then
-		echo -e "\e[0;34m Beginning Read Trimming... \e[0m"
-		perl $PRINSEQ -fastq $FILE1 -fastq2 $FILE2 -min_len $LENGTH -min_qual_mean $MEANQUAL -trim_left $TRIML -trim_right $TRIMR -trim_qual_left $TRIMQUALL -trim_qual_right $TRIMQUALR -trim_qual_type $TRIMTYPE -trim_qual_window $WINDSIZE -trim_tail_right $TRIMRTAIL -trim_tail_left $TRIMLTAIL
-
-		# Remove files previously stored under FILE1 and FILE2
-		if [ ! $TRIMGALORE == "false" ]
-		then
-			rm $FILE1
-			rm $FILE2
-		else
-
-			if type "pigz" > /dev/null 2>&1;
-			then
-				pigz $FILE1
-				pigz $FILE2
-			else
-				gzip $FILE1
-				gzip $FILE2
-			fi
-		fi
-
-		# Find the output files
-		echo -e "\e[0;34m Read Trimming Complete. \e[0m"
-		TRIMFILES=(`ls | grep $PAIRID".*prinseq_good" | grep -v "singletons"`)
-		FILE1=${TRIMFILES[0]}
-		FILE2=${TRIMFILES[1]}
-
-		echo "	$FILE1"
-		echo "	$FILE2"
-
-		# Remove unecessary files
-		rm *prinseq_bad*
-		rm *prinseq_good_singletons*
-	fi
-
 	# Get the read length - of first forward read
 	READLENGTH=`sed '2q;d' $FILE1 | wc | awk '{ split($0, array, " "); print array[3] }'`
 
 	####### Alignment #######
-	# Get number of threads of computer
-	NTHREADS=`nproc --all`
-
+	
 	# Generate SAM file
 	# Create a name for the SAM file
 	SAMFILE=$PAIRID"_"$RUN"_aln-pe.sam"
@@ -475,8 +414,8 @@ do
 
 	echo -e "\e[0;34m SAM file created. \e[0m"
 
-	# Remove un-needed files
-	if [ $TRIMGALORE == "false" ] && [ $PRINSEQ == "false" ]
+	# Remove un-needed trimmed files if present
+	if [ $CUTADAPT == "false" ]
 	then
 		if type "pigz" > /dev/null 2>&1;
 		then
