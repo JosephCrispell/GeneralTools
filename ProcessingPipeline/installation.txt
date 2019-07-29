@@ -5,22 +5,17 @@
 # Installation instructions for the processing pipeline
 # Created by Joseph Crispell
 # Email: crispelljoseph@gmail.com
-# This file created: 09-11-2017
-# Last updated: 09-11-2017
 
 ###########################
 # Instructions for Ubuntu #
 ###########################
 
-# prinseq - tool to trimming reads in FASTQ file
-	Download the tar file from: https://sourceforge.net/projects/prinseq/files/standalone/
-	$tar -xvzf prinseq-lite-0.20.4.tar.gz
-	
-# trimGalore - tool for removing adaptor sequences
-	Following the instructions available here: https://github.com/FelixKrueger/TrimGalore
-		$curl -fsSL https://github.com/FelixKrueger/TrimGalore/archive/0.4.3.tar.gz -o trim_galore.tar.gz
-		$tar xvzf trim_galore.tar.gz
-		$mv TrimGalore-0.4.3/trim_galore /usr/bin
+# cutadapt - too for trimming reads and removing adapters
+	Follow the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html
+		Requires python-dev:
+		sudo apt install python3-pip
+		sudo pip3 install cutadapt
+		Note: Requires cutadapt >1.18.
 
 # fastqc - tool for assessing quality of reads in FASTQ files
 	Download the most recent version as a zip file from here: https://www.bioinformatics.babraham.ac.uk/projects/download.html
