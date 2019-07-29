@@ -14,9 +14,9 @@
 
 ## FOR FULL INSTALLATION INSTRUCTIONS SEE installation.txt
 
-# Running on Ubuntu v16.04
+# Running on Ubuntu v18
 # fastqc - tool to examine quality of FASTQ files
-# cutadapt - used by trimGalore
+# cutadapt - tool to trim reads and remove adapters
 # bwa - alignment algorithm
 # samtools - package of tools to handle sequencing files
 # blastn - tool to compare a sequence to a database of sequences
@@ -53,7 +53,7 @@ called PrinseqSettings_DATE.txt (see notes at bottom of page)
 ## Stage 2 - Align the FASTQ files against reference and create VCF files
 Move to directory containing the forward and reverse FASTQ files and PrinseqSettings_DATE.txt file
 Run ProcessRawReads_DATE.sh using:
-$bash ProcessRawReads_DATE.sh [FASTQFileEnding] [pathToTrimGalore|false] [pathToPrinseq|false] [pathToReferenceSequence] [pathToPickRandomReads_DATE.pl] [pathToExamineBlastOutput_DATE.pl]
+$bash ProcessRawReads_DATE.sh [FASTQFileEnding] [pathToCutadapt|false] [pathToReferenceSequence] [pathToPickRandomReads_DATE.pl] [pathToExamineBlastOutput_DATE.pl]
 
 ## Stage 3 - Merge the VCF files together
 Move to directory containing the VCF files resulting from the previous step - "vcfFiles"

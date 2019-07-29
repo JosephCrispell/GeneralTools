@@ -10,13 +10,6 @@
 # Instructions for Ubuntu #
 ###########################
 
-# cutadapt - too for trimming reads and removing adapters
-	Follow the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html
-		Requires python-dev:
-		sudo apt install python3-pip
-		sudo pip3 install cutadapt
-		Note: Requires cutadapt >1.18.
-
 # fastqc - tool for assessing quality of reads in FASTQ files
 	Download the most recent version as a zip file from here: https://www.bioinformatics.babraham.ac.uk/projects/download.html
 		$unzip fastqc_vx.x.x.zip
@@ -29,6 +22,7 @@
 		Requires python-dev:
 			$sudo apt-get install python-dev
 			$sudo apt install python-pip
+			$sudo pip3 install cutadapt
 			$pip install --user --upgrade cutadapt
 
 # bwa - set of tools for sequence alignment

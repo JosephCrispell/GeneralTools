@@ -59,7 +59,7 @@ function checkToolsAreInstalled {
 		echo "	sudo apt install python3-pip"
 		echo "	"
 		echo "	sudo pip3 install cutadapt"
-		echo "  Note: Requires cutadapt >1.18."
+		echo "	pip install --user --upgrade cutadapt"
 		exit 0
 	fi
 
