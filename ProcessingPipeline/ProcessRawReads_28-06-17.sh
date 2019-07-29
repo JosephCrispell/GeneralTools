@@ -242,7 +242,12 @@ echo
 echo -e "\e[0;32m 	Produces summary File for Isolate Mapping Info: \e[0m"$SAMSUMMARY
 
 # Add a header into the sam mapping summary file
-echo "Isolate	NumberMappedReads	NumberUnmappedReads	NumberMultimappedReads" > $SAMSUMMARY # Wipe and add header to the file
+SAMSUMMARYEXISTS=`ls | grep $SAMSUMMARY | wc -l`
+if [ ! $SAMSUMMARYEXISTS == "1" ]
+then
+	echo "Isolate	NumberMappedReads	NumberUnmappedReads	NumberMultimappedReads" > $SAMSUMMARY # Add header to the file
+fi
+
 
 ##########################
 # Read trimming settings #
@@ -298,7 +303,7 @@ fi
 RUN=0
 for (( i=0; i<${NFILES}; i+=2))
 do
-	###### Prepare files #######
+	###### Getting file names #######
 
 	# Keep track of progress and time
 	RUN=`expr $RUN + 1`
@@ -314,6 +319,18 @@ do
 
 	# Create Unique Prefix using first two columns
 	PAIRID=`echo $FILE1 | awk '{ split($0, array, "_"); print array[1] }'`
+
+	# Check if VCF file with current pair ID already exists in VCF folder
+	FOUNDVCFFILE=`ls "vcfFiles/" | grep $PAIRID | wc -l`
+	if [ $FOUNDVCFFILE == "1" ]
+	then
+
+		echo -e "\e[0;32m Found VCF file for current pair of FASTQ files. Skipping to next pair. \e[0m"
+		echo "	VCFFILE: "`ls "vcfFiles/" | grep $PAIRID`
+		echo "	$FILE1"
+		echo "	$FILE2"
+		continue
+	fi
 
 	# Note progress and check file names
 	echo -e "\e[0;34m Beginning Read Processing for Read Pair: $PAIRID ---> $RUN of $NPAIRS... \e[0m""	"$TIME
@@ -334,7 +351,9 @@ do
 	FILE1=`echo ${FILE1:0:-3}` # Remove the .gz from the file name
 	FILE2=`echo ${FILE2:0:-3}`
 
-	####### Removing adapter sequences and trim reads #######
+	
+
+	###### Removing adapter sequences and trim reads ######
 
 	if [ ! $CUTADAPT == "false" ]
 	then
@@ -476,7 +495,7 @@ do
 		# -f Flag: onlu include reads with all of the FLAGS in INT present
 		samtools view $SAMFILE -f 4 > $UNMAPPEDFILE # Store unmapped reads in file
 		perl $PICKREADS 10 $UNMAPPEDFILE $RANDOMREADS # Pick 10 random unmapped reads
-		blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote # CHANGE THE NUMBER OF ALIGNMENTS!?! -num_alignments OR -max_target_seqs
+		timeout 300 blastn -query $RANDOMREADS -out $BLASTOUTPUT -db nr -remote -num_alignments 1 # Using timeout to kill command after 5 minutes - blastn keeps blocking me!?!
 		perl $EXAMINEBLASTOUTPUT 1 $BLASTOUTPUT > $BLASTHITS
 
 		# Remove the unneccesary files
