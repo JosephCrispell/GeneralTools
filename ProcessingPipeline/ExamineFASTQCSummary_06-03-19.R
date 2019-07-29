@@ -1,10 +1,10 @@
 #### Read in the data ####
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Fastqs_ALL_15-03-19/Alicia/FASTQC/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/Fastqs_29-07-19/FASTQC/"
 
 # Read in the FASTQC file summary table
-summaryFile <- paste0(path, "Fastqc_summary_04-04-19.txt")
+summaryFile <- paste0(path, "Fastqc_summary_29-07-19.txt")
 summary <- read.table(summaryFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Look at GC distribution

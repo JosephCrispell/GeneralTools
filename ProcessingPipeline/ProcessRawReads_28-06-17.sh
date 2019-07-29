@@ -4,7 +4,7 @@
 # Author: Joseph Crispell
 
 # Command Line Structure:
-# bash ProcessRawReads.sh fileEnding trimGalore prinseq pathToRef pickRandomReads examineBlastOutput
+# bash ProcessRawReads.sh fileEnding trimGalore cutadapt pathToRef pickRandomReads examineBlastOutput
 
 # RUN SCRIPT USING bash script.sh (in Directory containing Raw Reads)
 # Note create permissions first ---> chmod +x script.sh
@@ -59,6 +59,7 @@ function checkToolsAreInstalled {
 		echo "	sudo apt install python3-pip"
 		echo "	"
 		echo "	sudo pip3 install cutadapt"
+		echo "  Note: Requires cutadapt >1.18."
 		exit 0
 	fi
 
