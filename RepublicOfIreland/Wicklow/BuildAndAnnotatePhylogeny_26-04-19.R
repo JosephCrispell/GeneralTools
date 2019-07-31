@@ -7,6 +7,7 @@ library(geiger)
 library(rgdal) # Convert X and Y to lat longs and reading in shape files
 library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
 #library(grid) # Used to plot lines between plot panels
+library(OSMscale) # Add scale to map
 
 #### Load sampling information ####
 
@@ -164,27 +165,30 @@ tipInfo <- addHerdIDsToTipInfo(tipInfo, herdInfo)
 # Calculate the centroids of each herd's field
 herdCentroids <- calculateLandParcelCentroids(landParcelCoords, useMercator=TRUE)
 
-# Get the bounds off all the spatial data and convert to lat longs
-bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
-                                           cattleShapeFile@bbox)
-boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],y=bounds[2, ])
-
 # Get a satellite image of the area
-map <- getSatelliteImage(upperLeft=c(boundsLongsLats[2, 1], boundsLongsLats[1, 2]), 
-                         lowerRight=c(boundsLongsLats[1, 1], boundsLongsLats[2, 2]))
+map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                         cattleShapeFile, includeLandParcels=TRUE)
+mapWithoutLandparcels <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                         cattleShapeFile, includeLandParcels=FALSE, yExpand=0.5)
 
 # Open an output PDF
 outputPlotFile <- paste0(path, "SamplingLocations_", date, ".pdf")
 pdf(outputPlotFile)
 
+### Including all land parcels
+
 # Plot the satellite image
 plot(map)
+
+# Add scale bar
+scaleBar(map, abslen=5, x=0.05, y=0.05, cex=0.8, unit="km", 
+         targs=list(col="white"))
 
 # Add the cattle herd land parcels
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, col=rgb(0,1,0, 0.1),
                     border=rgb(0,0,0,1), plotHerds=FALSE, plotLines=FALSE)
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, 
-                    connectingLineColour=rgb(0,0,1, 0.25), plotPolygons=FALSE,
+                    connectingLineColour=rgb(0,0,1, 0.5), plotPolygons=FALSE,
                     plotHerds=FALSE)
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
                     plotLines=FALSE)
@@ -195,66 +199,81 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
      bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
      col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
 
+### Zoom in on sampling locations
+
+# Plot the satellite image
+plot(mapWithoutLandparcels)
+
+# Add scale bar
+scaleBar(mapWithoutLandparcels, abslen=2, x=0.2, y=0.2, cex=0.7, unit="km",
+         targs=list(col="white"))
+
+# Add the cattle herd land parcels
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, col=rgb(0,1,0, 0.1),
+                    border=rgb(0,0,0,1), plotHerds=FALSE, plotLines=FALSE)
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, 
+                    connectingLineColour=rgb(0,0,1, 0.5), plotPolygons=FALSE,
+                    plotHerds=FALSE)
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
+                    plotLines=FALSE, pointCex=1.5)
+
+# Plot the badger and deer sampling locations
+points(tipInfo$MercatorX, tipInfo$MercatorY, 
+       pch=ifelse(tipInfo$Species == "Badger", 21, 22),
+       bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
+       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
+
 dev.off()
-
-
-
-
-
 
 #### Plot phylogeny linked to spatial locations ####
 
+# Get satellite image of area not including land parcels
+map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                         cattleShapeFile, includeLandParcels=FALSE,
+                         yExpand=0.3, xExpand=0.05)
+
+# Open an output PDF
+outputPlotFile <- paste0(path, "LinkedPhylogenyAndLocations_", date, ".pdf")
+pdf(outputPlotFile, width=14, height=7)
+
 # Set the number plots in window - 1 row of 2
-par(mfrow=c(1,2))
+# Leave more space for map in second column
+layout(matrix(c(1,2,2,2,2), nrow=1, ncol=5, byrow=TRUE))
 
 ### Plot the phylogeny on the left
-plotPhylogeny(tree, tipInfo)
+plotPhylogeny(tree, tipInfo, tipCex=2, scaleCex=1.5)
 
 # Note the tip coordinates
 tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
 
 ### Plot the sampling locations map
+
+# Plot the map
 plot(map)
+
+# Add scale bar
+scaleBar(map, abslen=2, x=0.8, y=0.15, cex=1.2, unit="km", 
+         targs=list(col="white"))
 
 # Add the cattle herd land parcels
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
-                    plotLines=FALSE)
+                    plotLines=FALSE, pointCex=3)
 
 # Plot the badger and deer sampling locations. Note cattle have NA locations, so they are ignoed here
 points(tipInfo$MercatorX, tipInfo$MercatorY, 
        pch=ifelse(tipInfo$Species == "Badger", 21, 22),
        bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
-       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
+       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=3)
 
 # Get coordinates of plotted sampling locations in plotting window
 tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo, herdCentroids)
 
 ### Connect tips on phylogeny to sampling locations on map
+plotConnectingLines(tree$tip.label, tipCoordsOnPhylogeny,
+                    tipCoordsOnMap, tipInfo, lwd=2.5, alpha=0.3)
 
-# Prepare for adding lines across the plot panels - using grid package
-pushViewport(viewport())
-popViewport()
-
-for(tipLabel in tree$tip.label){
-  
-  # Skip the tips without locations
-  if(is.na(tipCoordsOnPhylogeny[[tipLabel]][1])){
-    next
-  }
-  
-  # Prepare to add a single line
-  pushViewport(viewport())
-  
-  # Plot line from phylogeny to sampling location for current tip
-  grid.lines(x = c(tipCoordsOnPhylogeny[[tipLabel]][1],
-                   tipCoordsOnMap[[tipLabel]][1]), 
-             y = c(tipCoordsOnPhylogeny[[tipLabel]][2],
-                   tipCoordsOnMap[[tipLabel]][2]), 
-             gp = gpar(col="black", lty=2, lwd=3))
-  
-  # Add the changes to the plot (the line)
-  popViewport()
-}
+# Close the output pdf
+dev.off()
 
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
@@ -267,6 +286,146 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 
 
 #### FUNCTIONS - joint figure ####
+
+setAlpha <- function(colour, alpha){
+  
+  # Convert the input colour into rgb values
+  rgbValues <- col2rgb(colour)
+  
+  # Place rgb values within rgb function and insert alpha value
+  # Note that col2rgb returns rgbvlues from 0 to 255
+  rgbColour <- rgb(rgbValues["red", 1], rgbValues["green", 1], rgbValues["blue", 1],
+                   alpha=alpha*255, maxColorValue=255)
+  return(rgbColour)
+}
+
+plotConnectingLines <- function(tipLabels, tipCoordsOnPhylogeny,
+                                tipCoordsOnMap, tipInfo, alpha=1, ...){
+  
+  # Prepare for adding lines across the plot panels - using grid package
+  pushViewport(viewport())
+  popViewport()
+  
+  # Examine each of the tips
+  for(tipLabel in tipLabels){
+    
+    # Skip the tips without locations
+    if(is.na(tipCoordsOnPhylogeny[[tipLabel]][1])){
+      next
+    }
+    
+    # Define the line colour based on species
+    lineColour <- "red"
+    if(tipInfo[which(tipInfo$ID == tipLabel), "Species"] == "Deer"){
+      lineColour <- "black"
+    }else if(tipInfo[which(tipInfo$ID == tipLabel), "Species"] == "Cow"){
+      lineColour <- "blue"
+    }
+    
+    # Set the line alpha
+    lineColour <- setAlpha(lineColour, alpha)
+    
+    # Prepare to add a single line
+    pushViewport(viewport())
+    
+    # Plot line from phylogeny to sampling location for current tip
+    grid.lines(x = c(tipCoordsOnPhylogeny[[tipLabel]][1],
+                     tipCoordsOnMap[[tipLabel]][1]), 
+               y = c(tipCoordsOnPhylogeny[[tipLabel]][2],
+                     tipCoordsOnMap[[tipLabel]][2]), 
+               gp = gpar(col=lineColour, ...))
+    
+    # Add the changes to the plot (the line)
+    popViewport()
+  }
+  
+}
+
+getSatelliteImage <- function(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                   cattleShapeFile, includeLandParcels=FALSE,
+                   xExpand=NULL, yExpand=NULL){
+  
+  # Initialise a variable to store the map bounds
+  bounds <- NULL
+  
+  # Check bounds should include land parcels
+  if(includeLandParcels){
+    
+    # Calculate bounds based on badger and deer sampling locations and herd land parcels
+    bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
+                                               cattleShapeFile@bbox)
+  }else{
+    
+    # Calculate the herd centroids based upon the Irish grid coordinates
+    herdCentroidsAsXY <- calculateLandParcelCentroids(landParcelCoords, useGrid=TRUE)
+    
+    # Calculate bounds just using badger and deer locations and overal herd centroids
+    bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
+                                               getLimitsOfHerdCentroids(herdCentroidsAsXY))
+  }
+  
+  # Expand the X bounds if requested
+  if(is.null(xExpand) == FALSE){
+    
+    # Calculate the X length
+    xLength <- bounds[1, 2] - bounds[1, 1]
+    
+    # Adjust the bounds
+    bounds[1, 1] <- bounds[1, 1] - (0.5*xExpand*xLength)
+    bounds[1, 2] <- bounds[1, 2] + (0.5*xExpand*xLength)
+  }
+  
+  # Expand the Y bounds if requested
+  if(is.null(yExpand) == FALSE){
+    
+    # Calculate the X length
+    yLength <- bounds[2, 2] - bounds[2, 1]
+    
+    # Adjust the bounds
+    bounds[2, 1] <- bounds[2, 1] - (0.5*yExpand*yLength)
+    bounds[2, 2] <- bounds[2, 2] + (0.5*yExpand*yLength)
+  }
+  
+  # Convert the bounds to longitudes and latitudes
+  boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],y=bounds[2, ])
+  
+  # Get a satellite image of the area
+  map <- openmap(upperLeft=c(boundsLongsLats[2, 1], boundsLongsLats[1, 2]), 
+                 lowerRight=c(boundsLongsLats[1, 1], boundsLongsLats[2, 2]),
+                 type="bing")
+  
+  return(map)
+}
+
+getLimitsOfHerdCentroids <- function(herdCentroids){
+  
+  # Initialise a table to store the coordinates bounds
+  bbox <- matrix(c(Inf, -Inf), nrow=2, ncol=2, byrow=TRUE)
+  colnames(bbox) <- c("min", "max")
+  rownames(bbox) <- c("x", "y")
+  
+  # Examine each of the herds
+  for(herdID in names(herdCentroids)){
+    
+    # Check if we need to update the X min and max
+    if(herdCentroids[[herdID]]$X < bbox["x", "min"]){
+      bbox["x", "min"] <- herdCentroids[[herdID]]$X
+    }
+    if(herdCentroids[[herdID]]$X > bbox["x", "max"]){
+      bbox["x", "max"] <- herdCentroids[[herdID]]$X
+    }
+    
+    # Check if we need to update the Y min and max
+    if(herdCentroids[[herdID]]$Y < bbox["y", "min"]){
+      bbox["y", "min"] <- herdCentroids[[herdID]]$Y
+    }
+    if(herdCentroids[[herdID]]$Y > bbox["y", "max"]){
+      bbox["y", "max"] <- herdCentroids[[herdID]]$Y
+    }
+  }
+  
+  return(bbox)
+}
 
 getTipCoordinatesOnMap <- function(tipInfo, herdCentroids){
   
@@ -319,11 +478,12 @@ getTipCoordinatesOnPhylogeny <- function(tipLabels){
   return(tips)
 }
 
-plotPhylogeny <- function(tree, tipInfo){
+plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
+                          scaleCex=1){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
-  par(mar=c(2,0,0,0))
+  par(mar=c(3,0,0,0))
   
   # Plot the phylogeny
   plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
@@ -336,10 +496,10 @@ plotPhylogeny <- function(tree, tipInfo){
                                                   which="shape"),
             col=getTipShapeOrColourBasedOnSpecies(tipInfo,
                                                   tipShapesAndColours,
-                                                  which="colour"), cex=1.25)
+                                                  which="colour"), cex=tipCex)
   
   # Add scale bar
-  addScaleBar(2)
+  addScaleBar(2, cex=scaleCex)
   
   # Reset the plotting margins
   par(mar=currentMar)
@@ -357,6 +517,28 @@ getSatelliteImage <- function(upperLeft, lowerRight){
   #mapROIGrid <- openproj(map, projection=CRS("+init=epsg:29903"))
   
   return(map)
+}
+
+addScale <- function(sizeInMetres){
+  
+  # Get the plotting dimensions
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  
+  # Define y value - scale height
+  height <- axisLimits[3] + 0.075 * yLength
+  
+  # Define X value start
+  start <- axisLimits[1] + 0.5 * xLength
+  
+  # Define the size
+  Xs <- c(0, sizeInMetres)
+  
+  projectMercator()
+  
+  # Plot the scale bar
+  points(x=c(start, start), y=c(height, height), xpd=TRUE, col="red")
 }
 
 #### FUNCTIONS - Shape files ####
@@ -424,7 +606,7 @@ calculateLandParcelCentroids <- function(landParcelCoords, useMercator=FALSE,
 
 plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
                                 connectingLineColour, plotPolygons=TRUE,
-                                plotLines=TRUE, plotHerds=TRUE, ...){
+                                plotLines=TRUE, plotHerds=TRUE, pointCex=1, ...){
   
   # Plot the cattle herd land parcels
   for(row in seq_len(nrow(tipInfo))){
@@ -467,7 +649,7 @@ plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
     # Plot a symbol at the current herd's overall centre
     if(plotHerds){
       points(x=herdCentroids[[herdCode]]$X, y=herdCentroids[[herdCode]]$Y,
-             pch=24, bg=rgb(0,0,1, 0.75), col="white")
+             pch=24, bg=rgb(0,0,1, 0.75), col="white", cex=pointCex)
     }
   }
 }
