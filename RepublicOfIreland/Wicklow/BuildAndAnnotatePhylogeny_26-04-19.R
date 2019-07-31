@@ -6,6 +6,7 @@ library(phytools)
 library(geiger)
 library(rgdal) # Convert X and Y to lat longs and reading in shape files
 library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
+#library(grid) # Used to plot lines between plot panels
 
 #### Load sampling information ####
 
@@ -48,6 +49,11 @@ latLongs <- convertXYToLatLongs(x=badgerLocations$X, y=badgerLocations$Y)
 badgerLocations$Lat <- latLongs$Latitude
 badgerLocations$Long <- latLongs$Longitude
 
+# Convert longitudes and latitudes to open street map mercator projection
+mercator <- projectMercator(badgerLocations$Lat, badgerLocations$Long)
+badgerLocations$MercatorX <- mercator[, 1]
+badgerLocations$MercatorY <- mercator[, 2]
+
 ### Read in the deer shape file
 shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\deer.shp")
 deerShapeFile <- readOGR(dsn = shapeFile)
@@ -61,6 +67,11 @@ deerLocations <- data.frame("Aliquot"=as.character(deerShapeFile$ALIQUOT),
 coords <- convertLatLongsToXY(latitudes=deerLocations$Lat, longitudes=deerLocations$Long)
 deerLocations$X <- coords$X
 deerLocations$Y <- coords$Y
+
+# Convert longitudes and latitudes to open street map mercator projection
+mercator <- projectMercator(deerLocations$Lat, deerLocations$Long)
+deerLocations$MercatorX <- mercator[, 1]
+deerLocations$MercatorY <- mercator[, 2]
 
 ### Read in the cattle herd shape file
 shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\farms_common.shp")
@@ -151,16 +162,12 @@ tipInfo <- addBadgerAndDeerLocationsToTipInfo(tipInfo, badgerLocations, deerLoca
 tipInfo <- addHerdIDsToTipInfo(tipInfo, herdInfo)
 
 # Calculate the centroids of each herd's field
-herdCentroids <- calculateLandParcelCentroids(landParcelCoords)
-
-# Get the bounds of all the spatial data
-
+herdCentroids <- calculateLandParcelCentroids(landParcelCoords, useMercator=TRUE)
 
 # Get the bounds off all the spatial data and convert to lat longs
 bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
                                            cattleShapeFile@bbox)
-boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],
-                                       y=bounds[2, ])
+boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],y=bounds[2, ])
 
 # Get a satellite image of the area
 map <- getSatelliteImage(upperLeft=c(boundsLongsLats[2, 1], boundsLongsLats[1, 2]), 
@@ -183,7 +190,7 @@ plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE
                     plotLines=FALSE)
 
 # Plot the badger and deer sampling locations
-points(tipInfo$X, tipInfo$Y, 
+points(tipInfo$MercatorX, tipInfo$MercatorY, 
      pch=ifelse(tipInfo$Species == "Badger", 21, 22),
      bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
      col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
@@ -197,7 +204,57 @@ dev.off()
 
 #### Plot phylogeny linked to spatial locations ####
 
+# Set the number plots in window - 1 row of 2
+par(mfrow=c(1,2))
 
+### Plot the phylogeny on the left
+plotPhylogeny(tree, tipInfo)
+
+# Note the tip coordinates
+tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
+
+### Plot the sampling locations map
+plot(map)
+
+# Add the cattle herd land parcels
+plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
+                    plotLines=FALSE)
+
+# Plot the badger and deer sampling locations. Note cattle have NA locations, so they are ignoed here
+points(tipInfo$MercatorX, tipInfo$MercatorY, 
+       pch=ifelse(tipInfo$Species == "Badger", 21, 22),
+       bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
+       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
+
+# Get coordinates of plotted sampling locations in plotting window
+tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo, herdCentroids)
+
+### Connect tips on phylogeny to sampling locations on map
+
+# Prepare for adding lines across the plot panels - using grid package
+pushViewport(viewport())
+popViewport()
+
+for(tipLabel in tree$tip.label){
+  
+  # Skip the tips without locations
+  if(is.na(tipCoordsOnPhylogeny[[tipLabel]][1])){
+    next
+  }
+  
+  # Prepare to add a single line
+  pushViewport(viewport())
+  
+  # Plot line from phylogeny to sampling location for current tip
+  grid.lines(x = c(tipCoordsOnPhylogeny[[tipLabel]][1],
+                   tipCoordsOnMap[[tipLabel]][1]), 
+             y = c(tipCoordsOnPhylogeny[[tipLabel]][2],
+                   tipCoordsOnMap[[tipLabel]][2]), 
+             gp = gpar(col="black", lty=2, lwd=3))
+  
+  # Add the changes to the plot (the line)
+  popViewport()
+}
 
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
@@ -208,6 +265,86 @@ notSequencedInfo <- metadata[metadata$Aliquot %in% tipInfo$Aliquot == FALSE, ]
 notSequencedFile <- paste0(path, "AliquotsNotSequenced_", date, ".csv")
 write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, sep=",", row.names=FALSE)
 
+
+#### FUNCTIONS - joint figure ####
+
+getTipCoordinatesOnMap <- function(tipInfo, herdCentroids){
+  
+  # Convert the available mercator coordinates into grid coordinates
+  tipInfo$GridX <- grconvertX(tipInfo$MercatorX, from="user", to="ndc")
+  tipInfo$GridY <- grconvertY(tipInfo$MercatorY, from="user", to="ndc")
+  
+  # Initialise a list to store the grid coordinates
+  coords <- list()
+  
+  # For the cattle - convert the herd centroids to grid coordinates
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Get the herd centroid coordinates for the current animal - if cow
+    if(is.na(tipInfo[row, "HerdCode"]) == FALSE &&
+       is.null(herdCentroids[[tipInfo[row, "HerdCode"]]]) == FALSE){
+      
+      tipInfo[row, "GridX"] <- 
+        grconvertX(herdCentroids[[tipInfo[row, "HerdCode"]]]$X,
+                   from="user", to="ndc")
+      tipInfo[row, "GridY"] <- 
+        grconvertY(herdCentroids[[tipInfo[row, "HerdCode"]]]$Y,
+                   from="user", to="ndc")
+    }
+    
+    # Store the coordinates for the current row
+    coords[[tipInfo[row, "ID"]]] <- c(tipInfo[row, "GridX"], tipInfo[row, "GridY"])
+  }
+  
+  return(coords)
+}
+
+getTipCoordinatesOnPhylogeny <- function(tipLabels){
+  
+  # Get all the information about the last phylogenetic tree plotted
+  lastPP <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  
+  # Create an empty list to store the coordinates
+  tips <- list()
+  
+  # Examine each of the tip labels - order must match tree$tip.labels of plotted tree
+  for(i in 1:length(tipLabels)){
+    
+    # Get and store the coordinates for the current tip label
+    # Note that you are converting them to actual coordinates within the plotting window
+    tips[[as.character(tipLabels[i])]] <- c(grconvertX(lastPP$xx[i], "user", "ndc"), 
+                                            grconvertY(lastPP$yy[i], "user", "ndc"))
+  }
+  
+  return(tips)
+}
+
+plotPhylogeny <- function(tree, tipInfo){
+  
+  # Get and set the plotting margins
+  currentMar <- par()$mar
+  par(mar=c(2,0,0,0))
+  
+  # Plot the phylogeny
+  plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
+  
+  # Add tips coloured by species
+  tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17),
+                              "Deer"=c("black", 15))
+  tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                  tipShapesAndColours,
+                                                  which="shape"),
+            col=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                  tipShapesAndColours,
+                                                  which="colour"), cex=1.25)
+  
+  # Add scale bar
+  addScaleBar(2)
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+}
+
 #### FUNCTIONS - Satellite image ####
 
 getSatelliteImage <- function(upperLeft, lowerRight){
@@ -217,9 +354,9 @@ getSatelliteImage <- function(upperLeft, lowerRight){
   map <- openmap(upperLeft,lowerRight, type="bing")
   
   # Convert from
-  mapROIGrid <- openproj(map, projection=CRS("+init=epsg:29903"))
+  #mapROIGrid <- openproj(map, projection=CRS("+init=epsg:29903"))
   
-  return(mapROIGrid)
+  return(map)
 }
 
 #### FUNCTIONS - Shape files ####
@@ -236,7 +373,8 @@ calculateBoundsForAllSpatialData <- function(badgerBounds, deerBounds, cattleBou
   return(bounds)
 }
 
-calculateLandParcelCentroids <- function(landParcelCoords){
+calculateLandParcelCentroids <- function(landParcelCoords, useMercator=FALSE, 
+                                         useLatLongs=FALSE, useGrid=FALSE){
   
   # Initialise a list to store the centroids associated with each herd
   herdCentroids <- list()
@@ -255,8 +393,18 @@ calculateLandParcelCentroids <- function(landParcelCoords){
       coords <- landParcelCoords[[herd]][[fieldIndex]]
       
       # Calculate the centroid for the current field
-      centroidsX[fieldIndex] <- mean(coords$X)
-      centroidsY[fieldIndex] <- mean(coords$Y)
+      if(useGrid){
+        centroidsX[fieldIndex] <- mean(coords$X)
+        centroidsY[fieldIndex] <- mean(coords$Y)
+      }else if(useLatLongs){
+        centroidsX[fieldIndex] <- mean(coords$Longitude)
+        centroidsY[fieldIndex] <- mean(coords$Latitude)
+      }else if(useMercator){
+        centroidsX[fieldIndex] <- mean(coords$MercatorX)
+        centroidsY[fieldIndex] <- mean(coords$MercatorY)
+      }else{
+        stop("Please specify projection to use for calculating centroids")
+      }
     }
     
     # Calculate the overall centroid for the current herd
@@ -302,7 +450,8 @@ plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
       
       # Plot the current polygon
       if(plotPolygons){
-        polygon(landParcelCoords[[herdCode]][[fieldIndex]][, c("X", "Y")], ...)
+        polygon(landParcelCoords[[herdCode]][[fieldIndex]][, c("MercatorX", "MercatorY")],
+                ...)
       }
       
       # Connect current field to overall herd centre
@@ -358,6 +507,8 @@ addBadgerAndDeerLocationsToTipInfo <- function(tipInfo, badgerLocations, deerLoc
   tipInfo$Y <- NA
   tipInfo$Longitude <- NA
   tipInfo$Latitude <- NA
+  tipInfo$MercatorX <- NA
+  tipInfo$MercatorY <- NA
   
   # Examine each of tips
   for(row in seq_len(nrow(tipInfo))){
@@ -376,6 +527,8 @@ addBadgerAndDeerLocationsToTipInfo <- function(tipInfo, badgerLocations, deerLoc
       tipInfo[row, "Y"] <- badgerLocations[locationRow, "Y"]
       tipInfo[row, "Longitude"] <- badgerLocations[locationRow, "Long"]
       tipInfo[row, "Latitude"] <- badgerLocations[locationRow, "Lat"]
+      tipInfo[row, "MercatorX"] <- badgerLocations[locationRow, "MercatorX"]
+      tipInfo[row, "MercatorY"] <- badgerLocations[locationRow, "MercatorY"]
     
     # Check if current tip associated with deer
     }else if(tipInfo[row, "Species"] == "Deer"){
@@ -391,6 +544,8 @@ addBadgerAndDeerLocationsToTipInfo <- function(tipInfo, badgerLocations, deerLoc
       tipInfo[row, "Y"] <- deerLocations[locationRow, "Y"]
       tipInfo[row, "Longitude"] <- deerLocations[locationRow, "Long"]
       tipInfo[row, "Latitude"] <- deerLocations[locationRow, "Lat"]
+      tipInfo[row, "MercatorX"] <- deerLocations[locationRow, "MercatorX"]
+      tipInfo[row, "MercatorY"] <- deerLocations[locationRow, "MercatorY"]
     }
   }
   
@@ -432,8 +587,12 @@ getPolygonCoords <- function(spatialDataFrame){
       # Convert them to latitude and longitude
       latLongs <- convertXYToLatLongs(x=coords[, 1], y=coords[, 2])
       
+      # Convert longitudes and latitudes to open street map mercator projection
+      mercator <- projectMercator(latLongs$Latitude, latLongs$Longitude)
+      colnames(mercator) <- c("MercatorX", "MercatorY")
+      
       # Store the latitude and longitudes and X and Y coords
-      polygons[[polygonIndex]] <- cbind(latLongs, coords)
+      polygons[[polygonIndex]] <- cbind(latLongs, coords, mercator)
     }
     
     # Store the polygon coordinates
