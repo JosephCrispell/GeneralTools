@@ -8,6 +8,7 @@ library(rgdal) # Convert X and Y to lat longs and reading in shape files
 library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
 library(grid) # Used to plot lines between plot panels
 library(OSMscale) # Add scale to map
+library(basicPlotteR) # Replacing sampling locations with numbers
 
 #### Load sampling information ####
 
