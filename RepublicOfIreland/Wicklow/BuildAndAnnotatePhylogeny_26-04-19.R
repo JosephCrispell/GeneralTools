@@ -6,7 +6,7 @@ library(phytools)
 library(geiger)
 library(rgdal) # Convert X and Y to lat longs and reading in shape files
 library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
-#library(grid) # Used to plot lines between plot panels
+library(grid) # Used to plot lines between plot panels
 library(OSMscale) # Add scale to map
 
 #### Load sampling information ####
@@ -123,8 +123,12 @@ tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 
 #### Plot the phylogeny ####
 
+# Define the tip shapes and colours
+tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17),
+                            "Deer"=c("black", 15))
+
 # Open an output PDF
-outputPlotFile <- paste0(path, "MbovisAnnotatedPhylogeny_", date, ".pdf")
+outputPlotFile <- paste0(path, "MbovisAnnotatedPhylogeny_WICKLOW_", date, ".pdf")
 pdf(outputPlotFile)
 
 # Get and set the margins
@@ -135,7 +139,6 @@ par(mar=c(4,0,0,10))
 plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
 
 # Add tips coloured by species
-tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17), "Deer"=c("black", 15))
 tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape"),
           col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
 
@@ -143,7 +146,11 @@ tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
 addScaleBar(2)
 
 # Add species legend
-addSpeciesLegend(tipShapesAndColours)
+legend(x=10, y=-0, legend=c("Badger", "Cow", "Deer"), 
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       bty="n", horiz=TRUE,
+       pt.cex=1.5, xpd=TRUE)
 
 # Add temporal sampling plot
 plotTipSamplingDates(tipInfo)
@@ -159,17 +166,18 @@ dev.off()
 # Add tip locations to tip info for badgers and deer
 tipInfo <- addBadgerAndDeerLocationsToTipInfo(tipInfo, badgerLocations, deerLocations)
 
-# Note the herd IDs associated with each cow
-tipInfo <- addHerdIDsToTipInfo(tipInfo, herdInfo)
-
 # Calculate the centroids of each herd's field
 herdCentroids <- calculateLandParcelCentroids(landParcelCoords, useMercator=TRUE)
+
+# Note the herd IDs associated with each cow
+tipInfo <- addHerdIDsAndCentroidsToTipInfo(tipInfo, herdInfo, herdCentroids)
 
 # Get a satellite image of the area
 map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
                          cattleShapeFile, includeLandParcels=TRUE)
 mapWithoutLandparcels <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
-                         cattleShapeFile, includeLandParcels=FALSE, yExpand=0.5)
+                         cattleShapeFile, includeLandParcels=FALSE, yExpand=0.5,
+                         xExpand=0.4)
 
 # Open an output PDF
 outputPlotFile <- paste0(path, "SamplingLocations_", date, ".pdf")
@@ -199,13 +207,19 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
      bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
      col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
 
+# Add species legend
+legend("top", legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=1.5, xpd=TRUE, horiz=TRUE, bty="n")
+
 ### Zoom in on sampling locations
 
 # Plot the satellite image
 plot(mapWithoutLandparcels)
 
 # Add scale bar
-scaleBar(mapWithoutLandparcels, abslen=2, x=0.2, y=0.2, cex=0.7, unit="km",
+scaleBar(mapWithoutLandparcels, abslen=5, x=0.2, y=0.1, cex=0.7, unit="km",
          targs=list(col="white"))
 
 # Add the cattle herd land parcels
@@ -223,9 +237,19 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
        bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
+# Add species legend
+legend("top", legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=1.5, xpd=TRUE, horiz=TRUE, bty="n")
+
 dev.off()
 
 #### Plot phylogeny linked to spatial locations ####
+
+# Redefine shapes to give them an outline
+tipShapesAndColoursMAP <- list("Badger"=c("red", 21), "Cow"=c("blue", 24),
+                               "Deer"=c("black", 22))
 
 # Get satellite image of area not including land parcels
 map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
@@ -241,7 +265,8 @@ pdf(outputPlotFile, width=14, height=7)
 layout(matrix(c(1,2,2,2,2), nrow=1, ncol=5, byrow=TRUE))
 
 ### Plot the phylogeny on the left
-plotPhylogeny(tree, tipInfo, tipCex=2, scaleCex=1.5)
+plotPhylogeny(tree, tipInfo, tipCex=2, scaleCex=1.5,
+              tipShapesAndColours=tipShapesAndColours)
 
 # Note the tip coordinates
 tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
@@ -252,17 +277,15 @@ tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
 plot(map)
 
 # Add scale bar
-scaleBar(map, abslen=2, x=0.8, y=0.15, cex=1.2, unit="km", 
-         targs=list(col="white"))
+scaleBar(map, abslen=5, x=0.7, y=0.15, cex=2, unit="km", 
+         targs=list(col="white"), label="   km")
 
-# Add the cattle herd land parcels
-plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
-                    plotLines=FALSE, pointCex=3)
-
-# Plot the badger and deer sampling locations. Note cattle have NA locations, so they are ignoed here
+# Plot the sampling locations
 points(tipInfo$MercatorX, tipInfo$MercatorY, 
-       pch=ifelse(tipInfo$Species == "Badger", 21, 22),
-       bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
+       pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                             which="shape"),
+       bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                            which="colour", alpha=0.75),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=3)
 
 # Get coordinates of plotted sampling locations in plotting window
@@ -271,6 +294,59 @@ tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo, herdCentroids)
 ### Connect tips on phylogeny to sampling locations on map
 plotConnectingLines(tree$tip.label, tipCoordsOnPhylogeny,
                     tipCoordsOnMap, tipInfo, lwd=2.5, alpha=0.3)
+
+# Add species legend
+legend("bottom", legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
+
+################### PLOT SAMPLING LOCATIONS AS NUMBERS
+
+### Plot the phylogeny on the left
+plotPhylogeny(tree, tipInfo, tipCex=2, scaleCex=1.5,
+              tipShapesAndColours=tipShapesAndColours,
+              addTipIndices=TRUE, indexCex=1.5)
+
+# Note the tip coordinates
+tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
+
+### Plot the sampling locations map
+
+# Plot the map
+plot(map)
+
+# Add scale bar
+scaleBar(map, abslen=5, x=0.7, y=0.15, cex=2, unit="km", 
+         targs=list(col="white"), label="   km")
+
+# Plot the sampling locations
+# text(tipInfo$MercatorX, tipInfo$MercatorY, labels=1:nrow(tipInfo),
+#      col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+#                                            which="colour", alpha=0.75),
+#      xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=2)
+labels <- c(1:nrow(tipInfo))[is.na(tipInfo$MercatorX) == FALSE]
+xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
+yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
+colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                             which="colour", alpha=0.75)[
+                                               is.na(tipInfo$MercatorX) == FALSE]
+addTextLabels(xCoords, yCoords, labels=labels,
+              col.label=colours, avoidPoints=FALSE, cex.label=2)
+
+# Get coordinates of plotted sampling locations in plotting window
+tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo, herdCentroids)
+
+### Connect tips on phylogeny to sampling locations on map
+plotConnectingLines(tree$tip.label, tipCoordsOnPhylogeny,
+                    tipCoordsOnMap, tipInfo, lwd=2.5, alpha=0.1)
+
+# Add species legend
+legend("bottom", legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
+
 
 # Close the output pdf
 dev.off()
@@ -479,18 +555,28 @@ getTipCoordinatesOnPhylogeny <- function(tipLabels){
 }
 
 plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
-                          scaleCex=1){
+                          scaleCex=1, tipShapesAndColours,
+                          addTipIndices=FALSE, indexCex=1){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
   par(mar=c(3,0,0,0))
   
   # Plot the phylogeny
-  plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
+  if(addTipIndices){
+    
+    # Re-define tip labels as indices
+    tree$tip.label <- 1:length(tree$tip.label)
+    
+    # Plot tree with tip labels
+    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+               cex=indexCex, label.offset=1, xpd=TRUE)
+  }else{
+    plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
+  }
+  
   
   # Add tips coloured by species
-  tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17),
-                              "Deer"=c("black", 15))
   tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo,
                                                   tipShapesAndColours,
                                                   which="shape"),
@@ -506,18 +592,6 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
 }
 
 #### FUNCTIONS - Satellite image ####
-
-getSatelliteImage <- function(upperLeft, lowerRight){
-  
-  # Get a satellite image of the area
-  # Maps are initially put in a sperical mercator projection which is the standard for most (all?) map tiling systems
-  map <- openmap(upperLeft,lowerRight, type="bing")
-  
-  # Convert from
-  #mapROIGrid <- openproj(map, projection=CRS("+init=epsg:29903"))
-  
-  return(map)
-}
 
 addScale <- function(sizeInMetres){
   
@@ -654,7 +728,7 @@ plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
   }
 }
 
-addHerdIDsToTipInfo <- function(tipInfo, herdInfo){
+addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
   
   # Add an empty herd code column
   tipInfo$HerdCode <- NA
@@ -673,9 +747,18 @@ addHerdIDsToTipInfo <- function(tipInfo, herdInfo){
     # Get the row in the herd info table for the current aliquot
     rowInHerdInfo <- which(herdInfo$ALIQUOT == aliquot)
     
-    # Store the herd ID
+    # Store the herd ID and herd centroid coordinates
     if(length(rowInHerdInfo) > 0){
-      tipInfo[row, "HerdCode"] <- as.character(herdInfo[rowInHerdInfo, "HERD_CODE"] - 1)
+      
+      # Get the herd code
+      herdCode <- as.character(herdInfo[rowInHerdInfo, "HERD_CODE"] - 1)
+      
+      # Store the herd code
+      tipInfo[row, "HerdCode"] <- herdCode
+      
+      # Store the overall centroid coordinates
+      tipInfo[row, "MercatorX"] <- herdCentroids[[herdCode]]$X
+      tipInfo[row, "MercatorY"] <- herdCentroids[[herdCode]]$Y
     }
   }
   
@@ -1003,7 +1086,8 @@ addScaleBar <- function(scaleSize, cex=1){
   }
 }
 
-getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which){
+getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which,
+                                              alpha=1){
   
   # Initialise a vector to store the shapes or colours
   output <- c()
@@ -1018,7 +1102,7 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
       if(which == "shape"){
         output[row] <- as.numeric(tipShapesAndColours[["NA"]][2])
       }else if(which == "colour"){
-        output[row] <- tipShapesAndColours[["NA"]][1]
+        output[row] <- setAlpha(tipShapesAndColours[["NA"]][1], alpha)
       }else{
         cat(paste("Error! Option", which, "not recognised!"))
       }
@@ -1030,7 +1114,7 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
       if(which == "shape"){
         output[row] <- as.numeric(tipShapesAndColours[[tipInfo[row, "Species"]]][2])
       }else if(which == "colour"){
-        output[row] <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
+        output[row] <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], alpha)
       }else{
         cat(paste("Error! Option", which, "not recognised!"))
       }
