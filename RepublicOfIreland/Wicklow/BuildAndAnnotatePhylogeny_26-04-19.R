@@ -76,7 +76,8 @@ deerLocations$MercatorX <- mercator[, 1]
 deerLocations$MercatorY <- mercator[, 2]
 
 ### Read in the cattle herd shape file
-shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\farms_common.shp")
+#### NOTE IGNORING COMMON GRAZING AS THAT MOST AFFECTS SHEEP FARMING (CHECK THIS!!)
+shapeFile <- paste0(path, "Raw_locations__all_species_May_2019\\farms_no_common.shp")
 cattleShapeFile <- readOGR(dsn = shapeFile)
 
 # Extract the polygon coords
@@ -180,6 +181,10 @@ mapWithoutLandparcels <- getSatelliteImage(landparcelCoords, badgerShapeFile, de
                          cattleShapeFile, includeLandParcels=FALSE, yExpand=0.5,
                          xExpand=0.4)
 
+# Redefine shapes to give them an outline
+tipShapesAndColoursMAP <- list("Badger"=c("red", 21), "Cow"=c("blue", 24),
+                               "Deer"=c("black", 22))
+
 # Open an output PDF
 outputPlotFile <- paste0(path, "SamplingLocations_", date, ".pdf")
 pdf(outputPlotFile)
@@ -199,14 +204,14 @@ plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, col=rgb(0,1,0, 0.1
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, 
                     connectingLineColour=rgb(0,0,1, 0.5), plotPolygons=FALSE,
                     plotHerds=FALSE)
-plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
-                    plotLines=FALSE)
 
 # Plot the badger and deer sampling locations
 points(tipInfo$MercatorX, tipInfo$MercatorY, 
-     pch=ifelse(tipInfo$Species == "Badger", 21, 22),
-     bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
-     col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1)
+       pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                             which="shape"),
+       bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                            which="colour", alpha=0.75),
+       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
 # Add species legend
 legend("top", legend=c("Badger", "Cow", "Deer"),
@@ -229,13 +234,13 @@ plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, col=rgb(0,1,0, 0.1
 plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, 
                     connectingLineColour=rgb(0,0,1, 0.5), plotPolygons=FALSE,
                     plotHerds=FALSE)
-plotHerdLandParcels(tipInfo, landParcelCoords, herdCentroids, plotPolygons=FALSE,
-                    plotLines=FALSE, pointCex=1.5)
 
 # Plot the badger and deer sampling locations
 points(tipInfo$MercatorX, tipInfo$MercatorY, 
-       pch=ifelse(tipInfo$Species == "Badger", 21, 22),
-       bg=ifelse(tipInfo$Species == "Badger", rgb(1,0,0,0.75), rgb(0,0,0, 0.75)),
+       pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                             which="shape"),
+       bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                            which="colour", alpha=0.75),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
 # Add species legend
