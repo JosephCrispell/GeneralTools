@@ -3,7 +3,8 @@
 #### Read in the sample data ####
 
 # Set the path 
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
+path <- "J:\\WGS_Monaghan\\"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
