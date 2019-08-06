@@ -282,8 +282,8 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=1.5, scaleCex=2,
 
 # Plot phylogeny and sampling locations as shapes
 plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=2,
-                    scaleTextColour="white", addTipIndices=FALSE,
-                    connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
+                    scaleTextColour="black", addTipIndices=FALSE,
+                    connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
                     scaleX=0.7, scaleY=0.15, scaleLabel="   km", tipCexOnMap=3,
                     plotMap=FALSE)
 
