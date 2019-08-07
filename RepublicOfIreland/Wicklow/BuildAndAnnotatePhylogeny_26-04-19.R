@@ -253,8 +253,6 @@ dev.off()
 
 #### Plot phylogeny linked to spatial locations ####
 
-
-
 # Get satellite image of area not including land parcels
 map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
                          cattleShapeFile, includeLandParcels=FALSE,
@@ -292,7 +290,6 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=2,
                     scaleX=0.7, scaleY=0.15, scaleLabel="   km", tipCexOnMap=3,
                     plotMap=FALSE)
 
-
 # Close the output pdf
 dev.off()
 
@@ -305,7 +302,14 @@ geneticDistanceMatrix <- calculateGeneticDistances(fastaFile, tree)
 # Temporal distance matrix
 temporalDistanceMatrix <- calculateTemporalDistances(tipInfo)
 
-# Spatial distance matrix (need X and Y coordinates for badgers, deer, and herds)
+# Spatial distance matrix (uses grid coordinates for all - centroids for cattle)
+spatialDistanceMatrix <- calculateSpatialDistances(tipInfo, landParcelCoords)
+
+# Construct response versus predictors table (nSNPs ~ spatial + temporal + species)
+geneticVsEpi <- constructGeneticVersusSpatialTemporalSpeciesTable(tipInfo, 
+                                                                  geneticDistanceMatrix,
+                                                                  temporalDistanceMatrix,
+                                                                  spatialDistanceMatrix)
 
 ### Species level clustering ###
 
@@ -329,6 +333,253 @@ notSequencedInfo <- metadata[metadata$Aliquot %in% tipInfo$Aliquot == FALSE, ]
 notSequencedFile <- paste0(path, "AliquotsNotSequenced_", date, ".csv")
 write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, sep=",", row.names=FALSE)
 
+
+
+#### FUNCTIONS - Clustering ####
+
+constructGeneticVersusSpatialTemporalSpeciesTable <- function(tipInfo, 
+                                                              geneticDistanceMatrix,
+                                                              temporalDistanceMatrix,
+                                                              spatialDistanceMatrix){
+  
+  # Initialise a response versus predictor table
+  geneticVsEpi <- data.frame(Genetic=NA, Temporal=NA, Spatial=NA, Species=NA,
+                             IDs=NA, stringsAsFactors=FALSE)
+  
+  
+  # Initialise a variable to track the current row
+  row <- 0
+  
+  # Create a single character for each species
+  speciesCodes <- list("Badger"='B', "Cow"='C', "Deer"='D')
+  
+  # Compare each of the sequences and their sampling information
+  for(i in seq_len(nrow(tipInfo))){
+    
+    # Get the species of i
+    iSpecies <- speciesCodes[[tipInfo[i, "Species"]]]
+    
+    for(j in seq_len(nrow(tipInfo))){
+      
+      # Skip self comparisons and making same comparison twice
+      if(i >= j){
+        next
+      }
+      
+      # Increment the row counter
+      row <- row + 1
+      
+      # Get the species of j
+      jSpecies <- speciesCodes[[tipInfo[j, "Species"]]]
+      
+      # Store the information available for the current comparison
+      geneticVsEpi[row, "Genetic"] <- geneticDistanceMatrix[i, j]
+      geneticVsEpi[row, "Temporal"] <- temporalDistanceMatrix[i, j]
+      geneticVsEpi[row, "Spatial"] <- spatialDistanceMatrix[i, j]
+      geneticVsEpi[row, "Species"] <- paste0(iSpecies, jSpecies)
+      geneticVsEpi[row, "IDs"] <- paste0(tipInfo[i, "ID"], "_", tipInfo[j, "ID"])
+    }
+  }
+  
+  return(geneticVsEpi)
+}
+
+calculateSpatialDistances <- function(tipInfo, landParcelCoords){
+  
+  # Calculate the centroids of each herd's field using Irish National Grid
+  herdCentroids <- calculateLandParcelCentroids(landParcelCoords, useGrid=TRUE)
+  
+  # Add the grid centroids into tipInfo
+  tipInfo <- addGridCentroidsToTipInfo(tipInfo, herdCentroids)
+  
+  # Initialise a matrix to store the distances
+  distances <- matrix(NA, nrow=nrow(tipInfo), ncol=nrow(tipInfo))
+  colnames(distances) <- tipInfo$ID
+  rownames(distances) <- tipInfo$ID
+  
+  # Compare each of the sampling locations
+  for(i in seq_len(nrow(tipInfo))){
+    
+    # Skip current i if no location available
+    if(is.na(tipInfo[i, "X"]) || is.na(tipInfo[i, "Y"])){
+      next
+    }
+    
+    for(j in seq_len(nrow(tipInfo))){
+      
+      # Skip current j if no location available
+      if(is.na(tipInfo[j, "X"]) || is.na(tipInfo[j, "Y"])){
+        next
+      }
+      
+      # Skip self comparisons and making same comparison twice
+      if(i >= j){
+        next
+      }
+      
+      # Calculate the distance between the current pair of sampling dates
+      distances[i, j] <- euclideanDistance(x1=tipInfo[i, "X"], y1=tipInfo[i, "Y"],
+                                           x2=tipInfo[j, "X"], y2=tipInfo[j, "Y"])
+      distances[j, i] <- distances[i, j]
+    }
+  }
+  
+  return(distances)
+}
+
+addGridCentroidsToTipInfo <- function(tipInfo, herdCentroids){
+  
+  # Examine each of the tips
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Skip badgers and deer and cattle without herd code
+    if(is.na(tipInfo[row, "HerdCode"])){
+      next
+    }
+    
+    # Store the grid coordinates for the current herd
+    tipInfo[row, "X"] <- herdCentroids[[tipInfo[row, "HerdCode"]]]$X
+    tipInfo[row, "Y"] <- herdCentroids[[tipInfo[row, "HerdCode"]]]$Y
+  }
+  
+  return(tipInfo)
+}
+
+calculateTemporalDistances <- function(tipInfo){
+  
+  # Initialise a matrix to store the distances
+  distances <- matrix(NA, nrow=nrow(tipInfo), ncol=nrow(tipInfo))
+  colnames(distances) <- tipInfo$ID
+  rownames(distances) <- tipInfo$ID
+  
+  # Convert the date column into Date format
+  tipInfo$Date <- as.Date(tipInfo$Date, format="%Y-%m-%d")
+  
+  # Compare each of the sampling dates
+  for(i in seq_len(nrow(tipInfo))){
+    for(j in seq_len(nrow(tipInfo))){
+      
+      # Skip self comparisons and making same comparison twice
+      if(i >= j){
+        next
+      }
+      
+      # Calculate the distance between the current pair of sampling dates
+      distances[i, j] <- abs(as.numeric(tipInfo[i, "Date"] - tipInfo[j, "Date"]))
+      distances[j, i] <- distances[i, j]
+    }
+  }
+  
+  return(distances)
+}
+
+calculateGeneticDistances <- function(fastaFile, tree){
+  
+  # Read in the FASTA file
+  sequences <- readFASTA(fastaFile, skip=1)
+  names(sequences) <- editTipLabels(names(sequences))
+  
+  # Build a genetic distance matrix
+  distances <- buildGeneticDistanceMatrix(sequences)
+  
+  # Remove rows and columns of sequences not in tree and re-order
+  distances <- distances[tree$tip.label, tree$tip.label]
+  
+  return(distances)
+}
+
+readFASTA <- function(fastaFile, skip=1){
+  
+  # Open a connection to a file to read (open="r")
+  connection <- file(fastaFile, open="r")
+  
+  # Get all lines from file and store in vector
+  fileLines <- readLines(connection)
+  
+  # Close file connection
+  close(connection)
+  
+  # Skip the first X lines
+  fileLines <- fileLines[-skip]
+  
+  # Initialise a list to store the sequences
+  sequences <- list()
+  
+  # Loop through each of the lines in file
+  for(line in fileLines){
+    
+    # Check if found new sequence
+    if(grepl(line, pattern="^>")){
+      
+      # Get the sequence name
+      name <- substr(line, 2, nchar(line))
+      
+      # Start storing the sequence
+      sequences[[name]] <- c()
+      
+      # Else if haven't found new sequence - continue storing previous sequence
+    }else{
+      sequences[[name]] <- c(sequences[[name]], strsplit(line, split="")[[1]])
+    }
+  }
+  
+  return(sequences)
+}
+
+buildGeneticDistanceMatrix <- function(sequences){
+  
+  # Initialise a matrix to store the distances
+  distances <- matrix(NA, nrow=length(sequences), ncol=length(sequences))
+  
+  # Add column and row names
+  sequenceIDs <- names(sequences)
+  colnames(distances) <- sequenceIDs
+  rownames(distances) <- sequenceIDs
+  
+  # Compare each of the sequences to one another once
+  for(i in seq_along(sequenceIDs)){
+    for(j in seq_along(sequenceIDs)){
+      
+      # Skip self comparisons and making same comparison twice
+      if(i >= j){
+        next
+      }
+      
+      # Calculate the distance between the current sequences
+      distances[i, j] <- geneticDistance(sequences[[sequenceIDs[i]]],
+                                         sequences[[sequenceIDs[j]]])
+      distances[j, i] <- distances[i, j]
+    }
+  }
+  
+  return(distances)
+}
+
+geneticDistance <- function(a, b){
+  
+  # Check sequences are the same length
+  if(length(a) != length(b)){
+    stop("Sequences provided are different lengths!")
+  }
+  
+  # Initialise a variable to store the number of differences found
+  nDiff <- 0
+  
+  # Compare each character of the sequences
+  for(i in seq_along(a)){
+    
+    # Check if difference at the current position
+    if(a[i] != "N" && b[i] != "N" && a[i] != b[i]){
+      nDiff <- nDiff + 1
+    }
+  }
+  
+  return(nDiff)
+}
+
+euclideanDistance <- function(x1, y1, x2, y2){
+  return(sqrt((x1 - x2)^2 + (y1 - y2)^2))
+}
 
 #### FUNCTIONS - joint figure ####
 
@@ -666,142 +917,6 @@ addScale <- function(sizeInMetres){
   
   # Plot the scale bar
   points(x=c(start, start), y=c(height, height), xpd=TRUE, col="red")
-}
-
-#### FUNCTIONS - Clustering ####
-
-calculateTemporalDistances <- function(tipInfo){
-  
-  # Initialise a matrix to store the distances
-  distances <- matrix(NA, nrow=nrow(tipInfo), ncol=nrow(tipInfo))
-  
-  # Convert the date column into Date format
-  tipInfo$Date <- as.Date(tipInfo$Date, format="%Y-%m-%d")
-  
-  # Compare each of the sampling dates
-  for(i in seq_len(nrow(tipInfo))){
-    for(j in seq_len(nrow(tipInfo))){
-      
-      # Skip self comparisons and making same comparison twice
-      if(i > j){
-        next
-      }
-      
-      # Calculate the distance between the current pair of sampling dates
-      distances[i, j] <- abs(as.numeric(tipInfo[i, "Date"] - tipInfo[j, "Date"]))
-      distances[j, i] <- distances[i, j]
-    }
-  }
-  
-  return(distances)
-}
-
-calculateGeneticDistances <- function(fastaFile, tree){
-  
-  # Read in the FASTA file
-  sequences <- readFASTA(fastaFile, skip=1)
-  names(sequences) <- editTipLabels(names(sequences))
-  
-  # Build a genetic distance matrix
-  distances <- buildGeneticDistanceMatrix(sequences)
-  
-  # Remove rows and columns of sequences not in tree and re-order
-  distances <- distances[tree$tip.label, tree$tip.label]
-  
-  return(distances)
-}
-
-readFASTA <- function(fastaFile, skip=1){
-  
-  # Open a connection to a file to read (open="r")
-  connection <- file(fastaFile, open="r")
-  
-  # Get all lines from file and store in vector
-  fileLines <- readLines(connection)
-  
-  # Close file connection
-  close(connection)
-  
-  # Skip the first X lines
-  fileLines <- fileLines[-skip]
-  
-  # Initialise a list to store the sequences
-  sequences <- list()
-  
-  # Loop through each of the lines in file
-  for(line in fileLines){
-    
-    # Check if found new sequence
-    if(grepl(line, pattern="^>")){
-      
-      # Get the sequence name
-      name <- substr(line, 2, nchar(line))
-      
-      # Start storing the sequence
-      sequences[[name]] <- c()
-    
-    # Else if haven't found new sequence - continue storing previous sequence
-    }else{
-      sequences[[name]] <- c(sequences[[name]], strsplit(line, split="")[[1]])
-    }
-  }
-  
-  return(sequences)
-}
-
-buildGeneticDistanceMatrix <- function(sequences){
-  
-  # Initialise a matrix to store the distances
-  distances <- matrix(NA, nrow=length(sequences), ncol=length(sequences))
-  
-  # Add column and row names
-  sequenceIDs <- names(sequences)
-  colnames(distances) <- sequenceIDs
-  rownames(distances) <- sequenceIDs
-  
-  # Compare each of the sequences to one another once
-  for(i in seq_along(sequenceIDs)){
-    for(j in seq_along(sequenceIDs)){
-      
-      # Skip self comparisons and making same comparison twice
-      if(i > j){
-        next
-      }
-      
-      # Calculate the distance between the current sequences
-      distances[i, j] <- geneticDistance(sequences[[sequenceIDs[i]]],
-                                         sequences[[sequenceIDs[j]]])
-      distances[j, i] <- distances[i, j]
-    }
-  }
-  
-  return(distances)
-}
-
-geneticDistance <- function(a, b){
-  
-  # Check sequences are the same length
-  if(length(a) != length(b)){
-    stop("Sequences provided are different lengths!")
-  }
-  
-  # Initialise a variable to store the number of differences found
-  nDiff <- 0
-  
-  # Compare each character of the sequences
-  for(i in seq_along(a)){
-    
-    # Check if difference at the current position
-    if(a[i] != "N" && b[i] != "N" && a[i] != b[i]){
-      nDiff <- nDiff + 1
-    }
-  }
-  
-  return(nDiff)
-}
-
-euclideanDistance <- function(x1, y1, x2, y2){
-  return(sqrt((x1 - x2)^2 + (y1 - y2)^2))
 }
 
 #### FUNCTIONS - Shape files ####
