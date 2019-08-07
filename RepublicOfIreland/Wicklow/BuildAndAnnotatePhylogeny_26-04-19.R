@@ -311,58 +311,16 @@ geneticVsEpi <- constructGeneticVersusSpatialTemporalSpeciesTable(tipInfo,
                                                                   temporalDistanceMatrix,
                                                                   spatialDistanceMatrix)
 
-# Plot the genetic distance distribution
-hist(geneticVsEpi$Genetic, breaks=30, las=1, xlab="Genetic distance (N. SNVs)", main="")
+# Generate some exploratory plots
+generateExploratoryPlots(geneticVsEpi)
 
-# Plot the temporal versus genetic distance
-plot(x=geneticVsEpi$Temporal, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
-     las=1, bty="n", xlab="Temporal distance (N. days)", 
-     ylab="Genetic distance (N. SNVs)")
+# Examine whether clustering in genetic/spatial/temporal distances based on species
+compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi)
+compareWithinAndBetweenDistancesForSpecies("Spatial", geneticVsEpi)
+compareWithinAndBetweenDistancesForSpecies("Temporal", geneticVsEpi)
 
-# Plot the spatial versus genetic distance
-plot(x=geneticVsEpi$Spatial, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
-     las=1, bty="n", xlab="Spatial distance (m)", 
-     ylab="Genetic distance (N. SNVs)")
+# Fit a Random Forest model - all genetic distances (subset?)
 
-# Plot the genetic distances in each species comparisons
-boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2)
-
-# Plot the points for each category spread along the X axis
-#spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
-#                     categoriesColumn="Species")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BB", "Genetic"],
-             position=1, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BC", "Genetic"],
-             position=2, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BD", "Genetic"],
-             position=3, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CB", "Genetic"],
-             position=4, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CC", "Genetic"],
-             position=5, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CD", "Genetic"],
-             position=6, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DB", "Genetic"],
-             position=7, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DC", "Genetic"],
-             position=8, col="red")
-spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DD", "Genetic"],
-             position=9, col="red")
-
-write.csv(geneticVsEpi, file=paste0(path, "geneticVsEpi_", date, ".csv"),
-          quote=FALSE, row.names=FALSE)
-
-### Species level clustering ###
-
-# In genetic distances
-
-# In space
-
-# In time
-
-### Clustering in the genetic distances ###
-
-# Random Forest model with species, sampling time, and location
 
 
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
@@ -378,6 +336,105 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 
 #### FUNCTIONS - Clustering ####
 
+defineWithinAndBetweenBasedOnSpeciesColumn <- function(species){
+  
+  # Initialise an array to store the within flags
+  within <- rep(FALSE, length(species))
+  
+  # Examine each of the species codes
+  for(i in seq_along(species)){
+    
+    # Split the code into its individual specie's codes
+    parts <- strsplit(species[i], split="")[[1]]
+    
+    # Check if within species comparison
+    within[i] <- parts[1] == parts[2]
+  }
+  
+  return(within)
+}
+
+compareWithinAndBetweenDistancesForSpecies <- function(responseColumn, geneticVsEpi,
+                                                       nReps=1000){
+ 
+  # Define within and between response values based on the Species column
+  withinFlags <- defineWithinAndBetweenBasedOnSpeciesColumn(geneticVsEpi$Species)
+  
+  # Get the within and between values
+  within <- geneticVsEpi[, responseColumn][withinFlags]
+  between <- geneticVsEpi[, responseColumn][withinFlags == FALSE]
+  
+  # Calculate the difference between the mean within and between distances
+  difference <- mean(between, na.rm=TRUE) - mean(within, na.rm=TRUE)
+  
+  # Generate a null distribution of differences
+  null <- rep(NA, nReps)
+  for(i in seq_len(nReps)){
+    
+    # Get randomised within and between values
+    shuffledFlags <- sample(withinFlags)
+    within <- geneticVsEpi[, responseColumn][shuffledFlags]
+    between <- geneticVsEpi[, responseColumn][shuffledFlags == FALSE]
+    
+    # Calculate the difference between the mean within and between distances
+    null[i] <- mean(between, na.rm=TRUE) - mean(within, na.rm=TRUE)
+    
+    # Print progress
+    progress(i, nReps)
+  }
+  
+  # Generate a histogram for the null distribution
+  hist <- hist(null, breaks=30, plot=FALSE)
+
+  # Calculate the upper and lower bounds of the null distribution
+  quantiles <- quantile(null, probs=c(0.025, 0.975))
+  cuts <- cut(hist$breaks, c(-Inf, quantiles[1], quantiles[2], Inf))
+  
+  # Plot the null distribution
+  plot(hist, col=c("red", "white", "red")[cuts], xlim=range(c(null, difference)),
+       xlab="mean(between) - mean(within)",
+       main=paste0("Clustering analysis: ", responseColumn, " distances"))
+  
+  
+  # Highlight the actual difference
+  points(x=c(difference,difference), y=c(0, max(hist$counts)), col="blue", 
+         type="l", lwd=3)
+}
+
+generateExploratoryPlots <- function(geneticVsEpi){
+  
+  # Plot the genetic distance distribution
+  hist(geneticVsEpi$Genetic, breaks=30, las=1, xlab="Genetic distance (N. SNVs)", main="")
+  
+  # Plot the temporal versus genetic distance
+  plot(x=geneticVsEpi$Temporal, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
+       las=1, bty="n", xlab="Temporal distance (days)", 
+       ylab="Genetic distance (N. SNVs)")
+  
+  # Plot the spatial versus genetic distance
+  plot(x=geneticVsEpi$Spatial, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
+       las=1, bty="n", xlab="Spatial distance (m)", 
+       ylab="Genetic distance (SNVs)")
+  
+  # Plot the genetic distances in each species comparisons
+  boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
+          ylab="Genetic distance (SNVs)", xlab="Comparison")
+  spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
+                       categoriesColumn="Species", col="red", plotOutliers=TRUE)
+  
+  # Plot the genetic distances in each species comparisons
+  boxplot(Spatial ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
+          ylab="Spatial distance (m)", xlab="Comparison")
+  spreadPointsMultiple(data=geneticVsEpi, responseColumn="Spatial",
+                       categoriesColumn="Species", col="red", plotOutliers=TRUE)
+  
+  # Plot the genetic distances in each species comparisons
+  boxplot(Temporal ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
+          ylab="Temporal distance (days)", xlab="Comparison")
+  spreadPointsMultiple(data=geneticVsEpi, responseColumn="Temporal",
+                       categoriesColumn="Species", col="red", plotOutliers=TRUE)
+}
+
 constructGeneticVersusSpatialTemporalSpeciesTable <- function(tipInfo, 
                                                               geneticDistanceMatrix,
                                                               temporalDistanceMatrix,
@@ -392,14 +449,18 @@ constructGeneticVersusSpatialTemporalSpeciesTable <- function(tipInfo,
   row <- 0
   
   # Create a single character for each species
-  speciesCodes <- list("Badger"='B', "Cow"='C', "Deer"='D')
+  speciesCodes <- list("Badger-Badger"='BB',
+                       "Badger-Cow"='BC',
+                       "Badger-Deer"='BD',
+                       "Cow-Cow"='CC',
+                       "Cow-Badger"='BC',
+                       "Cow-Deer"='CD',
+                       "Deer-Deer"='DD',
+                       "Deer-Cow"='CD',
+                       "Deer-Badger"='BD')
   
   # Compare each of the sequences and their sampling information
   for(i in seq_len(nrow(tipInfo))){
-    
-    # Get the species of i
-    iSpecies <- speciesCodes[[tipInfo[i, "Species"]]]
-    
     for(j in seq_len(nrow(tipInfo))){
       
       # Skip self comparisons and making same comparison twice
@@ -410,14 +471,12 @@ constructGeneticVersusSpatialTemporalSpeciesTable <- function(tipInfo,
       # Increment the row counter
       row <- row + 1
       
-      # Get the species of j
-      jSpecies <- speciesCodes[[tipInfo[j, "Species"]]]
-      
       # Store the information available for the current comparison
       geneticVsEpi[row, "Genetic"] <- geneticDistanceMatrix[i, j]
       geneticVsEpi[row, "Temporal"] <- temporalDistanceMatrix[i, j]
       geneticVsEpi[row, "Spatial"] <- spatialDistanceMatrix[i, j]
-      geneticVsEpi[row, "Species"] <- paste0(iSpecies, jSpecies)
+      geneticVsEpi[row, "Species"] <- speciesCodes[[paste0(tipInfo[i, "Species"], "-",
+                                                           tipInfo[j, "Species"])]]
       geneticVsEpi[row, "IDs"] <- paste0(tipInfo[i, "ID"], "_", tipInfo[j, "ID"])
     }
   }
