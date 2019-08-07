@@ -342,6 +342,13 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 
 
 
+#### Plot the temporal sampling range ####
+
+# Create an empty plot
+
+write.table(tipInfo, file=paste0(path, "tipInfo_", date, ".csv"), sep=",",
+            row.names=FALSE, quote=FALSE)
+
 #### FUNCTIONS - Clustering ####
 
 fitRandomForestModel <- function(geneticVsEpi, distanceThreshold=NULL){
