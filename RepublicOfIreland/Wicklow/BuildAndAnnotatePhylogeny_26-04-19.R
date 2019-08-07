@@ -331,8 +331,6 @@ fitRandomForestModel(geneticVsEpi, distanceThreshold=15)
 # Close the output pdf
 dev.off()
 
-########## WHY ARE THERE NA DATES?
-
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
 # Get the metadata for the aliquots that haven't been sequenced
