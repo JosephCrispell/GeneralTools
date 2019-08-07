@@ -9,6 +9,7 @@ library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-ope
 library(grid) # Used to plot lines between plot panels
 library(OSMscale) # Add scale to map
 library(basicPlotteR) # Replacing sampling locations with numbers
+library(randomForest)
 
 #### Load sampling information ####
 
@@ -296,6 +297,10 @@ dev.off()
 
 #### CLUSTERING analyses ####
 
+# Open an output PDF
+outputPlotFile <- paste0(path, "Clustering_", date, ".pdf")
+pdf(outputPlotFile, width=7, height=7)
+
 # Build genetic distance matrix
 geneticDistanceMatrix <- calculateGeneticDistances(fastaFile, tree)
 
@@ -319,9 +324,14 @@ compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi)
 compareWithinAndBetweenDistancesForSpecies("Spatial", geneticVsEpi)
 compareWithinAndBetweenDistancesForSpecies("Temporal", geneticVsEpi)
 
-# Fit a Random Forest model - all genetic distances (subset?)
+# Fit a Random Forest models (all genetic distances, then only short ones)
+fitRandomForestModel(geneticVsEpi)
+fitRandomForestModel(geneticVsEpi, distanceThreshold=15)
 
+# Close the output pdf
+dev.off()
 
+########## WHY ARE THERE NA DATES?
 
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
@@ -335,6 +345,60 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 
 
 #### FUNCTIONS - Clustering ####
+
+fitRandomForestModel <- function(geneticVsEpi, distanceThreshold=NULL){
+  
+  # Apply threshold to genetic distances if requested
+  if(is.null(distanceThreshold) == FALSE){
+    
+    geneticVsEpi <- geneticVsEpi[geneticVsEpi$Genetic <= distanceThreshold, ]
+  }
+  
+  # Replace NA values with -1's
+  geneticVsEpi[is.na(geneticVsEpi)] <- -1
+  
+  # Make species column a factor
+  geneticVsEpi$Species <- as.factor(geneticVsEpi$Species)
+  
+  # Fit the Random Forest model - no training - OVER FITTING
+  infoRF <- randomForest(geneticVsEpi$Genetic ~ ., data=geneticVsEpi[, c(-1, -5)],
+                         mtry=1, importance=TRUE, ntree=1000,
+                         keep.forest=TRUE, norm.votes=FALSE, proximity=FALSE,
+                         do.trace=FALSE)
+  
+  # Check the Random Forest model error
+  plot(infoRF, las=1, bty="n")
+  if(is.null(distanceThreshold) == FALSE){
+    mtext(paste0("Threshold = ", distanceThreshold), side=3, line=0, adj=1)
+  }
+  
+  # Get the Pseudo RSquared value
+  rSq <- round(infoRF$rsq[length(infoRF$rsq)], digits=2)
+  
+  # Examine trained model prediction
+  plot(x=infoRF$predicted, y=geneticVsEpi$Genetic,
+       las=1, pch=19, col=rgb(0,0,0, 0.1), xlab="Predicted", ylab="Actual", 
+       main="Random Forest model predictions", bty="n")
+  if(is.null(distanceThreshold) == FALSE){
+    mtext(paste0("Threshold = ", distanceThreshold), side=3, line=0, adj=1)
+  }
+  
+  # Add line of best fit
+  abline(lm(geneticVsEpi$Genetic ~ infoRF$predicted), col="red")
+  
+  # Add a legend detailing the correlation and r squared values
+  legend("topleft", legend=c(paste0("Rsq = ", rSq),
+                             paste0("n = ", nrow(geneticVsEpi))),
+         bty="n", cex = 1)
+  
+  # Plot the variable importance
+  variableImportance <- as.data.frame(infoRF$importance)
+  barplot(variableImportance$`%IncMSE`, horiz=TRUE, names=rownames(variableImportance),
+          xlab="% Increase MSE (RF)", main="Variable importance in Random Forest")
+  if(is.null(distanceThreshold) == FALSE){
+    mtext(paste0("Threshold = ", distanceThreshold), side=3, line=0, adj=1)
+  }
+}
 
 defineWithinAndBetweenBasedOnSpeciesColumn <- function(species){
   
@@ -392,7 +456,7 @@ compareWithinAndBetweenDistancesForSpecies <- function(responseColumn, geneticVs
   
   # Plot the null distribution
   plot(hist, col=c("red", "white", "red")[cuts], xlim=range(c(null, difference)),
-       xlab="mean(between) - mean(within)",
+       xlab="mean(between) - mean(within)", las=1,
        main=paste0("Clustering analysis: ", responseColumn, " distances"))
   
   
