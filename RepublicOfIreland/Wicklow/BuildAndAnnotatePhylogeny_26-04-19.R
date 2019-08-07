@@ -311,6 +311,47 @@ geneticVsEpi <- constructGeneticVersusSpatialTemporalSpeciesTable(tipInfo,
                                                                   temporalDistanceMatrix,
                                                                   spatialDistanceMatrix)
 
+# Plot the genetic distance distribution
+hist(geneticVsEpi$Genetic, breaks=30, las=1, xlab="Genetic distance (N. SNVs)", main="")
+
+# Plot the temporal versus genetic distance
+plot(x=geneticVsEpi$Temporal, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
+     las=1, bty="n", xlab="Temporal distance (N. days)", 
+     ylab="Genetic distance (N. SNVs)")
+
+# Plot the spatial versus genetic distance
+plot(x=geneticVsEpi$Spatial, y=geneticVsEpi$Genetic, pch=19, col=rgb(0,0,0, 0.1),
+     las=1, bty="n", xlab="Spatial distance (m)", 
+     ylab="Genetic distance (N. SNVs)")
+
+# Plot the genetic distances in each species comparisons
+boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2)
+
+# Plot the points for each category spread along the X axis
+#spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
+#                     categoriesColumn="Species")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BB", "Genetic"],
+             position=1, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BC", "Genetic"],
+             position=2, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "BD", "Genetic"],
+             position=3, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CB", "Genetic"],
+             position=4, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CC", "Genetic"],
+             position=5, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "CD", "Genetic"],
+             position=6, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DB", "Genetic"],
+             position=7, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DC", "Genetic"],
+             position=8, col="red")
+spreadPoints(values=geneticVsEpi[geneticVsEpi$Species == "DD", "Genetic"],
+             position=9, col="red")
+
+write.csv(geneticVsEpi, file=paste0(path, "geneticVsEpi_", date, ".csv"),
+          quote=FALSE, row.names=FALSE)
+
 ### Species level clustering ###
 
 # In genetic distances
