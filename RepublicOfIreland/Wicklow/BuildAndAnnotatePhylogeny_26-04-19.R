@@ -250,6 +250,58 @@ legend("top", legend=c("Badger", "Cow", "Deer"),
        col=c("red", "blue", "black"),
        pt.cex=1.5, xpd=TRUE, horiz=TRUE, bty="n")
 
+### Plot without map and land parcels
+
+# Get and set the plotting margins
+currentMar <- par()$mar
+par(mar=c(4,0,0,0))
+
+# Create an empty plot
+plot(x=tipInfo$MercatorX, y=tipInfo$MercatorY,
+     pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                           which="shape"),
+     bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                          which="colour", alpha=0.75),
+     xaxt="n", yaxt="n", xlab="", ylab="", bty="n", cex=3)
+
+# Add scale bar
+scaleBar(map, abslen=5, x=0.575, y=0.2, cex=2, unit="km", label="    km")
+
+# Get the axis limits
+axisLimits <- par()$usr
+xLength <- axisLimits[2] - axisLimits[1]
+yLength <- axisLimits[4] - axisLimits[3]
+
+# Add a legend
+legend(x=axisLimits[1] + (0.1*xLength), y=axisLimits[3],
+       legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
+
+### Plot without map and land parcels
+
+# Plot the satellite image
+plot(mapWithoutLandparcels)
+
+# Add scale bar
+scaleBar(mapWithoutLandparcels, abslen=5, x=0.2, y=0.1, cex=2, unit="km",
+         targs=list(col="white"), label="   km")
+
+# Plot the badger and deer sampling locations
+points(tipInfo$MercatorX, tipInfo$MercatorY, 
+       pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                             which="shape"),
+       bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                            which="colour", alpha=0.75),
+       col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
+
+# Add species legend
+legend("top", legend=c("Badger", "Cow", "Deer"),
+       pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+       col=c("red", "blue", "black"),
+       pt.cex=1.5, xpd=TRUE, horiz=TRUE, bty="n")
+
 dev.off()
 
 #### Plot phylogeny linked to spatial locations ####
@@ -264,31 +316,31 @@ outputPlotFile <- paste0(path, "LinkedPhylogenyAndLocations_", date, ".pdf")
 pdf(outputPlotFile, width=14, height=7)
 
 # Plot phylogeny and map with sampling locations as shapes
-plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=2,
+plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=3,
                     scaleTextColour="white", addTipIndices=FALSE,
                     connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
-                    scaleX=0.7, scaleY=0.15, scaleLabel="   km", tipCexOnMap=3)
+                    scaleX=0.65, scaleY=0.075, scaleLabel="    km", tipCexOnMap=3)
 
 # Plot phylogeny and map with sampling locations as indices
-plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=1.5, scaleCex=2,
+plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=1.5, scaleCex=3,
                     scaleTextColour="white", addTipIndices=TRUE,
                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-                    scaleX=0.7, scaleY=0.15, scaleLabel="   km",
+                    scaleX=0.65, scaleY=0.075, scaleLabel="    km",
                     tipIndexBackground=rgb(1,1,1, 0.5), tipCexOnMap=2)
 
 # Plot phylogeny and sampling locations as indices
-plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=1.5, scaleCex=2,
+plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=1.5, scaleCex=3,
                     scaleTextColour="black", addTipIndices=TRUE,
                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-                    scaleX=0.71, scaleY=0.15, scaleLabel="   km",
+                    scaleX=0.65, scaleY=0.2, scaleLabel="    km",
                     tipIndexBackground=rgb(1,1,1, 0.5), tipCexOnMap=2,
                     plotMap=FALSE)
 
 # Plot phylogeny and sampling locations as shapes
-plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=2,
+plotPhylogenyAndMap(map, tree, tipInfo, tipCexOnPhylogeny=2, scaleCex=3,
                     scaleTextColour="black", addTipIndices=FALSE,
                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-                    scaleX=0.7, scaleY=0.15, scaleLabel="   km", tipCexOnMap=3,
+                    scaleX=0.65, scaleY=0.15, scaleLabel="    km", tipCexOnMap=3,
                     plotMap=FALSE)
 
 # Close the output pdf
@@ -296,10 +348,6 @@ dev.off()
 
 
 #### CLUSTERING analyses ####
-
-# Open an output PDF
-outputPlotFile <- paste0(path, "Clustering_", date, ".pdf")
-pdf(outputPlotFile, width=7, height=7)
 
 # Build genetic distance matrix
 geneticDistanceMatrix <- calculateGeneticDistances(fastaFile, tree)
@@ -315,6 +363,13 @@ geneticVsEpi <- constructGeneticVersusSpatialTemporalSpeciesTable(tipInfo,
                                                                   geneticDistanceMatrix,
                                                                   temporalDistanceMatrix,
                                                                   spatialDistanceMatrix)
+# Summarise the genetic distance distribution
+median(geneticVsEpi$Genetic)
+quantile(geneticVsEpi$Genetic, probs=c(0.025, 0.975))
+
+# Open an output PDF
+outputPlotFile <- paste0(path, "Clustering_", date, ".pdf")
+pdf(outputPlotFile, width=7, height=7)
 
 # Generate some exploratory plots
 generateExploratoryPlots(geneticVsEpi)
@@ -327,6 +382,29 @@ compareWithinAndBetweenDistancesForSpecies("Temporal", geneticVsEpi)
 # Fit a Random Forest models (all genetic distances, then only short ones)
 fitRandomForestModel(geneticVsEpi)
 fitRandomForestModel(geneticVsEpi, distanceThreshold=15)
+
+# Close the output pdf
+dev.off()
+
+### Build figure to summarise the genetic ~ species relationship
+
+# Open an output PDF
+outputPlotFile <- paste0(path, "Clustering_genetic-species_", date, ".pdf")
+pdf(outputPlotFile, width=14, height=7)
+
+# Set the plotting dimensions
+par(mfrow=c(1,2))
+
+# Plot a summary of the genetic distances within and between species
+# Plot the genetic distances in each species comparisons
+boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
+        ylab="Genetic distance (SNVs)", xlab="Comparison",
+        main="Genetic distance distributions\nwithin and between species")
+spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
+                     categoriesColumn="Species", col="red", plotOutliers=TRUE)
+
+# Calculate the within and between species distances
+compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi)
 
 # Close the output pdf
 dev.off()
@@ -366,7 +444,7 @@ plotTemporalSamplingRange <- function(tipInfo){
   par(mar=c(5.1, 4.1, 4.1, 3.1))
   
   # Create an empty plot
-  plot(x=NULL, y=NULL, ylim=c(0, 4), xlim=dateRange,
+  plot(x=NULL, y=NULL, ylim=c(0.5, 3.25), xlim=dateRange,
        bty="n", ylab="", yaxt="n", xlab="Date", main="Number of samples available in time", xaxt="n")
   
   # Add an X axis
@@ -520,6 +598,8 @@ compareWithinAndBetweenDistancesForSpecies <- function(responseColumn, geneticVs
   # Highlight the actual difference
   points(x=c(difference,difference), y=c(0, max(hist$counts)), col="blue", 
          type="l", lwd=3)
+  text(x=difference, y=max(hist$counts), labels="Actual\nvalue", pos=2, col="blue",
+       xpd=TRUE)
 }
 
 generateExploratoryPlots <- function(geneticVsEpi){
@@ -892,10 +972,10 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipCexOnPhylogeny=2,
            col=c("red", "blue", "black"),
            pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
   }else{
-    legend("bottom", legend=c("Badger", "Cow", "Deer"),
+    legend("right", legend=c("Badger", "Cow", "Deer"),
            pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
            col=c("red", "blue", "black"),
-           pt.cex=3, xpd=TRUE, horiz=TRUE, cex=2, bty="n")
+           pt.cex=3, xpd=TRUE, horiz=FALSE, cex=2, bty="n")
   }
   
   # Reset the margins
@@ -1597,17 +1677,17 @@ addScaleBar <- function(scaleSize, cex=1){
   yLength <- dimensions[4] - dimensions[3]
   
   # Add Scale bar
-  xPad <- 0.1 * xLength
+  xPad <- 0.4 * xLength
 
   points(x=c(dimensions[1] + xPad, dimensions[1] + xPad + scaleSize), 
          y=c(dimensions[3] - (0.01 * yLength), dimensions[3] - (0.01 * yLength)),
          type="l", lwd=3, xpd=TRUE)
   if(scaleSize == 1){
     text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.04 * yLength),
-         labels=paste0("~ ", scaleSize, " SNP"), cex=cex, xpd=TRUE)
+         labels=paste0("~ ", scaleSize, " SNV"), cex=cex, xpd=TRUE)
   }else{
     text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.04 * yLength),
-         labels=paste0("~ ", scaleSize, " SNPs"), cex=cex, xpd=TRUE)
+         labels=paste0("~ ", scaleSize, " SNVs"), cex=cex, xpd=TRUE)
   }
 }
 
