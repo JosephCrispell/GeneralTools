@@ -422,7 +422,7 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 
 # Open an output PDF
 outputPlotFile <- paste0(path, "TemporalSampling_", date, ".pdf")
-pdf(outputPlotFile, width=7, height=7)
+pdf(outputPlotFile, width=15, height=7)
 
 plotTemporalSamplingRange(tipInfo)
 
@@ -441,19 +441,26 @@ plotTemporalSamplingRange <- function(tipInfo){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
-  par(mar=c(5.1, 4.1, 4.1, 3.1))
+  par(mar=c(4.1, 5.1, 4.1, 4.4))
+  
+  # Define the locations of the sampling ranges on the Y axis
+  yLocations <- c(0.5, 0.75, 1)
+  speciesShapes <- c(19, 19, 19)
   
   # Create an empty plot
-  plot(x=NULL, y=NULL, ylim=c(0.5, 3.25), xlim=dateRange,
-       bty="n", ylab="", yaxt="n", xlab="Date", main="Number of samples available in time", xaxt="n")
+  plot(x=NULL, y=NULL, ylim=c(0.4,1.1), xlim=dateRange,
+       bty="n", ylab="", yaxt="n", xlab="", 
+       main="Number of samples available in time", xaxt="n",
+       cex.main=3)
   
   # Add an X axis
   at <- as.Date(c("2014-03-15", "2014-07-15", "2014-11-15", "2015-03-15", "2015-07-15"),  format="%Y-%m-%d")
-  axis(side=1, at=at, labels=format(at, "%d-%m-%Y"))
+  axis(side=1, at=at, labels=FALSE)
+  axis(side=1, at=at, labels=format(at, "%d-%m-%Y"), tick=FALSE, cex.axis=2, line=1)
   
   # Add y axis
   species <- c("Badger", "Deer", "Cow")
-  axis(side=2, at=1:3, labels=species, las=1, tick=FALSE)
+  axis(side=2, at=yLocations, labels=species, las=1, tick=FALSE, cex.axis=2, line=-2)
   
   # Examine the sampling of each species
   for(speciesIndex in seq_along(species)){
@@ -468,11 +475,14 @@ plotTemporalSamplingRange <- function(tipInfo){
     dates <- sort(dates)
     
     # Plot the dates
-    points(x=dates, y=rep(speciesIndex, length(dates)), type="o", pch=19, col=rgb(0,0,0, 0.25), cex=2)
+    points(x=dates, y=rep(yLocations[speciesIndex], length(dates)),
+           type="o", pch=speciesShapes[speciesIndex], col=rgb(0,0,0, 0.25), cex=5)
     
     # Note the number of samples available
-    text(x=dateRange[2], y=speciesIndex, adj=0, xpd=TRUE,
-         labels=paste0("  ", length(dates), "/", length(which(tipInfo$Species == species[speciesIndex]))))
+    text(x=dateRange[2], y=yLocations[speciesIndex], adj=0, xpd=TRUE,
+         labels=paste0("     ", length(dates), "/",
+                       length(which(tipInfo$Species == species[speciesIndex]))),
+         cex=2)
   }
   
   # Reset the plotting margins
