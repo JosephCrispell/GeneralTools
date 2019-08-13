@@ -1,14 +1,11 @@
 #!/bin/sh
 #!/bin/bash
 
-# Convert all PDFs in current directory to PNG files
+# Convert all PDFs in current directory to PNG files (or single file)
 # Author: Joseph Crispell
 
 # RUN SCRIPT USING bash script.sh (in Directory containing Raw Reads)
 # Note create permissions first ---> chmod +x script.sh
-
-# Command Line Structure:
-# bash ConvertPDFToPNG_DATE.sh commitMessage
 
 #############################
 # Convert PDFs to PNG files #
