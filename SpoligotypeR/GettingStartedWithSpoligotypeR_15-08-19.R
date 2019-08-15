@@ -30,11 +30,17 @@ parts <- strsplit(vcfFile, split="/")[[1]]
 sequenceName <- parts[length(parts)]
 convertVCFToFASTA(vcf, fastaFile, seqName=sequenceName, depthThreshold=20, supportThreshold=0.95)
 
-# Convert VCF to FASTA
-
 #### Dealing with FASTQ file ####
 
 #### Dealing with FASTA file ####
+
+#### Issues so far ####
+
+# Unzipping is ubuntu specific
+
+# Need full path to blastn
+
+# Multithreading would be useful!
 
 #### FUNCTIONS - general ####
 
