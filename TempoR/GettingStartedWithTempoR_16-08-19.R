@@ -20,7 +20,8 @@ tipDates <- getTipDatesFromTipLabels(tree$tip.label, dateFormat="%Y", dateColumn
 #### Find best root for phylogeny ####
 
 # Get the best rooted tree
-bestRootedTree <- identifyBestRootForSamplingDates(tree, tipDates, plot=FALSE)
+bestRootedTree <- identifyBestRootForSamplingDates(tree, tipDates, plot=TRUE,
+                                                   las=1, bty="n", pch=19, col=rgb(0,0,0, 0.5))
 
 # Create a root-to-tip plot
 plotTipToRootDistances(bestRootedTree$tipDates, bestRootedTree$tipToRootDistances, 
@@ -31,7 +32,7 @@ plotTipToRootDistances(bestRootedTree$tipDates, bestRootedTree$tipToRootDistance
 
 #### FUNCTIONS ####
 
-identifyBestRootForSamplingDates <- function(tree, tipDates, plot=FALSE, main="Examining temporal signature", ...){
+identifyBestRootForSamplingDates <- function(tree, tipDates, plot=FALSE, ...){
   
   # Add the tip dates to the tip labels
   tree$tip.label <- addDatesToTipLabels(tree$tip.label, tipDates)
@@ -54,9 +55,14 @@ identifyBestRootForSamplingDates <- function(tree, tipDates, plot=FALSE, main="E
   # Calculate the distances from the tips to the root
   tipToRootDistances <- sapply(1:nTips, FUN=calculateTipToRootDistance, reRootedTree)
   
-  # Create a plot of tip to root distances versus sampling time if requested
+  # Create summary plots if requested
   if(plot){
     
+    # Plot the rSquared values values calculated for each internal node
+    plot(x=internalNodeIndices, y=rSquaredValues, ylab="rSq from tip-to-root vs. sampling dates", xlab="Internal node index", 
+         main="Change in rSq with different rooted trees",...)
+    
+    # Plot of tip to root distances versus sampling time
     plotTipToRootDistances(tipDates, tipToRootDistances, ...)
   }
   
@@ -76,7 +82,7 @@ plotTipToRootDistances <- function(tipDates, tipToRootDistances, main="Examining
   summary <- summary(linearModel)
   
   # Plot the tip-to-root distances versus sampling date
-  plot(x=tipDates, y=tipToRootDistances, ylab="Tip-to-root Distance", xlab="Sampling Date",
+  plot(x=tipDates, y=tipToRootDistances, ylab="Tip-to-root distance", xlab="Sampling date",
        main=main, ...)
   
   # Add a line of best fit
