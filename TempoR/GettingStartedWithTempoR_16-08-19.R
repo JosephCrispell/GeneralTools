@@ -20,11 +20,11 @@ tipDates <- getTipDatesFromTipLabels(tree$tip.label, dateFormat="%Y", dateColumn
 #### Find best root for phylogeny ####
 
 # Get the best rooted tree
-bestRootedTree <- identifyBestRootForSamplingDates(tree, tipDates, plot=TRUE,
-                                                   las=1, bty="n", pch=19, col=rgb(0,0,0, 0.5))
+bestRootedTreeInfo <- identifyBestRootForSamplingDates(tree, tipDates, plot=TRUE,
+                                                       las=1, bty="n", pch=19, col=rgb(0,0,0, 0.5))
 
 # Create a root-to-tip plot
-plotTipToRootDistances(bestRootedTree$tipDates, bestRootedTree$tipToRootDistances, 
+plotTipToRootDistances(bestRootedTreeInfo$tipDates, bestRootedTreeInfo$tipToRootDistances, 
                        lineOfBestFirstColour=rgb(1,0,0, 0.75), lineOfBestFitType=2,
                        las=1, bty="n", pch=19, col=rgb(0,0,0, 0.5))
 
@@ -140,9 +140,12 @@ rootTreeAndFitLinearModel <- function(nodeIndex, tree){
   
   # Calculate the corrlation between the sampling dates
   linearModel <- lm(tipToRootDistances ~ tipDates)
-  summary <- summary(linearModel)
+  summaryOfLinearModel <- summary(linearModel)
   
-  return(summary$adj.r.squared)
+  # Note the direction of the relationship (negative or positive)
+  direction <- sign(summaryOfLinearModel$coefficients[2, 1])
+  
+  return(direction*summaryOfLinearModel$adj.r.squared)
 }
 
 getLastPartOfStrings <- function(strings, sep){
