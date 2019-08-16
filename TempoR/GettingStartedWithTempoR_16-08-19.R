@@ -19,6 +19,8 @@ tipDates <- getTipDatesFromTipLabels(tree$tip.label, dateFormat="%Y", dateColumn
 
 #### Find best root for phylogeny ####
 
+# MULTI-THREADING?!!!
+
 # Get the best rooted tree
 bestRootedTreeInfo <- identifyBestRootForSamplingDates(tree, tipDates, plot=TRUE,
                                                        las=1, bty="n", pch=19, col=rgb(0,0,0, 0.5))
@@ -104,7 +106,7 @@ removeDatesFromTipLabels <- function(tipLabels){
   for(index in seq_along(tipLabels)){
     
     # Split the current label into its parts
-    parts <- strsplit(tipLabels[index], split="_")
+    parts <- strsplit(tipLabels[index], split="_")[[1]]
     
     # Create a label without date
     labelsWithoutDates[index] <- paste(parts[1:(length(parts)-1)], collapse="_")
