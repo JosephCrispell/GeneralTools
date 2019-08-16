@@ -20,7 +20,7 @@ createLocalBlastDatabase(paste0(path, "Spacers/spacer.fasta"), pathToBlast)
 
 #### Dealing with VCF file ####
 
-# Open the VCF file
+# Open the VCF file - WHAT IF IT IS VARIANTS ONLY (NEED TO PROVIDE REFERENCE IF THAT IS THE CASE)
 vcfFile <- paste0(path, "TestingData/vcfFiles/14-MBovis_1.vcf.gz")
 vcf <- readVCF(vcfFile)
 
@@ -31,6 +31,10 @@ sequenceName <- parts[length(parts)]
 convertVCFToFASTA(vcf, fastaFile, seqName=sequenceName, depthThreshold=20, supportThreshold=0.95)
 
 #### Dealing with FASTQ file ####
+
+# Spotyper concatenates sample of FASTQ into single sequence
+# De novo assembly and then BLAST contigs
+# BWA alignment - aligning against pseudo reference of spacers
 
 #### Dealing with FASTA file ####
 
