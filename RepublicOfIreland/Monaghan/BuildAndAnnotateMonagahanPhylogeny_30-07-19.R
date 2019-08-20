@@ -115,10 +115,75 @@ herdInfo <- cattleShapeFile@data
 # Calculate the herd centroids
 landParcelCentroids <- calculateLandParcelCentroids(landParcelCoords)
 
-
 #### Plot the sampling locations ####
 
+# Add herd centroids and sett coordinates into tip information table
+tipInfo <- addHerdCentroidsAndSettLocationsToTipInfo(tipInfo, settLocations,
+                                                     landParcelCentroids)
+
+plot(tipInfo[, c("X", "Y")], 
+     pch=ifelse(tipInfo$Species == "BADGER", 19, 17),
+     col=rgb(0,0,0,0.5), cex=2, bty="n", xaxt="n", yaxt="n",
+     xlab="", ylab="")
+axisLimits <- par()$usr
+xLength <- axisLimits[2] - axisLimits[1]
+yLength <- axisLimits[4] - axisLimits[3]
+points(x=c(axisLimits[1], axisLimits[1] + 10000),
+       y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
+       type="l", lwd=2)
+text(x=axisLimits[1]+5000, y=axisLimits[3] + 0.05*yLength,
+     labels="10km")
+
 #### FUNCTIONS - spatial data ####
+
+addHerdCentroidsAndSettLocationsToTipInfo <- function(tipInfo, settLocations,
+                                                      landParcelCentroids){
+  
+  # Initialise columns to store the coordinates
+  tipInfo$X <- NA
+  tipInfo$Y <- NA
+  
+  # Examine each row of the tip information
+  for(row in 1:nrow(tipInfo)){
+    
+    # Skip animals with no herd ID or sett ID
+    if(is.na(tipInfo[row, "HerdOrSettID"])){
+      next
+    }
+    
+    # Check if cow
+    if(tipInfo[row, "Species"] == "COW"){
+      
+      # Check if herd coordinates are available
+      if(tipInfo[row, "HerdOrSettID"] %in% names(landParcelCentroids) == FALSE){
+        warning("No land parcels available for herd: ", 
+                tipInfo[row, "HerdOrSettID"])
+        next
+      }
+      
+      # Store herd centroid
+      tipInfo[row, "X"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$X
+      tipInfo[row, "Y"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$Y
+    
+    # Otherwise if badger store sett coordinates
+    }else{
+      
+      # Check if sett coordinates are available
+      settRow <- which(settLocations$SettID == tipInfo[row, "HerdOrSettID"])
+      if(length(settRow) == 0){
+        warning("No coordinates available for sett: ", 
+                tipInfo[row, "HerdOrSettID"])
+        next
+      }
+      
+      # Store the sett coordinates
+      tipInfo[row, "X"] <- settLocations[settRow, "X"]
+      tipInfo[row, "Y"] <- settLocations[settRow, "Y"]
+    }
+  }
+  
+  return(tipInfo)
+}
 
 calculateLandParcelCentroids <- function(landParcelCoords){
   
