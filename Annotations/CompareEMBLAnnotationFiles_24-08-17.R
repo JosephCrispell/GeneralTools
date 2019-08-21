@@ -18,9 +18,9 @@ path <- "/home/josephcrispell/Desktop/Research/Reference/"
 # file <- paste(path, "TransferAnnotations_23-05-18/RATT_output/embl/",
 #               "AF2122-97.embl", sep="")
 # original <- readEMBLFile(file)
-file <- paste(path, "UpdatedReference_Malone2017/",
-             "LT708304.1_AF2122-97_rmPrefixToLocusTag.embl", sep="")
-original <- readEMBLFile(file)
+# file <- paste(path, "UpdatedReference_Malone2017/",
+#              "LT708304.1_AF2122-97_rmPrefixToLocusTag.embl", sep="")
+# original <- readEMBLFile(file)
 # file <- paste(path, "UpdatedReference_Malone2017/",
 #               "LT708304.1_AF2122-97_ENA_rmPrefixToLocusTag.embl", sep="")
 # original <- readEMBLFile(file)
@@ -30,11 +30,18 @@ original <- readEMBLFile(file)
 #               "TransferGarnierToMalone_23-05-18.LT708304.1.final.embl", sep="")
 # transferred <- readEMBLFile(file)
 
+file <- paste(path, "TransferAnnotations_23-05-18/",
+              "UpdatedMaloneAnnotations_FINAL_25-05-18.embl", sep="")
+original <- readEMBLFile(file)
+
+transferred <- readEMBLFile("/home/josephcrispell/Desktop/LT708304_new_aug2019.embl")
+
 # Open a pdf
 # file <- paste(path, "TransferAnnotations_23-05-18/",
 #              "MaloneVersusTransferred_23-05-18.pdf", sep="")
-file <- paste(path, "TransferAnnotations_23-05-18/",
-              "GarnierVersusTransferred_23-05-18.pdf", sep="")
+# file <- paste(path, "TransferAnnotations_23-05-18/",
+#               "GarnierVersusTransferred_23-05-18.pdf", sep="")
+file <- "/home/josephcrispell/Desktop/AnnoationsComparison_21-08-19.pdf"
 pdf(file)
 
 ########################
@@ -99,6 +106,108 @@ dev.off()
 # FUNCTIONS #
 #############
 
+countOldLocusTags <- function(featureInfo){
+  
+  # Create a variable to count the variables with an old locus tag
+  count <- 0
+  
+  # Examine each feature
+  for(feature in names(featureInfo)){
+    
+    # Check if old locus tag available
+    if(is.na(featureInfo[[feature]]$old_locus_tag) == FALSE){
+      count <- count + 1
+    }
+  }
+  
+  cat("Found", count, "old locus tags.\n")
+}
+
+compareProductTags <- function(commonFeatures, featureInfoA, featureInfoB){
+  
+  # Initialise a counter to record the number of different products
+  nDifferent <- 0
+  
+  # Examine each of the common features
+  for(feature in commonFeatures){
+    
+    # Get the products
+    productA <- featureInfoA[[feature]]$product
+    productB <- featureInfoB[[feature]]$product
+    
+    # SKip if no product available
+    if(is.na(productA) && is.na(productB)){
+      next
+    }
+    
+    # Compare the product tags
+    if(productA != productB){
+      nDifferent <- nDifferent + 1
+    }
+  }
+  
+  cat("Found", nDifferent, "different product tags.\n")
+}
+
+compareGeneTags <- function(commonFeatures, featureInfoA, featureInfoB){
+  
+  # Initialise a counter to record the number of different products
+  nDifferent <- 0
+  
+  # Examine each of the common features
+  for(feature in commonFeatures){
+    
+    # Get the gene
+    geneA <- featureInfoA[[feature]]$gene_tag
+    geneB <- featureInfoB[[feature]]$gene_tag
+    
+    # Convert to strings if NA
+    if(is.na(geneA)){
+      geneA <- "NA"
+    }
+    if(is.na(geneB)){
+      geneB <- "NA"
+    }
+    
+    # Compare the gene tags
+    if(geneA != geneB){
+      nDifferent <- nDifferent + 1
+    }
+  }
+  
+  cat("Found", nDifferent, "different gene tags.\n")
+}
+
+reportFeatureTypes <- function(featureInfo){
+  
+  # Initialise an array to store the types of each feature
+  types <- c()
+  
+  # Examine each feature
+  for(feature in names(featureInfo)){
+    types[length(types) + 1] <- featureInfo[[feature]]$type
+  }
+  
+  return(table(types))
+}
+
+getFeaturesOfTypes <- function(featureInfo, type){
+  
+  # Initialise a vector to store the locus/gene tags
+  ids <- c()
+  
+  # Examein each feature
+  for(feature in names(featureInfo)){
+    
+    # Check the type of the current feature
+    if(featureInfo[[feature]]$type == type){
+      ids[length(ids)+1] <- feature
+    }
+  }
+  
+  return(ids)
+}
+
 getReverseCompliment <- function(sequence){
   
   # Note the nucleotide compliments
@@ -108,12 +217,12 @@ getReverseCompliment <- function(sequence){
   reverse <- rev(sequence)
   
   # Build the reverse compliment
-  reverseComplement = c()
+  reverseCompliment <- c()
   for(i in seq_along(reverse)){
-    reverseCompliment[i] = nucleotideCompliments[[reverse[i]]]
+    reverseCompliment[i] <- nucleotideCompliments[[reverse[i]]]
   }
   
-  return(reverseComplement())
+  return(reverseCompliment)
 }
 
 plotFeatureTypes <- function(features, featureInfo, main){
@@ -294,6 +403,8 @@ readEMBLFile <- function(fileName){
   sequenceParts <- c()
   locusTag <- NA
   geneTag <- NA
+  productTag <- NA
+  oldLocusTag <- NA
   
   # Parse the file lines
   for(i in 1:length(fileLines)){
@@ -310,11 +421,13 @@ readEMBLFile <- function(fileName){
                       "mobile_element", "rRNA", "misc_RNA")){
       
       # Store the information for the previous feature
-      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates)
+      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates, productTag, oldLocusTag)
       
       # Reset the tag variables
       locusTag <- NA
       geneTag <- NA
+      productTag <- NA
+      oldLocusTag <- NA
       
       # Note its type
       type <- cols[2]
@@ -351,7 +464,24 @@ readEMBLFile <- function(fileName){
         direction <- "FORWARD"
         coordinates <- as.numeric(strsplit(cols[3], split="[.]+")[[1]])
       }
+    
+    # Look for the product tag 
+    }else if(grepl(cols[2], pattern="/product=") == TRUE){
       
+      # Note the product tag
+      productTag <- gsub(pattern="\"", replacement="",
+                      strsplit(cols[2], split="=")[[1]][2])
+      productTag <- toupper(productTag)
+      
+    # Look for the old locus tag 
+    }else if(grepl(cols[2], pattern="/old_locus_tag=") == TRUE){
+      
+      # Note the old locus tag
+      oldLocusTag <- gsub(pattern="\"", replacement="",
+                         strsplit(cols[2], split="=")[[1]][2])
+      oldLocusTag <- toupper(oldLocusTag)
+      
+    # Look for the locus tag 
     }else if(grepl(cols[2], pattern="/locus_tag") == TRUE){
       
       # Note the locus tag
@@ -359,19 +489,20 @@ readEMBLFile <- function(fileName){
                        strsplit(cols[2], split="=")[[1]][2])
       locusTag <- toupper(locusTag)
 
+    # Look for the gene tag
     }else if(grepl(cols[2], pattern="/gene=") == TRUE){
       
-      # Note the locus tag
+      # Note the gene tag
       geneTag <- gsub(pattern="\"", replacement="",
                        strsplit(cols[2], split="=")[[1]][2])
       geneTag <- toupper(geneTag)
       
-      # Check whether reached end of feature section  
+    # Check whether reached end of feature section  
     }else if(cols[1] == "SQ"){
       foundSequence <- TRUE#
       
       # Store the information for the last feature
-      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates)
+      features <- storeFeature(features, locusTag, geneTag, type, direction, coordinates, productTag, oldLocusTag)
       next
     }
     
@@ -396,7 +527,8 @@ readEMBLFile <- function(fileName){
   return(output)
 }
 
-storeFeature <- function(features, locusTag, geneTag, type, direction, coordinates){
+storeFeature <- function(features, locusTag, geneTag, type, direction, coordinates, productTag,
+                         oldLocusTag){
   
   # Store the information for the previous feature
   if(is.na(locusTag) == FALSE && grepl(locusTag, pattern="XXXX") == FALSE){
@@ -405,7 +537,9 @@ storeFeature <- function(features, locusTag, geneTag, type, direction, coordinat
       "gene_tag"=geneTag,
       "type"=type,
       "direction"=direction,
-      "coordinates"=coordinates)
+      "coordinates"=coordinates,
+      "product"=productTag,
+      "old_locus_tag"=oldLocusTag)
   }else if(is.na(geneTag) == FALSE){
     
     cat(paste("Locus tag:", locusTag, "\tGene tag:", geneTag,
@@ -416,7 +550,9 @@ storeFeature <- function(features, locusTag, geneTag, type, direction, coordinat
       "gene_tag"=geneTag,
       "type"=type,
       "direction"=direction,
-      "coordinates"=coordinates)
+      "coordinates"=coordinates,
+      "product"=productTag,
+      "old_locus_tag"=oldLocusTag)
   }
   
   return(features)
