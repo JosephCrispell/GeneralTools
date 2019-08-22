@@ -471,7 +471,7 @@ readEMBLFile <- function(fileName){
       # Note the product tag
       productTag <- gsub(pattern="\"", replacement="",
                       strsplit(cols[2], split="=")[[1]][2])
-      productTag <- toupper(productTag)
+      #productTag <- toupper(productTag)
       
     # Look for the old locus tag 
     }else if(grepl(cols[2], pattern="/old_locus_tag=") == TRUE){
