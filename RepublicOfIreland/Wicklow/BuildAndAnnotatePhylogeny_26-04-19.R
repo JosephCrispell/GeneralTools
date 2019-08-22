@@ -361,6 +361,7 @@ temporalDistanceMatrix <- calculateTemporalDistances(tipInfo)
 spatialDistanceMatrix <- calculateSpatialDistances(tipInfo, landParcelCoords)
 
 # Construct response versus predictors table (nSNPs ~ spatial + temporal + species)
+#geneticVsEpi <- read.table("/home/josephcrispell/Desktop/geneticVsEpi_07-08-19.csv", header=TRUE, sep=",", stringsAsFactors=FALSE)
 geneticVsEpi <- constructGeneticVersusSpatialTemporalSpeciesTable(tipInfo, 
                                                                   geneticDistanceMatrix,
                                                                   temporalDistanceMatrix,
@@ -399,7 +400,7 @@ par(mfrow=c(1,2))
 
 # Plot a summary of the genetic distances within and between species
 # Plot the genetic distances in each species comparisons
-boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
+boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE, border=rgb(0,0,0,0), outcol=rgb(0,0,0,0),
         ylab="Genetic distance (SNVs)", xlab="Comparison",
         main="Genetic distance distributions\nwithin and between species")
 spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
