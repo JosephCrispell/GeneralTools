@@ -319,9 +319,6 @@ for(i in seq_along(selections)){
   dev.off()
 }
 
-
-
-
 #### FUNCTIONS ####
 
 plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col){
@@ -330,7 +327,7 @@ plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col)
   if(is.factor(predictorValues)){
     
     # Plot the raw data
-    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n", col=col,
+    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n",
          frame=FALSE, border=rgb(0,0,0,0))
     
     # Overlay the raw points
