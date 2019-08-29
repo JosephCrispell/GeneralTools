@@ -25,9 +25,13 @@ path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewA
 file <- paste(path, "GeneticVsEpidemiologicalDistances_05-04-18.txt", sep="")
 geneticVsEpi <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
+# Add in random noise variables
+geneticVsEpi$RandomUniform <- runif(nrow(geneticVsEpi))
+geneticVsEpi$RandomBoolean <- sample(c(0,1), size=nrow(geneticVsEpi), replace=TRUE)
+
 #### General settings ####
 
-selection <- "BB" # CC, BB, CB
+selection <- "CC" # CC, BB, CB
 trainProp <- 0.5
 colToUse <- "%IncMSE"
 geneticDistanceThreshold <- 15
@@ -221,15 +225,15 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
 selections <- c("BB", "CC", "CB")
 
 # Set the date analyses were completed on
-dates <- c("11-06-19", "14-05-19", "14-05-19")
+dates <- c("29-08-19", "29-08-19", "29-08-19")
 
 # Examine the analysis for each selection
 for(i in seq_along(selections)){
-  
+
   # Get the analysis info
   selection <- selections[i]
   date <- dates[i]
-  
+
   # Attach the RData file and retrieve the infoRF object
   attach(paste0(path, "FittingRF_", selection, "_", date, ".RData"))
   infoRF <- infoRF
@@ -240,42 +244,77 @@ for(i in seq_along(selections)){
   predictedGeneticDistancesRF <- predictedGeneticDistancesRF
   predictedGeneticDistancesBR <- predictedGeneticDistancesBR
   detach(paste0("file:", path, "FittingRF_", selection, "_", date, ".RData"), character.only=TRUE)
-  
+
   # Note the full names
   fullNames <- noteFullNames(selection)
 
   # Open a pdf
   file <- paste0(path, "VariableImportance_", selection, "_", date, ".pdf")
   pdf(file, height=10, width=10)
-  
+
   # Plot the variable importance
   plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUseForRF, stepOutput=stepOutput,
                          fullNames=fullNames, nameColours=nameColours,
                          temporalCol=temporalCol, spatialCol=spatialCol,
                          networkCol=networkCol, showAxes=TRUE, selection=selection,
                          geneticVsEpi=geneticVsEpi, trainRows=trainRows, colsToIgnore=colsToIgnore)
-  
+
   # Plot the predictor variable trends
-  plotBRPredictorVariableTrends(stepOutput, fullNames, labelCex=0.5)
-  #plotRFPredictorVariableTrends(infoRF) # DOESN'T WORK!!!
+  plotBRPredictorVariableTrends(stepOutput, geneticVsEpi, fullNames, labelCex=0.5)
+
+  # Get and set the margins
+  currentMar <- par()$mar
+  par(mar=c(1.5,0.5,0.5,0.5))
   
-  # Plot raw data for predcitor versus response
-  plotRawPredictorVersusResponse(predictors=stepOutput$var.names,
-                                 geneticVsEpi, fullNames, labelCex=0.5,
-                                 col=rgb(0,0,0, 0.01))
+  # Store the predictor data
+  predictorData <- geneticVsEpi[trainRows, -c(1, colsToIgnore)]
+  
+  # Get the predictor variable names
+  predictors <- colnames(predictorData)
+  
+  # Create a plotting grid
+  nPlotsPerRow <- ceiling(sqrt(length(predictors)))
+  par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
+  
+  # Examine each predictor
+  for(i in seq_along(predictors)){
+    
+    # Get the trend data
+    trendData <- partialPlot(infoRF, predictorData, predictors[i], plot=FALSE)
+    trendData <- as.data.frame(trendData)
+    
+    # Remove any "-1" rows
+    trendData <- trendData[which(trendData[, 1] != -1), ]
+    
+    # Get the raw predictor values and remove -1s
+    predictorValues <- geneticVsEpi[, predictors[i]]
+    responseValues <- geneticVsEpi$GeneticDistance
+    keep <- predictorValues != -1
+    predictorValues <- predictorValues[keep]
+    responseValues <- responseValues[keep]
+    
+    # Plot the raw data and overlay the trend
+    plotRawDataAndTrend(predictorValues, responseValues, trendData, rgb(0,0,0, 0.1))
+    
+    # Add predictor name to X axis label
+    addPredictorNameToPlot(fullNames[[predictors[i]]])
+  }
+  
+  # Reset plotting parameters
+  par(mar=currentMar, mfrow=c(1,1))
   
   # Plot the correlation between predicted and actual values for random forest and boosted regression
   plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
                             predicted=predictedGeneticDistancesRF,
                             main="Predicted vs. actual genetic distances (RF)")
   plotPredictedVersusActual(actual=geneticVsEpi[-trainRows, "GeneticDistance"],
-                            predicted=predictedGeneticDistancesBR, 
+                            predicted=predictedGeneticDistancesBR,
                             main="Predicted vs. actual genetic distances (BR)")
-  
+
   # Remove the infoRF and stepOutput objects
   remove(list= c("infoRF", "stepOutput", "trainRows", "geneticVsEpi", "colsToIgnore", "predictedGeneticDistancesRF",
                  "predictedGeneticDistancesBR"))
-  
+
   # Close the PDF
   dev.off()
 }
@@ -285,44 +324,54 @@ for(i in seq_along(selections)){
 
 #### FUNCTIONS ####
 
-plotRFPredictorVariableTrendsDOESNTWORK <- function(infoRF){
+plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col){
   
-  # Get the predictor variables
-  predictors <- attributes(infoRF$terms)$term.labels
-  
-  # Get and set the margins
-  currentMar <- par()$mar
-  par(mar=c(1.5,0.5,0.5,0.5))
-  
-  # Create a plotting grid
-  nPlotsPerRow <- ceiling(sqrt(length(predictors)))
-  par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
-  
-  for(i in seq_along(predictors)){
+  # Check if the predictor variable is factor
+  if(is.factor(predictorValues)){
     
-    # Get a global variable to store the predictor variable
-    assign("predictor", predictors[i])
+    # Plot the raw data
+    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n", col=col,
+         frame=FALSE, border=rgb(0,0,0,0))
     
-    # Get the trend data
-    trendData <- partialPlot(x=infoRF, pred.data=geneticVsEpi[, -c(1, colsToIgnore)], 
-                             x.var=names(geneticVsEpi[, -c(1, colsToIgnore)]), plot=FALSE)
-    trendData <- as.data.frame(trendData)
+    # Overlay the raw points
+    data <- data.frame("X"=predictorValues, "Y"=responseValues)
+    spreadPointsMultiple(data=data, responseColumn="Y", categoriesColumn="X", col=col)
     
-    # Remove any "-1" rows
-    trendData <- trendData[which(trendData[, 1] != -1), ]
+    # Overlay the partial dependence relationship
+    points(x=trendData[, 1], y=trendData[, 2], type="l", lwd=3, col="red")
     
-    # Create a plot
-    plot(trendData$x, trendData$y, type="l", lwd=2, bty="n", ylab="", xlab="", yaxt="n", xaxt="n")
+  }else{
     
-    # Add axes labels
-    mtext(predictor, side=1, line=0, cex=0.5)
+    # Plot the raw data
+    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n", col=col)
+    
+    # Overlay the partial dependence relationship
+    points(x=trendData[, 1], y=trendData[, 2], type="l", lwd=3, col="red")
   }
-  
-  # Reset plotting parameters
-  par(mar=currentMar, mfrow=c(1,1))
 }
 
-plotBRPredictorVariableTrends <- function(stepOutput, fullNames, labelCex=1){
+addPredictorNameToPlot <- function(fullName){
+  
+  # Get the axis limits of the current plot
+  axisLimits <- par()$usr
+  plotWidth <- axisLimits[2] - axisLimits[1]
+  
+  # Add axes labels
+  if(nchar(fullName) > nCharInPlot){
+    
+    # Claculate number of characters that can fit in plotting window
+    nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
+    
+    # Split the predictor variable name over multiple lines
+    fullName <- splitPredictorVariableNameOverMultipleLines(fullName, nCharInPlot)
+    
+    mtext(fullName, side=1, line=0.5, cex=labelCex)
+  }else{
+    mtext(fullName, side=1, line=0, cex=labelCex)
+  }
+}
+
+plotBRPredictorVariableTrends <- function(stepOutput, geneticVsEpi, fullNames, labelCex=1, col=rgb(0,0,0, 0.1)){
   
   # Get the predictor variable names
   predictors <- stepOutput$var.names
@@ -338,90 +387,52 @@ plotBRPredictorVariableTrends <- function(stepOutput, fullNames, labelCex=1){
   for(predictor in predictors){
     
     # Get the trend data
-    trendData <- plot(stepOutput,i.var=predictor, return.grid=TRUE)
+    trendData <- plot(stepOutput, i.var=predictor, return.grid=TRUE)
     
     # Remove any "-1" rows
     trendData <- trendData[which(trendData[, 1] != -1), ]
     
-    # Create a plot
-    plot(x=trendData[, 1], y=trendData$y, type="l", lwd=2, bty="n", ylab="", xlab="", yaxt="n", xaxt="n")
+    # Get the raw predictor values and remove -1s
+    predictorValues <- geneticVsEpi[, predictor]
+    responseValues <- geneticVsEpi$GeneticDistance
+    keep <- predictorValues != -1
+    predictorValues <- predictorValues[keep]
+    responseValues <- responseValues[keep]
     
-    # Get the full name of the current predictor
-    fullName <- fullNames[[predictor]]
-    labelSplit <- FALSE
+    # Plot the raw data and overlay the trend
+    plotRawDataAndTrend(predictorValues, responseValues, trendData, col)
     
-    # Get the axis limits of the current plot
-    axisLimits <- par()$usr
-    plotWidth <- axisLimits[2] - axisLimits[1]
-    
-    # Split the full name across multiple lines
-    nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
-    if(nchar(fullName) > nCharInPlot){
-      labelSplit <- TRUE
-      fullName <- paste(substr(fullName, 1, nCharInPlot), "\n", substr(fullName, nCharInPlot+1, nchar(fullName)))
-    }
-    
-    # Add axes labels
-    if(labelSplit){
-      mtext(fullName, side=1, line=0.5, cex=labelCex)
-    }else{
-      mtext(fullName, side=1, line=0, cex=labelCex)
-    }
+    # Add predictor name to X axis label
+    addPredictorNameToPlot(fullNames[[predictor]])
   }
   
   # Reset plotting parameters
   par(mar=currentMar, mfrow=c(1,1))
 }
 
-plotRawPredictorVersusResponse <- function(predictors, geneticVsEpi, fullNames, labelCex=1, col=rgb(0,0,0, 0.1)){
+splitPredictorVariableNameOverMultipleLines <- function(fullName, nCharInPlot){
   
-  # Get and set the margins
-  currentMar <- par()$mar
-  par(mar=c(2,0.5,0.5,0.5))
-  
-  # Create a plotting grid
-  nPlotsPerRow <- ceiling(sqrt(length(predictors)))
-  par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
-  
-  for(predictor in predictors){
+  # Find the first split point
+  splitPoint <- nCharInPlot
+  for(characterIndex in seq(from=nCharInPlot, to=1, by=-1)){
     
-    # Get the predictor values
-    predictorValues <- geneticVsEpi[, predictor]
-    responseValues <- geneticVsEpi$GeneticDistance
-    
-    # Remove the -1 values
-    keep <- predictorValues != -1
-    predictorValues <- predictorValues[keep]
-    responseValues <- responseValues[keep]
-    
-    # Create a plot
-    plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n", col=col)
-    
-    # Get the full name of the current predictor
-    fullName <- fullNames[[predictor]]
-    labelSplit <- FALSE
-    
-    # Get the axis limits of the current plot
-    axisLimits <- par()$usr
-    plotWidth <- axisLimits[2] - axisLimits[1]
-    
-    # Split the full name across multiple lines
-    nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
-    if(nchar(fullName) > nCharInPlot){
-      labelSplit <- TRUE
-      fullName <- paste(substr(fullName, 1, nCharInPlot), "\n", substr(fullName, nCharInPlot+1, nchar(fullName)))
-    }
-    
-    # Add axes labels
-    if(labelSplit){
-      mtext(fullName, side=1, line=0.5, cex=labelCex)
-    }else{
-      mtext(fullName, side=1, line=0, cex=labelCex)
+    # Check if found space
+    if(substr(fullName, characterIndex, characterIndex) == " "){
+      splitPoint <- characterIndex
+      break
     }
   }
   
-  # Reset plotting parameters
-  par(mar=currentMar, mfrow=c(1,1))
+  # Extract the strings before and after split
+  first <- substr(fullName, 1, splitPoint)
+  second <- substr(fullName, splitPoint+1, nchar(fullName))
+  
+  # Check if second part still more characters than width
+  if(nchar(second) > nCharInPlot){
+    second <- splitPredictorVariableNameOverMultipleLines(fullName, nCharInPlot)
+  }
+  
+  return(paste0(first, "\n", second))
 }
 
 removeMetricWithMostMissingData <- function(geneticVsEpi, propMissingData){
@@ -703,7 +714,8 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   variableImportanceRF <- as.data.frame(infoRF$importance)
   
   # Get the variable importance from the BR model
-  variableImportanceBR <- summary(stepOutput, plotit=FALSE)
+  variableImportanceBR <- summary.gbm(stepOutput, plotit=FALSE, method=permutation.test.gbm)
+  rownames(variableImportanceBR) <- variableImportanceBR$var
   
   # Combine the importance tables into one
   variableImportance <- data.frame(RandomForestImportance=variableImportanceRF[, colToUseForRF], 
@@ -1029,7 +1041,9 @@ assignMetricColours <- function(temporalCol, spatialCol, networkCol){
     "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = networkCol,
     "CentroidDistBetweenMain" = spatialCol,
     "CentroidDistBetweenSamp" = spatialCol,
-    "HostRelatedness" = "black"
+    "HostRelatedness" = "black",
+    "RandomUniform" = "black",
+    "RandomBoolean" = "black"
   )
   
   return(nameColours)
@@ -1072,7 +1086,9 @@ noteFullNames <- function(selection){
     "MeanNMovementsOnEdgesOfShortestPathEXCLInfected" = "Mean number of animals traversing edges of shortest path between main groups (some groups excluded)",
     "CentroidDistBetweenMain" = "Distance from closest land parcel to main group using centroids",
     "CentroidDistBetweenSamp" = "Distance from closest land parcel to sampled group using centroids",
-    "HostRelatedness" = "Genetic relatedness of animals"
+    "HostRelatedness" = "Genetic relatedness of animals",
+    "RandomUniform" = "Random uniform sample",
+    "RandomBoolean" = "Random boolean sample"
   )
   
   # Replace some words in full names depending on the selection
@@ -1633,8 +1649,9 @@ makeBooleanColumnsFactors <- function(table){
   
   for(col in 1:ncol(table)){
     
-    if(grepl(x=colNames[col], pattern="Same") == TRUE &
-       grepl(x=colNames[col], pattern="PeriodSpentIn") == FALSE ){
+    if((grepl(x=colNames[col], pattern="Same") == TRUE &
+       grepl(x=colNames[col], pattern="PeriodSpentIn") == FALSE) ||
+       grepl(x=colNames[col], pattern="Boolean") == TRUE){
       table[, col] <- as.factor(table[, col])
     }
   }
@@ -1649,13 +1666,14 @@ removeColumnsIfNotRelevant <- function(table){
   # with -1
   
   colsToRemove <- c()
-  index <- 0
-  
-  for(col in 3:(ncol(table)-2)){
+
+  columnsToConsider <- which(colnames(table) %in% c("GeneticDistance", "iSpeciesJSpecies",
+                                                    "IsolateI", "IsolateJ") == FALSE)
+
+  for(col in columnsToConsider){
     
     if(sd(table[, col]) == 0){
-      index <- index + 1
-      colsToRemove[index] <- col
+      colsToRemove[length(colsToRemove) + 1] <- col
       cat(paste("Removed: ", colnames(table)[col], "\n", sep=""))
     }
   }
