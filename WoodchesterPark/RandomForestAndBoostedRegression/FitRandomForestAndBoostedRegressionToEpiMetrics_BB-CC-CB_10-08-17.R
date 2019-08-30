@@ -202,7 +202,8 @@ library(gplots)
 library(gbm)
 library(dismo)
 library(codetools) # To fix weird error when loading RData file
-library(plotteR)
+library(basicPlotteR) # spread points on boxplot
+library(stringr) # Counting string occurences in string
 
 # Remove the infoRF and stepOutput objects
 remove(list= c("infoRF", "stepOutput", "trainRows", "geneticVsEpi", "colsToIgnore", "predictedGeneticDistancesRF",
@@ -220,6 +221,9 @@ spatialCol="red"
 networkCol="blue"
 nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCol,
                                    networkCol=networkCol)
+
+# Set the variable importance threshold for viewing the trends
+importanceThresholdRF <- 0.1
 
 # Note the analyses types
 selections <- c("BB", "CC", "CB")
@@ -253,14 +257,15 @@ for(i in seq_along(selections)){
   pdf(file, height=10, width=10)
 
   # Plot the variable importance
-  plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUseForRF, stepOutput=stepOutput,
-                         fullNames=fullNames, nameColours=nameColours,
-                         temporalCol=temporalCol, spatialCol=spatialCol,
-                         networkCol=networkCol, showAxes=TRUE, selection=selection,
-                         geneticVsEpi=geneticVsEpi, trainRows=trainRows, colsToIgnore=colsToIgnore)
+  variableImportance <- 
+    plotVariableImportance(infoRF=infoRF, colToUseForRF=colToUseForRF, stepOutput=stepOutput,
+                           fullNames=fullNames, nameColours=nameColours,
+                           temporalCol=temporalCol, spatialCol=spatialCol,
+                           networkCol=networkCol, showAxes=TRUE, selection=selection,
+                           geneticVsEpi=geneticVsEpi, trainRows=trainRows, colsToIgnore=colsToIgnore)
 
   # Plot the predictor variable trends
-  plotBRPredictorVariableTrends(stepOutput, geneticVsEpi, fullNames, labelCex=0.5)
+  plotBRPredictorVariableTrends(stepOutput, geneticVsEpi, fullNames, variableImportance, labelCex=0.5)
 
   # Get and set the margins
   currentMar <- par()$mar
@@ -271,6 +276,9 @@ for(i in seq_along(selections)){
   
   # Get the predictor variable names
   predictors <- colnames(predictorData)
+  
+  # Remove predictors with an importance below threshold
+  predictors <- predictors[which(variableImportance[predictors, "RandomForestImportance"] > importanceThresholdRF)]
   
   # Create a plotting grid
   nPlotsPerRow <- ceiling(sqrt(length(predictors)))
@@ -297,7 +305,7 @@ for(i in seq_along(selections)){
     plotRawDataAndTrend(predictorValues, responseValues, trendData, rgb(0,0,0, 0.1))
     
     # Add predictor name to X axis label
-    addPredictorNameToPlot(fullNames[[predictors[i]]])
+    addPredictorNameToPlot(fullNames[[predictors[i]]], labelCex=0.5)
   }
   
   # Reset plotting parameters
@@ -326,6 +334,10 @@ plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col)
   # Check if the predictor variable is factor
   if(is.factor(predictorValues)){
     
+    # Check that all the levels are in response factor
+    predictorValues <- droplevels(predictorValues)
+    trendData[, 1] <- droplevels(trendData[, 1])
+                                          
     # Plot the raw data
     plot(x=predictorValues, y=responseValues, pch=19, bty="n", ylab="", xlab="", yaxt="n", xaxt="n",
          frame=FALSE, border=rgb(0,0,0,0))
@@ -335,7 +347,7 @@ plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col)
     spreadPointsMultiple(data=data, responseColumn="Y", categoriesColumn="X", col=col)
     
     # Overlay the partial dependence relationship
-    points(x=trendData[, 1], y=trendData[, 2], type="l", lwd=3, col="red")
+    points(x=trendData[, 1] , y=trendData[, 2], type="l", lwd=3, col="red")
     
   }else{
     
@@ -347,31 +359,36 @@ plotRawDataAndTrend <- function(predictorValues, responseValues, trendData, col)
   }
 }
 
-addPredictorNameToPlot <- function(fullName){
-  
+addPredictorNameToPlot <- function(fullName, pad=0.05, labelCex){
+ 
   # Get the axis limits of the current plot
   axisLimits <- par()$usr
   plotWidth <- axisLimits[2] - axisLimits[1]
-  
+  plotWidth <- plotWidth - (pad*plotWidth)
+
+  # Calculate number of characters that can fit in plotting window
+  nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
+    
   # Add axes labels
   if(nchar(fullName) > nCharInPlot){
-    
-    # Claculate number of characters that can fit in plotting window
-    nCharInPlot <- floor(plotWidth / strwidth("X", cex=labelCex))
     
     # Split the predictor variable name over multiple lines
     fullName <- splitPredictorVariableNameOverMultipleLines(fullName, nCharInPlot)
     
-    mtext(fullName, side=1, line=0.5, cex=labelCex)
+    mtext(fullName, side=1, line=str_count("X\nY\n", "\n")/2, cex=labelCex)
   }else{
     mtext(fullName, side=1, line=0, cex=labelCex)
   }
 }
 
-plotBRPredictorVariableTrends <- function(stepOutput, geneticVsEpi, fullNames, labelCex=1, col=rgb(0,0,0, 0.1)){
+plotBRPredictorVariableTrends <- function(stepOutput, geneticVsEpi, fullNames, variableImportance, importanceThresholdRF=0.5,
+                                          labelCex=1, col=rgb(0,0,0, 0.1)){
   
   # Get the predictor variable names
   predictors <- stepOutput$var.names
+  
+  # Remove predictors with an importance below threshold
+  predictors <- predictors[which(variableImportance[predictors, "RandomForestImportance"] > importanceThresholdRF)]
   
   # Get and set the margins
   currentMar <- par()$mar
@@ -400,7 +417,7 @@ plotBRPredictorVariableTrends <- function(stepOutput, geneticVsEpi, fullNames, l
     plotRawDataAndTrend(predictorValues, responseValues, trendData, col)
     
     # Add predictor name to X axis label
-    addPredictorNameToPlot(fullNames[[predictor]])
+    addPredictorNameToPlot(fullNames[[predictor]], labelCex=labelCex)
   }
   
   # Reset plotting parameters
@@ -426,7 +443,7 @@ splitPredictorVariableNameOverMultipleLines <- function(fullName, nCharInPlot){
   
   # Check if second part still more characters than width
   if(nchar(second) > nCharInPlot){
-    second <- splitPredictorVariableNameOverMultipleLines(fullName, nCharInPlot)
+    second <- splitPredictorVariableNameOverMultipleLines(second, nCharInPlot)
   }
   
   return(paste0(first, "\n", second))
@@ -816,6 +833,8 @@ plotVariableImportance <- function(infoRF, colToUseForRF, stepOutput, fullNames,
   # Plot the variable importance as a scatter plot
   plotVariableImportanceAsScatterPlot(variableImportance, temporalCol, spatialCol, networkCol,
                                       fullNames)
+  
+  return(variableImportance)
 }
 
 addLinearComparisonInset <- function(axisLimits, variableImportance, 
