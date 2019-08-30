@@ -223,7 +223,7 @@ nameColours <- assignMetricColours(temporalCol=temporalCol, spatialCol=spatialCo
                                    networkCol=networkCol)
 
 # Set the variable importance threshold for viewing the trends
-importanceThresholdRF <- 0.1
+importanceThresholdRF <- 0.5
 
 # Note the analyses types
 selections <- c("BB", "CC", "CB")
@@ -265,12 +265,9 @@ for(i in seq_along(selections)){
                            geneticVsEpi=geneticVsEpi, trainRows=trainRows, colsToIgnore=colsToIgnore)
 
   # Plot the predictor variable trends
-  plotBRPredictorVariableTrends(stepOutput, geneticVsEpi, fullNames, variableImportance, labelCex=0.5)
+  plotBRPredictorVariableTrends(stepOutput, geneticVsEpi, fullNames, variableImportance, importanceThresholdRF,
+                                labelCex=0.75)
 
-  # Get and set the margins
-  currentMar <- par()$mar
-  par(mar=c(1.5,0.5,0.5,0.5))
-  
   # Store the predictor data
   predictorData <- geneticVsEpi[trainRows, -c(1, colsToIgnore)]
   
@@ -283,6 +280,10 @@ for(i in seq_along(selections)){
   # Create a plotting grid
   nPlotsPerRow <- ceiling(sqrt(length(predictors)))
   par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
+  
+  # Get and set the margins
+  currentMar <- par()$mar
+  par(mar=c(3,0.5,0.5,0.5))
   
   # Examine each predictor
   for(i in seq_along(predictors)){
@@ -305,7 +306,7 @@ for(i in seq_along(selections)){
     plotRawDataAndTrend(predictorValues, responseValues, trendData, rgb(0,0,0, 0.1))
     
     # Add predictor name to X axis label
-    addPredictorNameToPlot(fullNames[[predictors[i]]], labelCex=0.5)
+    addPredictorNameToPlot(fullNames[[predictors[i]]], labelCex=0.75)
   }
   
   # Reset plotting parameters
@@ -375,7 +376,7 @@ addPredictorNameToPlot <- function(fullName, pad=0.05, labelCex){
     # Split the predictor variable name over multiple lines
     fullName <- splitPredictorVariableNameOverMultipleLines(fullName, nCharInPlot)
     
-    mtext(fullName, side=1, line=str_count("X\nY\n", "\n")/2, cex=labelCex)
+    mtext(fullName, side=1, line=0.5+str_count(fullName, "\n"), cex=labelCex)
   }else{
     mtext(fullName, side=1, line=0, cex=labelCex)
   }
@@ -390,13 +391,13 @@ plotBRPredictorVariableTrends <- function(stepOutput, geneticVsEpi, fullNames, v
   # Remove predictors with an importance below threshold
   predictors <- predictors[which(variableImportance[predictors, "RandomForestImportance"] > importanceThresholdRF)]
   
-  # Get and set the margins
-  currentMar <- par()$mar
-  par(mar=c(2,0.5,0.5,0.5))
-  
   # Create a plotting grid
   nPlotsPerRow <- ceiling(sqrt(length(predictors)))
   par(mfrow=c(nPlotsPerRow, nPlotsPerRow))
+  
+  # Get and set the margins
+  currentMar <- par()$mar
+  par(mar=c(3,0.5,0.5,0.5))
   
   for(predictor in predictors){
     
