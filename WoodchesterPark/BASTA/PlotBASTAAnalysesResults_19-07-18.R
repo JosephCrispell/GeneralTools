@@ -90,16 +90,16 @@ bestModelTransitionCounts <- getCountsFromBestModel(transitionCountsWithoutBurnI
 #################################
 
 # Open a PDF
-file <- paste(path, "SummaryFiguresOfModelEstimations_", date, ".pdf", sep="")
+file <- paste(path, "SummaryFiguresOfModelEstimations_RemoveRatio_", date, ".pdf", sep="")
 pdf(file, height=11, width=10)
 
 # Define the plotting window layout
-# layout(matrix(c(1,1,1,2,2,2,
-#                 1,1,1,2,2,2,
-#                 1,1,1,2,2,2,
-#                 4,4,3,3,4,4,
-#                 4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
-par(mfrow=c(2,2))
+layout(matrix(c(1,1,1,2,2,2,
+                1,1,1,2,2,2,
+                1,1,1,2,2,2,
+                4,4,3,3,4,4,
+                4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
+# par(mfrow=c(2,2))
 
 # Examine the model likelihoods
 aicmOrder <- plotModelAICMScores(migrationRateEstimates, nBootstraps)
@@ -334,7 +334,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   axisLimits <- par("usr")
   
   # Add a plot label
-  mtext("d", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+  mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
   
   # Reset the plotting margins
   par(mar=currentMar)
@@ -817,45 +817,44 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
 
     # Add a plot label
     mtext("b", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
-    
-    
-    ## Plot the interspecies transmission rate ratio for each model
-    
-    # Get and set the margins
-    currentMar <- par("mar")
-    par(mar=c(17, 5.5, 5, 0.5)) # bottom, left, top, right
-    
-    # Set the Y axis limits - leave space for flag estimates
-    maxValue <- max(modelInterSpeciesRatioMedians)
-    yLim <- c(0, maxValue + (0.2 * maxValue))
 
-    # Create the initial empty plot
-    plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
-         ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species\ntransition rates ratio",
-         las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
-    
-    # Add the Y axis
-    at <- round(seq(yLim[1], maxValue + floor(maxValue/5), by=floor(maxValue/5)), digits=0)
-    axis(side=2, at=at, labels=at, las=1)
-    mtext(side=2, text="Median ratio", line=3.5, cex=1.25)
-    
-    # Get the axis limits
-    axisLimits <- par("usr")
-    
-    # Add summaries for the ratio from each analyses
-    points(x=1:length(analyses), y=modelInterSpeciesRatioMedians, pch=19, col=rgb(0,0,0, 1), xpd=TRUE)
-
-    # Axis
-    axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
-    
-    # Add a legend describing the ratio
-    legend("top", legend=c("              Badgers-to-Cattle", 
-                           " Ratio = ---------------", 
-                           "              Cattle-to-Badgers"), 
-           text.col="black", bty="n")
-
-    # Add a plot label
-    mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
+    # ## Plot the interspecies transmission rate ratio for each model
+    # 
+    # # Get and set the margins
+    # currentMar <- par("mar")
+    # par(mar=c(17, 5.5, 5, 0.5)) # bottom, left, top, right
+    # 
+    # # Set the Y axis limits - leave space for flag estimates
+    # maxValue <- max(modelInterSpeciesRatioMedians)
+    # yLim <- c(0, maxValue + (0.2 * maxValue))
+    # 
+    # # Create the initial empty plot
+    # plot(x=NULL, y=NULL, xlim=c(1, length(analyses)), # remove the +1 to remove space for weighted estimate
+    #      ylim=yLim, yaxt="n", ylab="", main="Estimated inter-species\ntransition rates ratio",
+    #      las=1, xaxt="n", xlab="", bty="n", cex.lab=2, cex.main=2, cex.axis=1.25)
+    # 
+    # # Add the Y axis
+    # at <- round(seq(yLim[1], maxValue + floor(maxValue/5), by=floor(maxValue/5)), digits=0)
+    # axis(side=2, at=at, labels=at, las=1)
+    # mtext(side=2, text="Median ratio", line=3.5, cex=1.25)
+    # 
+    # # Get the axis limits
+    # axisLimits <- par("usr")
+    # 
+    # # Add summaries for the ratio from each analyses
+    # points(x=1:length(analyses), y=modelInterSpeciesRatioMedians, pch=19, col=rgb(0,0,0, 1), xpd=TRUE)
+    # 
+    # # Axis
+    # axis(side=1, at=1:length(analyses), labels=names, las=2, cex.axis=1.25)
+    # 
+    # # Add a legend describing the ratio
+    # legend("top", legend=c("              Badgers-to-Cattle", 
+    #                        " Ratio = ---------------", 
+    #                        "              Cattle-to-Badgers"), 
+    #        text.col="black", bty="n")
+    # 
+    # # Add a plot label
+    # mtext("c", side=3, line=1, at=axisLimits[1] - (0.1 * (axisLimits[2] - axisLimits[1])), cex=2.5)
     
     # ## Plot badger -> cattle versus cattle -> badger
     # par(mar=c(5.1, 4.1, 0.5, 2.1))
