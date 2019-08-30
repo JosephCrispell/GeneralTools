@@ -17,7 +17,7 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
 path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
@@ -136,7 +136,7 @@ pdf(outputPlotFile)
 
 # Get and set the margins
 currentMar <- par()$mar
-par(mar=c(4,0,0,10))
+par(mar=c(0,0,0,0))
 
 # Plot the phylogeny
 plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
@@ -146,17 +146,17 @@ tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
           col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
 
 # Add scale bar
-addScaleBar(2)
+addScaleBar(2, yPad=0.05)
 
 # Add species legend
-legend(x=10, y=-0, legend=c("Badger", "Cow", "Deer"), 
+legend("right", legend=c("Badger", "Cow", "Deer"), 
        pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
        col=c("red", "blue", "black"),
-       bty="n", horiz=TRUE,
+       bty="n", horiz=FALSE,
        pt.cex=1.5, xpd=TRUE)
 
 # Add temporal sampling plot
-plotTipSamplingDates(tipInfo)
+#plotTipSamplingDates(tipInfo)
 
 # Reset the margins
 par(mar=currentMar)
@@ -487,9 +487,7 @@ plotTemporalSamplingRange <- function(tipInfo){
     
     # Note the number of samples available
     text(x=dateRange[2], y=yLocations[speciesIndex], adj=0, xpd=TRUE,
-         labels=paste0("     ", length(dates), "/",
-                       length(which(tipInfo$Species == species[speciesIndex]))),
-         cex=2)
+         labels=paste0("    n = ", length(dates)), cex=2)
   }
   
   # Reset the plotting margins
@@ -1700,7 +1698,7 @@ getXPositionOfDate <- function(xStart, xEnd, date, dateRange){
   return(xPosition)
 }
 
-addScaleBar <- function(scaleSize, cex=1){
+addScaleBar <- function(scaleSize, cex=1, xPad=0.4, yPad=0.01){
   
   # Get the plotting region dimensions = x1, x2, y1, y2 
   # (coordinates of bottom left and top right corners)
@@ -1709,17 +1707,17 @@ addScaleBar <- function(scaleSize, cex=1){
   yLength <- dimensions[4] - dimensions[3]
   
   # Add Scale bar
-  xPad <- 0.4 * xLength
+  xPad <- xPad * xLength
 
   points(x=c(dimensions[1] + xPad, dimensions[1] + xPad + scaleSize), 
-         y=c(dimensions[3] + (0.01 * yLength), dimensions[3] + (0.01 * yLength)),
+         y=c(dimensions[3] + (yPad * yLength), dimensions[3] + (yPad * yLength)),
          type="l", lwd=3, xpd=TRUE)
   if(scaleSize == 1){
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.02 * yLength),
-         labels=paste0("~ ", scaleSize, " SNV"), cex=cex, xpd=TRUE)
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + (yPad * yLength),
+         labels=paste0("~ ", scaleSize, " SNV"), cex=cex, xpd=TRUE, pos=1)
   }else{
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.02 * yLength),
-         labels=paste0("~ ", scaleSize, " SNVs"), cex=cex, xpd=TRUE)
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + (yPad * yLength),
+         labels=paste0("~ ", scaleSize, " SNVs"), cex=cex, xpd=TRUE, pos=1)
   }
 }
 
