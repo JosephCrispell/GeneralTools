@@ -1,11 +1,14 @@
 #### Read in the data ####
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/Fastqs_29-07-19/FASTQC/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/Fastqs_24-09-19/FASTQC/"
 
 # Read in the FASTQC file summary table
-summaryFile <- paste0(path, "Fastqc_summary_29-07-19.txt")
+summaryFile <- paste0(path, "Fastqc_summary_24-09-19.txt")
 summary <- read.table(summaryFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+# Sort the file names
+summary <- summary[order(summary$FileName), ]
 
 # Look at GC distribution
 hist(summary$GC, breaks=20, las=1)
@@ -16,3 +19,10 @@ boxplot(summary$LeftTrim, summary$RightTrim, names=c("LEFT", "RIGHT"), las=1, fr
 
 # Check adapter flag
 table(summary$AdapterContentFlag)
+
+# Look at the number of reads distribution
+hist(summary$NumberReads, breaks=100, las=1)
+summary[which(summary$NumberReads < 250000), c("FileName", "NumberReads")]
+
+# Look at the read length distribution
+table(summary$ReadLength)

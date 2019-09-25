@@ -8,7 +8,7 @@
 # Author: Joseph Crispell
 
 # Command Line Structure:
-# bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference.fasta
+# bash AlignRawReads_DATE.sh forward.fastq.gz reverse.fastq.gz reference.fasta annotation.gff3
 
 # Arguments:
 # forward.fastq.gz	Compressed FASTQ file containing the forward reads (file name should contain _R1_)
@@ -196,10 +196,10 @@ CONSEQUENCEFILE="consequence.tsv"
 bcftools csq --fasta-ref $REFERENCE --gff-annot $ANNOTATION --output-type t --output $CONSEQUENCEFILE $VCFFILE
 
 # Remove the intermediate files
-echo -e "\e[0;34m Finished consequence calling. Removing unecessary intermediate files... \e[0m"
-rm aligned.*
-rm trimmed_*
-rm aligned_*.bam*
-rm variants.bcf
+#echo -e "\e[0;34m Finished consequence calling. Removing unecessary intermediate files... \e[0m"
+#rm aligned.*
+#rm trimmed_*
+#rm aligned_*.bam*
+#rm variants.bcf
 
 echo -e "\e[0;32m Finished! :-) \e[0m"

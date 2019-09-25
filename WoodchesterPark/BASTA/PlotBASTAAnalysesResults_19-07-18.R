@@ -20,6 +20,16 @@ fastaFile <- paste(path, "vcfFiles/", "sequences_withoutHomoplasies_27-03-18.fas
 nSites <- getNSitesInFASTA(fastaFile)
 genomeSize <- genomeSize + nSites
 
+####################################################
+# Note number of badgers and cattle in BASTA clade #
+####################################################
+
+# Note how many badgers and cattle were sampled for the BASTA tree
+bastaTreeFile <- paste(path, "vcfFiles/",  "mlTree_BASTAClade_DatedTips_27-03-18.tree", sep="")
+isolatesInClade <- getIsolatesFromTree(bastaTreeFile)
+nSampledBadgers <- length(which(grepl(isolatesInClade, pattern="WB")))
+nSampledCattle <- length(which(grepl(isolatesInClade, pattern="WB") == FALSE))
+
 #####################
 # Read in the files #
 #####################
@@ -85,6 +95,7 @@ weightedSampleOfTransitionCounts <- getWeightedSampleOfTransitionCountsBasedOnAI
 # Get the transition counts for the best model
 bestModelTransitionCounts <- getCountsFromBestModel(transitionCountsWithoutBurnIn, aicmScores)
 
+
 #################################
 # Plot Model comparison results #
 #################################
@@ -94,11 +105,11 @@ file <- paste(path, "SummaryFiguresOfModelEstimations_RemoveRatio_", date, ".pdf
 pdf(file, height=11, width=10)
 
 # Define the plotting window layout
-layout(matrix(c(1,1,1,2,2,2,
-                1,1,1,2,2,2,
-                1,1,1,2,2,2,
-                4,4,3,3,4,4,
-                4,4,3,3,4,4), nrow=5, ncol=6, byrow=TRUE))
+layout(matrix(c(1,1,1,1,1,2,2,2,2,2,
+                1,1,1,1,1,2,2,2,2,2,
+                1,1,1,1,1,2,2,2,2,2,
+                4,4,4,3,3,3,3,4,4,4,
+                4,4,4,3,3,3,3,4,4,4), nrow=5, ncol=10, byrow=TRUE))
 # par(mfrow=c(2,2))
 
 # Examine the model likelihoods
@@ -118,7 +129,7 @@ weightedMeanEstimates <-
 # Plot a summary of the transition counts on the posterior trees #
 ##################################################################
 #plotSummaryOfTransitionRatesBasedOnPosteriorTrees(weightedSampleOfTransitionCounts)
-plotSummaryOfTransitionCountsBasedOnPosteriorTrees(bestModelTransitionCounts)
+plotSummaryOfTransitionCountsBasedOnPosteriorTrees(bestModelTransitionCounts, nSampledBadgers, nSampledCattle)
 
 ####################################################
 # Plot the rate flag distributions from each model #
@@ -135,6 +146,20 @@ dev.off()
 #############
 # FUNCTIONS #
 #############
+
+getIsolatesFromTree <- function(treeFile){
+  
+  # Read in the BASTA clade tree
+  tree <- read.tree(file=treeFile)
+  
+  # Get the tip labels - note that they'll have sampling dates attached to them
+  isolates <- tree$tip.label
+  for(i in 1:length(isolates)){
+    isolates[i] = strsplit(isolates[i], split="_")[[1]][1]
+  }
+
+  return(isolates)
+}
 
 summariseTheInterSpeciesRateFlagPosteriors <- function(migrationRateEstimates){
     
@@ -291,14 +316,14 @@ getBestModel <- function(aicmScores){
   return(model)
 }
 
-plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates){
+plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates, nSampledBadgers, nSampledCattle){
   
   # Set the margin sizes
   currentMar <- par("mar")
   par(mar=c(10, 5.5, 5, 0.1)) # bottom, left, top, right
   
   # Note the columns of interest
-  columns <- c("Count_BB", "Count_BC", "Count_CB", "Count_CC")
+  columns <- c("Count_BB", "Count_CC", "Count_BC", "Count_CB")
   
   # Calculate the range of the transition rates
   yLim <- range(weightedSampleOfTransitionRates[, columns])
@@ -307,7 +332,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   plot(x=NULL, y=NULL, bty="n", 
        xlim=c(1, 4), ylim=yLim, las=2, xaxt="n", ylab="Number of transitions", xlab="",
        main="Counting transitions on\n phylogenies", cex.main=2, cex.lab=1.75, cex.axis=1.25)
-  axis(side=1, at=1:4, labels=c("Badger-to-badger", "Badger-to-cow", "Cow-to-badger", "Cow-to-cow"), las=2, cex.axis=1.25)
+  axis(side=1, at=1:4, labels=c("Badger-to-badger", "Cow-to-cow", "Badger-to-cow", "Cow-to-badger"), las=2, cex.axis=1.25)
   
   # Add the bars
   for(i in 1:length(columns)){
@@ -319,6 +344,16 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
     lines(x=c(i, i), y=c(quantiles[1], quantiles[2]))
     points(x=i, y=median(weightedSampleOfTransitionRates[, columns[i]]), pch=19, col="black")
   }
+  
+  # Add separator for within and between rates
+  points(x=c(2.5, 2.5), y=yLim, type="l", lty=2, lwd=2, col="grey")
+  yPos <- yLim[2] - (0.05*(yLim[2] - yLim[1]))
+  text(x=c(2.5, 2.5), y=c(yPos, yPos), labels=c("Within", "Between"), pos=c(2,4), cex=1.25, xpd=TRUE)
+  
+  # Add a legend to indicate the number of badgers and cattle at tips of phylogeny
+  legend("bottomleft", bty="n", cex=1.25,
+         legend=c(paste0("N. badger tips = ", nSampledBadgers),
+                  paste0("N. cow tips = ", nSampledCattle)))
   
   # Calculate some summary statistics
   quantilesBB <- quantile(weightedSampleOfTransitionRates[, "Count_BB"], probs=c(0.025, 0.975))

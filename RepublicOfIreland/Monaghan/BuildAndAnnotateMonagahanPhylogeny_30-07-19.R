@@ -6,7 +6,8 @@ library(rgdal) # Convert X and Y to lat longs and reading in shape files
 #### Read in the sample data ####
 
 # Set the path 
-path <- "J:\\WGS_Monaghan\\"
+#path <- "J:\\WGS_Monaghan\\"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -43,7 +44,7 @@ settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors
 #### Build the phylogeny ####
 
 # Build a phylogeny using RAxML
-tree <- runRAXML(fastaFile, date="30-07-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
+tree <- runRAXML(fastaFile, date="24-09-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
 
 # Remove Reference
 tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997")])

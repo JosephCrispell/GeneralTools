@@ -591,8 +591,8 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
   badgerInfo <- read.table(badgerInfoFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
   
   # Initialise a table to store the isolate sampling information
-  isolateInfo <- as.data.frame(matrix(nrow=length(isolates), ncol=6))
-  colnames(isolateInfo) <- c("IsolateID", "SamplingDate", "X", "Y", "AnimalID", "Species")
+  isolateInfo <- as.data.frame(matrix(nrow=length(isolates), ncol=7))
+  colnames(isolateInfo) <- c("IsolateID", "SamplingDate", "X", "Y", "AnimalID", "Species", "Spoligotype")
   isolateInfo[, "IsolateID"] <- isolates
   
   # Fill the table with the sampling information
@@ -609,6 +609,7 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
       isolateInfo[index, "Y"] <- cattleInfo[strainIndex, "Mapy"]
       isolateInfo[index, "AnimalID"] <- cattleInfo[strainIndex, "Rawtag"]
       isolateInfo[index, "Species"] <- "COW"
+      isolateInfo[index, "Spoligotype"] <- cattleInfo[strainIndex, "Spoligotype"]
       
       # Badgers
     }else if(grepl(pattern="WB", x=isolates[index]) == TRUE){
@@ -625,6 +626,7 @@ getIsolateSamplingInformation <- function(cattleInfoFile, badgerInfoFile, isolat
       }
       isolateInfo[index, "AnimalID"] <- badgerInfo[strainIndex, "tattoo"]
       isolateInfo[index, "Species"] <- "BADGER"
+      isolateInfo[index, "Spoligotype"] <- badgerInfo[strainIndex, "AFBI_Spoligotype"]
     }
   }
   

@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-path <- "J:\\WGS_Wicklow\\"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+#path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -29,11 +29,13 @@ file <- paste0(path, "IsolateSpeciesAndYear_26-04-19.csv")
 metadata <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the FASTA file
-fastaFile <- paste(path, "vcfFiles\\sequences_Prox-10_19-03-2019.fasta", sep="")
+#fastaFile <- paste(path, "vcfFiles\\sequences_Prox-10_19-03-2019.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_19-03-2019.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 
 # Read in the coverage information
-coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_19-03-2019.txt")
+#coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_19-03-2019.txt")
+coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_19-03-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Load the spatial data ####
