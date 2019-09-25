@@ -126,6 +126,33 @@ tree <- drop.tip(tree, remove)
 # Update the tip information
 tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 
+#### Create FASTA file for pathogen genomics workshop ####
+
+# Read in the FASTA file
+sequences <- read.dna(fastaFile, format = "fasta", as.character=TRUE)
+rownames(sequences) <- editTipLabels(rownames(sequences))
+
+# Get the sequences of the tips in the phylogeny
+tipSequenceIndices <- getTipSequenceIndices(tipInfo, sequences)
+
+# Select the sequences of only the tips
+tipSequences <- sequences[tipSequenceIndices, ]
+
+# Change the sequence labels
+rownames(tipSequences) <- paste0("Seq-", seq_len(nrow(tipInfo)), "_", ifelse(tipInfo$Species == "Cow", "Cow", "Wildlife"), "_", tipInfo$Date)
+
+# Add in the reference sequence
+tipSequences <- rbind(tipSequences, sequences["Ref-1997", ])
+rownames(tipSequences)[nrow(tipSequences)] <- "Reference_Cow_1997-10-15"
+
+# Identify and remove the uninformative sites
+#uninformativeSiteIndices <- identifyUninformativeSites(tipSequences)
+#tipSequences <- tipSequences[, -uninformativeSiteIndices]
+
+# Write the sequences to file
+fileName <- paste0(strsplit(fastaFile, split="\\.")[[1]][1], "_PathogenGenomicsWorkshop.fasta")
+write.dna(toupper(tipSequences), fileName, format="fasta", colsep="")
+
 #### Plot the phylogeny ####
 
 # Define the tip shapes and colours
@@ -437,6 +464,45 @@ plotTemporalSamplingRange(tipInfo)
 
 # Close the output pdf
 dev.off()
+
+
+#### FUNCTIONS - building sequences for pathogen genomics workshop ####
+
+identifyUninformativeSites <- function(sequences){
+  
+  # Initialise a vector to count the number of different nucleotides at each position (not including 'N's)
+  nNucleotidesAtEachSite <- c()
+  
+  # Examine each site in the alignment
+  for(siteIndex in seq_len(ncol(sequences))){
+    
+    # Get the unique nucleotides at the current position in the alignment
+    nucleotides <- unique(sequences[, siteIndex])
+    
+    # Remove the N, if present
+    nucleotides <- nucleotides[nucleotides != "n"]
+    
+    # Count the number of different nucleotides observed at the current site
+    nNucleotidesAtEachSite[siteIndex] <- length(nucleotides)
+  }
+  
+  return(which(nNucleotidesAtEachSite < 2))
+}
+
+getTipSequenceIndices <- function(tipInfo, sequences){
+  
+  # Add an empty column to store the sequences
+  sequenceIndices <- c()
+  
+  # Examine each of the tips
+  for(row in 1:nrow(tipInfo)){
+    
+    # Find the sequence for the current tip
+    sequenceIndices[row] <- which(rownames(sequences) == tipInfo[row, "ID"])
+  }
+  
+  return(sequenceIndices)
+}
 
 #### FUNCTIONS - Temporal sampling range ####
 
