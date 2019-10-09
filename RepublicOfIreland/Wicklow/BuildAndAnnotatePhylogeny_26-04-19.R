@@ -153,6 +153,14 @@ rownames(tipSequences)[nrow(tipSequences)] <- "Reference_Cow_1997-10-15"
 fileName <- paste0(strsplit(fastaFile, split="\\.")[[1]][1], "_PathogenGenomicsWorkshop.fasta")
 write.dna(toupper(tipSequences), fileName, format="fasta", colsep="")
 
+# Create one for gianluigi
+tipSequences <- sequences[tipSequenceIndices, ]
+rownames(tipSequences) <- paste0("Seq-", seq_len(nrow(tipInfo)), "_", tipInfo$Species, "_", tipInfo$Date)
+tipSequences <- rbind(tipSequences, sequences["Ref-1997", ])
+rownames(tipSequences)[nrow(tipSequences)] <- "Reference_Cow_1997-10-15"
+fileName <- paste0(strsplit(fastaFile, split="\\.")[[1]][1], "_Gianluigi.fasta")
+write.dna(toupper(tipSequences), fileName, format="fasta", colsep="")
+
 #### Plot the phylogeny ####
 
 # Define the tip shapes and colours
