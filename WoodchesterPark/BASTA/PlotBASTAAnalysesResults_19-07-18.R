@@ -2,6 +2,9 @@
 # Set up #
 ##########
 
+# Load the libraries
+library(ape)
+
 # Set the path
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
@@ -1052,7 +1055,12 @@ summarisePosteriorLogTables <- function(path, logTables, code=2, arrowFactor, nB
     plotPopulationSizes(logTable, demeStructure, alpha=0.5)
     
     # Examine the substitution rate estimates
-    examineSubstitutionRateEstimates(logTable, genomeSize)
+    rateEstimates <- examineSubstitutionRateEstimates(logTable, genomeSize)
+    if(grepl(analysis, pattern="2Deme_equal")){
+      cat("\n", analysis, "\n")
+      summariseDistribution(rateEstimates)
+      cat("\n")
+    }
     
     # Produce a migration rate estimation figure - weight by rate flags
     # Diagrams designed with code = 2 (FORWARDS) in mind
@@ -1081,6 +1089,17 @@ summarisePosteriorLogTables <- function(path, logTables, code=2, arrowFactor, nB
   return(migrationRateEstimates)
 }
 
+summariseDistribution <- function(distribution){
+  
+  # Calculate the median
+  median <- median(distribution, na.rm=TRUE)
+  
+  # Calculate the lower and upper bounds
+  quantiles <- quantile(distribution, probs=c(0.025, 0.975), na.rm=TRUE)
+  
+  cat(paste0("median = ", median, " (lower = ", quantiles[1], ", upper = ", quantiles[2], ")"))
+}
+
 examineSubstitutionRateEstimates <- function(logTable, genomeSize){
   
   # Get the substitution rate estimates note that stored differently between strict and relaxed
@@ -1103,6 +1122,8 @@ examineSubstitutionRateEstimates <- function(logTable, genomeSize){
        col=colours, las=1, bty="n")
   legend("topright", legend=c("High", "Low"), pch=20, col=c("red", "blue"),
          bty="n")
+  
+  return(rateEstimates * genomeSize)
 }
 
 plotMigrationRatePosteriors <- function(logTable, demeStructure, alpha=0.5){
