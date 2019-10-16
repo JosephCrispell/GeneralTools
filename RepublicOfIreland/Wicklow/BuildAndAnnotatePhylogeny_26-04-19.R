@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-#path <- "J:\\WGS_Wicklow\\"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -180,7 +180,8 @@ plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
 
 # Add tips coloured by species
 tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape"),
-          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
+          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"),
+          cex=1.25)
 
 # Add scale bar
 addScaleBar(2, yPad=0.05)
@@ -375,6 +376,16 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
+# Plot phylogeny and sampling locations as sampling IDs
+plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", showTipLabels=TRUE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    plotMap=FALSE,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
+
 # # Plot phylogeny and sampling locations as shapes
 # plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
 #                     scaleTextColour="black", addTipIndices=FALSE,
@@ -425,6 +436,12 @@ fitRandomForestModel(geneticVsEpi, distanceThreshold=15)
 
 # Close the output pdf
 dev.off()
+
+### Write the genetic and spatial distance matrices to file
+file <- paste0(path, "GeneticDistanceMatrix_", date, ".tsv")
+write.table(geneticDistanceMatrix, file=file, quote=FALSE, sep="\t", row.names=TRUE)
+file <- paste0(path, "SpatialDistanceMatrix_", date, ".tsv")
+write.table(spatialDistanceMatrix, file=file, quote=FALSE, sep="\t", row.names=TRUE)
 
 ### Build figure to summarise the genetic ~ species relationship
 
@@ -991,7 +1008,7 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
                                 tipIndexBackground=rgb(1,1,1, 0.5),
                                 tipCexOnMap=2, plotMap=TRUE, 
                                 layoutMatrix=NULL, tipLabelOffset=1,
-                                tipLabelCexOnPhylogeny=2){
+                                tipLabelCexOnPhylogeny=2, showTipLabels=FALSE){
   
   # Get and set the margins
   currentMar <- par()$mar
@@ -1013,7 +1030,7 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   plotPhylogeny(tree, tipInfo, tipCex=tipShapeCexOnPhylogeny, scaleCex=scaleCex,
                 tipShapesAndColours=tipShapesAndColours,
                 addTipIndices=addTipIndices, indexCex=tipLabelCexOnPhylogeny,
-                labelOffset=tipLabelOffset)
+                labelOffset=tipLabelOffset, showTipLabels=showTipLabels)
   
   # Note the tip coordinates
   tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
@@ -1037,6 +1054,16 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   # Plot the sampling locations
   if(addTipIndices){
     labels <- c(1:nrow(tipInfo))[is.na(tipInfo$MercatorX) == FALSE]
+    xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
+    yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
+    colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                                 which="colour", alpha=0.75)[
+                                                   is.na(tipInfo$MercatorX) == FALSE]
+    addTextLabels(xCoords, yCoords, labels=labels,
+                  col.label=colours, avoidPoints=FALSE, cex.label=tipCexOnMap,
+                  col.background=tipIndexBackground)
+  }else if(showTipLabels){
+    labels <- tipInfo$ID[is.na(tipInfo$MercatorX) == FALSE]
     xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
     yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
     colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
@@ -1269,7 +1296,8 @@ getTipCoordinatesOnPhylogeny <- function(tipLabels){
 
 plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
                           scaleCex=1, tipShapesAndColours,
-                          addTipIndices=FALSE, indexCex=1, labelOffset=1){
+                          addTipIndices=FALSE, indexCex=1, labelOffset=1,
+                          showTipLabels=FALSE){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
@@ -1284,10 +1312,12 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
     # Plot tree with tip labels
     plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
                cex=indexCex, label.offset=labelOffset, xpd=TRUE)
+  }else if(showTipLabels){
+    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE)
   }else{
     plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
   }
-  
   
   # Add tips coloured by species
   tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo,
