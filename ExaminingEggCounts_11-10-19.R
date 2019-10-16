@@ -15,6 +15,7 @@ dev.off()
 eggCounts <- transformTableIntoLongform(eggCounts)
 
 # Fit a linear model to determine whether the methods are giving significantly results
+# Sample and Replicate should be a single variable
 modelFit <- glm(EggCount ~ Method + Sample + Replicate, family=poisson(), data=eggCounts)
 summary(modelFit)
 

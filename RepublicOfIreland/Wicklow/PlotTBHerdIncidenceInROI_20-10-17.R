@@ -9,7 +9,7 @@ library(maptools) # Read shape file
 path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Paratuberculosis/"
 
 # Read in the shape file
-file <- paste(path, "CountyPolygonCoords/ROI_CountyBoundaries/counties.shp", sep="")
+file <- paste(path, "/home/josephcrispell/Desktop/Research/ROI_CountyBoundaries/counties.shp", sep="")
 countyBorders <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
 
 # Get the coordinates of the counties
