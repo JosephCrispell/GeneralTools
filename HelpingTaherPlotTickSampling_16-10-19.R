@@ -22,25 +22,50 @@ irelandPolygons <- getPolygonCoords(ireland)
 #### Read in the tick count data ####
 
 # Read in the tick counts
-# Remove location columns as had characters interferring with reading in
-file <- paste0(path, "HelpingTaher/Taher_AllSitesAndPathogens_16-10-19.tsv")
-tickCounts <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+# Removed location columns as had characters interferring with reading in
+tickCountsFile <- paste0(path, "HelpingTaher/Taher_AllSitesAndPathogens_16-10-19.tsv")
+tickCounts <- read.table(tickCountsFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+# Calculate prevalence
+tickCounts$Prevalence <- tickCounts$No..of.qPCR.positives / tickCounts$Ticks.screened
+tickCounts$Prevalence[is.nan(tickCounts$Prevalence)] <- 0
 
 #### Plot the sampling ####
+
+# Open a pdf
+file <- paste0(substr(tickCountsFile, 1, nchar(tickCountsFile)-4), ".pdf")
+pdf(file)
 
 # Get and set the plotting margins
 currentMar <- par()$mar
 par(mar=c(0,0,0,0))
 
 # Plot the Ireland county polygons
-plotPolygons(irelandPolygons, lwd=1.5)
+plotPolygons(irelandPolygons, lwd=1.5, border=rgb(0.4,0.4,0.4, 0.1), col=rgb(0,0,1, 0.1))
 
 # Plot the tick counts
-points(x=tickCounts$Long, y=tickCounts$Lat, pch=19, cex=2, col=rgb(0,0,0, 0.5))
+addPoints(xCoords=tickCounts$Long, yCoords=tickCounts$Lat, pch=21, 
+          cex=(tickCounts$Ticks.screened/max(tickCounts$Ticks.screened))*4,
+          bg=rgb(1,0,0, tickCounts$Prevalence),
+          col="black", lty=2)
 
+# Add a scale for number of ticks
+legend("right", title="No. ticks screened", legend=c(100, 75, 50, 25, 10), pch=21, 
+       col="black", bty="n", pt.cex=(c(100, 75, 50, 25, 10)/max(tickCounts$Ticks.screened))*4)
+
+# Add a scale for prevalence
+legend("bottomright", title="Prevalence         ", legend=paste0(c(50, 40, 30, 20, 10, 0), "%"), pch=21, 
+       pt.bg=c(rgb(1,0,0, 0.5), rgb(1,0,0, 0.4), rgb(1,0,0, 0.3), 
+            rgb(1,0,0, 0.2), rgb(1,0,0, 0.1), rgb(1,0,0, 0)),
+       bty="n", pt.cex=2, col="black")
 
 # Reset the plotting margins
-par(mar=currentMar)
+par(mar=currentMar, mfrow=c(1,1))
+
+# Close the pdf
+dev.off()
+
+#### WHAT ABOUT THE LOCATIONS THAT WERE VISITED BUT NO TICKS FOUND!?!?! ####
 
 #### FUNCTIONS ####
 
@@ -48,61 +73,30 @@ plotPolygons <- function(polygons, xLim=NULL, yLim=NULL, ...){
   
   # Get the axis limits of uk - enough to include ROI
   if(is.null(xLim)){
-    limits <- getAxisLimits(polygons)
-    xLim <- limits$X
-    yLim <- limits$Y
+    
+    xLim <- polygons$bbox[1, ]
+    yLim <- polygons$bbox[2, ]
   }
   
   # Create an empty plot
   plot(x=NULL, y=NULL, xlim=xLim, ylim=yLim,
-       bty="n", xaxt="n", yaxt="n", xlab="", ylab="")
+       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
   
   # Examine each set of polygons
-  for(setName in names(polygons)){
+  for(setID in names(polygons)){
 
+    # Skip the bounding box
+    if(setID == "bbox"){
+      next
+    }
+    
     # Examine each polygon within current set
-    for(polygonIndex in 1:length(polygons[[setName]])){
+    for(polygonIndex in 1:length(polygons[[setID]])){
       
       # Plot the current polygon
-      polygon(polygons[[setName]][[polygonIndex]], ...)
+      polygon(polygons[[setID]][[polygonIndex]], ...)
     }
   }
-}
-
-getAxisLimits <- function(polygons){
-  
-  # Initialise list to store the ranges of the X and Y axes
-  ranges <- list("X"=c(Inf, -Inf), "Y"=c(Inf, -Inf))
-  
-  # Examine each of the polygons in the input coords
-  for(polygonIndex in 1:length(polygons[[1]])){
-    
-    # Note the ranges of the X and Y axes of the current polygon
-    xRange <- range(polygons[[1]][[polygonIndex]][, 1])
-    yRange <- range(polygons[[1]][[polygonIndex]][, 2])
-    
-    # Update X min if necessary
-    if(xRange[1] < ranges$X[1]){
-      ranges$X[1] <- xRange[1]
-    }
-    
-    # Update X max if necessary
-    if(xRange[2] > ranges$X[2]){
-      ranges$X[2] <- xRange[2]
-    }
-    
-    # Update Y min if necessary
-    if(yRange[1] < ranges$Y[1]){
-      ranges$Y[1] <- yRange[1]
-    }
-    
-    # Update Y max if necessary
-    if(yRange[1] > ranges$Y[2]){
-      ranges$Y[2] <- yRange[2]
-    }
-  }
-  
-  return(ranges)
 }
 
 getPolygonCoords <- function(spatialDataFrame){
@@ -140,6 +134,9 @@ getPolygonCoords <- function(spatialDataFrame){
     # Store the polygon coordinates
     output[[id]] <- polygons
   }
+  
+  # Store the bounds
+  output[["bbox"]] <- spatialDataFrame@bbox
   
   return(output)
 }

@@ -92,6 +92,9 @@ for(year in 2000:2011){
 # Close the PDF file
 dev.off()
 
+plotBadgerTerritories(territoryCoordsInEachYear, c(2000:2005,2007:2011), scale=FALSE,
+                      lwd=3, border=rgb(0,0,0, 0.95))
+
 #### FUNCTIONS ####
 
 convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
@@ -117,7 +120,8 @@ convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
   return(output)
 }
 
-plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, file=NULL, map=NULL, ...){
+plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, file=NULL, map=NULL,
+                                  scale=TRUE, ...){
   
   # Open a pdf file if requested
   if(is.null(file) == FALSE){
@@ -171,13 +175,15 @@ plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, 
   }
   
   # Add scale
-  axisLimits <- par()$usr
-  xLength <- axisLimits[2] - axisLimits[1]
-  yLength <- axisLimits[4] - axisLimits[3]
-  xPad <- 0.08*xLength
-  points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
-         type="l", lwd=4)
-  text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1KM", cex=2)
+  if(scale){
+    axisLimits <- par()$usr
+    xLength <- axisLimits[2] - axisLimits[1]
+    yLength <- axisLimits[4] - axisLimits[3]
+    xPad <- 0.08*xLength
+    points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
+           type="l", lwd=4)
+    text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1KM", cex=2)
+  }
   
   # Reset the plotting margins
   par(mar=currentMar)
