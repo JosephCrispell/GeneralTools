@@ -3,8 +3,8 @@
 # Load libraries
 library(rgdal) # For reading in shape files and converting between projections
 library(basicPlotteR) # For setting alpha
-library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
-
+library(OpenStreetMap) # Downloading map
+library(sp) # Convert between map projections
 
 # Set the path variable
 path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
@@ -47,6 +47,22 @@ captureData <- read.table(consolidatedCaptureDataFile, header=TRUE, check.names=
 # Build a social group contact network for each year of interest
 dispersalNetworksInEachYear <- countDispersalEventsInEachYear(captureData, territoryCoordsInEachYear)
 
+#### Get a WP satellite image ####
+
+# Calculate the plotting area boundaries in latitude and longitudes
+coordRanges <- convertXYToLatLongs(x=territoryCoordsInEachYear$rangeX, y=territoryCoordsInEachYear$rangeY)
+rangeLat <- coordRanges[, "Latitude"]
+rangeLong <- coordRanges[, "Longitude"]
+
+# Get a satellite image of the area
+# Maps are initially put in a sperical mercator projection which is the standard for most (all?) map tiling systems
+map <- openmap(upperLeft=c(rangeLat[2]+0.0012, rangeLong[2]), 
+               lowerRight=c(rangeLat[1]+0.001, rangeLong[1]),
+               type="bing")
+
+# Convert from
+mapUKGrid <- openproj(map, projection=CRS("+init=epsg:27700"))
+
 #### Create a striking image ####
 
 # Set the plotting margins
@@ -57,16 +73,48 @@ years <- c(2003)
 
 # Plot the badger territories on top of one another
 plotBadgerTerritories(territoryCoordsInEachYear, years, scale=FALSE,
-                      lwd=3, border=rgb(1,1,1, 1), background="black", col=rgb(1,1,1, 0.1))
+                      lwd=3, border=rgb(249,239,63, maxColorValue=255), 
+                      #background=rgb(114,114,114, maxColorValue=255),
+                      col=rgb(113,137,211, 50, maxColorValue=255), map=mapUKGrid)
+
+rgb(113,137,211, maxColorValue=255) # cyan
+rgb(183,48,121, maxColorValue=255) # pink
+rgb(195,59,45, maxColorValue=255) # orange
+rgb(50,63,98, maxColorValue=255) # dark blue
+rgb(249,239,63, maxColorValue=255) # yellow
 
 # Plot the territory centroids
 #addTerritoryCentroids(territoryCentroidsInEachYear, years, pch=19, cex=1.5, col="red")
 
 # Overlay the badger movements
-addDispersalEvents(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, col="red",
-                   lty=3, lwd=3, weighted=FALSE)
+addDispersalEvents(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, 
+                   col=rgb(195,59,45, maxColorValue=255),
+                   lty=1, lwd=6, weighted=FALSE)
 
 #### FUNCTIONS ####
+
+convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
+  
+  # Create variables for holding the coordinate system types
+  # see http://www.epsg.org/
+  latLong <- "+init=epsg:4326"
+  
+  # Create a coordinates variable
+  coords <- cbind(Easting = x, Northing = y)
+  
+  # Create a SpatialPointsDataFrame
+  spatialDF <- SpatialPoints(coords, proj4string = CRS(ukGrid))
+  
+  # Convert the Eastings and Northings to Latitude and Longitude
+  spatialDFLatLongs <- spTransform(spatialDF, CRS(latLong))
+  
+  # Create a table to store the converted points
+  output <- data.frame(Longitude=spatialDFLatLongs@coords[,"Easting"],
+                       Latitude=spatialDFLatLongs@coords[,"Northing"])
+  
+  # Return the lat longs
+  return(output)
+}
 
 addDispersalEvents <- function(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, weighted=TRUE,
                                type="l", lwd=1, lend=2, ...){
@@ -320,11 +368,17 @@ calculateTerritoryCentroidsInEachYear <- function(territoryCoordsInEachYear){
 }
 
 plotBadgerTerritories <- function(territoryCoordsInEachYear, years,
-                                  scale=TRUE, background="white", ...){
+                                  scale=TRUE, background="white", map=NULL, ...){
   
-  # Create an empty plot
-  plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
-       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  # Check if map provided for plotting
+  if(is.null(map) == FALSE){
+    plot(map, asp=1)
+  }else{
+    
+    # Create an empty plot
+    plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
+         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  }
 
   # Plot a background colour
   if(background != "white"){
