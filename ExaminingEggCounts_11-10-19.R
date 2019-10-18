@@ -55,7 +55,7 @@ transformTableIntoLongform <- function(eggCounts){
       output[nrow(output) + 1, "EggCount"] <- eggCounts[row, col]
       output[nrow(output), "Method"] <- method
       output[nrow(output), "Sample"] <- sample
-      output[nrow(output), "Replicate"] <- replicate
+      output[nrow(output), "Replicate"] <- paste0(sample, ".", replicate)
     }
   }
   

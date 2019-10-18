@@ -34,37 +34,45 @@ shapeFileNames <- c("territories_2000.shp",
 # Read in the polygon coordinates for each social gropu in each year
 territoryCoordsInEachYear <- readTerritoryCoordsFromEachYear(years, shapeFileNames)
 
+# Calculate the centroid of each social group in each year
+territoryCentroidsInEachYear <- calculateTerritoryCentroidsInEachYear(territoryCoordsInEachYear)
+
+#### Construct badger social group contact network for each year ####
+
+# Read in the consolidated badger data
+consolidatedCaptureDataFile <- paste0(path, "BadgerCaptureData/WP_CaptureData_Consolidated_24-06-2019.txt")
+captureData <- read.table(consolidatedCaptureDataFile, header=TRUE, check.names=FALSE, sep="\t", 
+                          stringsAsFactors=FALSE)
+
+# Build a social group contact network for each year of interest
+dispersalNetworksInEachYear <- countDispersalEventsInEachYear(captureData, territoryCoordsInEachYear)
+
 #### Create a striking image ####
 
+# Set the plotting margins
+par(mar=c(0,0,0,0))
+
+# Note the years we are plotting data for
+years <- c(2003)
+
 # Plot the badger territories on top of one another
-plotBadgerTerritories(territoryCoordsInEachYear, c(2000:2005,2007:2011), scale=FALSE,
-                      lwd=3, border=rgb(0,0,0, 0.95))
+plotBadgerTerritories(territoryCoordsInEachYear, years, scale=FALSE,
+                      lwd=3, border=rgb(1,1,1, 1), background="black", col=rgb(1,1,1, 0.1))
+
+# Plot the territory centroids
+#addTerritoryCentroids(territoryCentroidsInEachYear, years, pch=19, cex=1.5, col="red")
 
 # Overlay the badger movements
+addDispersalEvents(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, col="red",
+                   lty=3, lwd=3, weighted=FALSE)
 
 #### FUNCTIONS ####
 
-plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, file=NULL, map=NULL,
-                                  scale=TRUE, ...){
+addDispersalEvents <- function(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, weighted=TRUE,
+                               type="l", lwd=1, lend=2, ...){
   
-  # Open a pdf file if requested
-  if(is.null(file) == FALSE){
-    pdf(file)
-  }
-  
-  # Get and set the plotting margins
-  currentMar <- par("mar")
-  par(mar=c(0,0,0,0))
-  
-  # Check if map provided for plotting
-  if(is.null(map) == FALSE){
-    plot(map, asp=1)
-  }else{
-    
-    # Create an empty plot
-    plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
-         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
-  }
+  # Set the line ending style
+  par(lend=lend)
   
   # Examine each year
   for(year in years){
@@ -77,11 +85,269 @@ plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, 
     # Convert year to character to act as key
     year <- as.character(year)
     
-    # Pause - if asked
-    if(is.null(sleep) == FALSE){
-      Sys.sleep(sleep)
+    # Get the dispersal network for the current year
+    dispersalNetwork <- dispersalNetworksInEachYear[[year]]
+    
+    # Get the territory centroids for the current year
+    territoryCentroids <- territoryCentroidsInEachYear[[year]]
+  
+    # Note the maxium number of dispersal events
+    maxNoDispersalEvents <- max(dispersalNetwork)
+    
+    # Examine the dispersal event network
+    for(row in 1:nrow(dispersalNetwork)){
+      
+      # Note the centroid of the current row social group
+      centroidRow <- territoryCentroids[[rownames(dispersalNetwork)[row]]]
+      
+      for(column in 1:ncol(dispersalNetwork)){
+        
+        # Skip if no dispersal events between current group
+        if(dispersalNetwork[row, column] == 0){
+          next
+        }
+        
+        # Note the centroid of the current column social group
+        centroidColumn <- territoryCentroids[[rownames(dispersalNetwork)[column]]]
+        
+        # Add a line to represent the dispersal event - check if want weighted by number of
+        if(weighted){
+          points(x=c(centroidRow[1], centroidColumn[1]),
+                 y=c(centroidRow[2], centroidColumn[2]),
+                 lwd=(dispersalNetwork[row, column] / maxNoDispersalEvents) * lwd,
+                 type=type, ...)
+        }else{
+          
+          # Check if haven't already connected these social groups
+          if(row < column && dispersalNetwork[column, row] != 0){
+            next
+          }
+          
+          points(x=c(centroidRow[1], centroidColumn[1]),
+                 y=c(centroidRow[2], centroidColumn[2]),
+                 type=type, lwd=lwd, ...)
+        }
+      }
+    }
+  }
+}
+
+initialiseSocialGroupsDispersalNetworkForEachYear <- function(territoryCoordsInEachYear){
+  
+  # Initialise a list to store the social group dispersal networks for each year
+  socialGroupsDispersalNetworkInEachYear <- list()
+  
+  # Each the data for each year
+  for(year in names(territoryCoordsInEachYear)){
+    
+    # Skip the X and Y ranges
+    if(year %in% c("rangeX", "rangeY")){
+      next
     }
     
+    # Note the social groups present in the current year
+    socialGroups <- names(territoryCoordsInEachYear[[year]])
+    
+    # Initialise a matrix to store the number of dispersal events in the current year
+    dispersalEventsCounts <- matrix(0, nrow=length(socialGroups), ncol=length(socialGroups))
+    rownames(dispersalEventsCounts) <- socialGroups
+    colnames(dispersalEventsCounts) <- socialGroups
+    
+    # Store the matrix
+    socialGroupsDispersalNetworkInEachYear[[year]] <- dispersalEventsCounts
+  }
+  
+  return(socialGroupsDispersalNetworkInEachYear)
+}
+
+countDispersalEventsInEachYear <- function(captureData, territoryCoordsInEachYear){
+  
+  # Initialise a list to store the social group dispersal networks for each year
+  socialGroupsDispersalNetworkInEachYear <- 
+    initialiseSocialGroupsDispersalNetworkForEachYear(territoryCoordsInEachYear)
+  
+  # Examine the capture history for each badger
+  for(row in 1:nrow(captureData)){
+    
+    # Get the capture dates
+    captureDates <- as.Date(strsplit(captureData[row, "@CaptureDates"], split=";")[[1]], format="%d-%m-%Y")
+    
+    # Get the social groups at capture
+    socialGroups <- strsplit(captureData[row, "@Groups"], split=";")[[1]]
+    
+    # Skip individual if onlly one capture event
+    if(length(captureDates) == 1){
+      next
+    }
+    
+    # Record info for any dispersal events for the current badger
+    dispersalEvents <- noteDispersalEvents(captureDates, socialGroups, captureData[row, "Tattoo"])
+    
+    # Skip iof no dispersal events found
+    if(length(dispersalEvents) == 0){
+      next
+    }
+    
+    # Record the dispersal events in the dispersal networks of each year
+    socialGroupsDispersalNetworkInEachYear <- recordDispersalEvents(dispersalEvents, 
+                                                                    socialGroupsDispersalNetworkInEachYear)
+    
+  }
+  
+  return(socialGroupsDispersalNetworkInEachYear)
+}
+
+recordDispersalEvents <- function(dispersalEvents, socialGroupsDispersalNetworkInEachYear){
+  
+  # Examine each of the dispersal events
+  for(eventIndex in seq_along(dispersalEvents)){
+    
+    # Get the information for the current event
+    year <- dispersalEvents[[eventIndex]]$Year
+    from <- dispersalEvents[[eventIndex]]$FROM
+    to <- dispersalEvents[[eventIndex]]$TO
+    
+    # Skip if not a year we have territory data for
+    if(year %in% names(socialGroupsDispersalNetworkInEachYear) == FALSE){
+      next
+    }
+    
+    # Get the dispersal network for the current year
+    network <- socialGroupsDispersalNetworkInEachYear[[year]]
+    
+    # Skip if FROM or TO social groups don't exist within the dispersal network
+    if(from %in% rownames(network) == FALSE || to %in% rownames(network) == FALSE){
+      next
+    }
+    
+    # Add to the specific count for the current dispersal event
+    network[from, to] <- network[from, to] + 1
+    socialGroupsDispersalNetworkInEachYear[[year]] <- network
+  }
+  
+  return(socialGroupsDispersalNetworkInEachYear)
+}
+
+noteDispersalEvents <- function(captureDates, socialGroups, tattoo){
+  
+  # Initialise a list to store any dispersal details
+  dispersalEvents <- list()
+  
+  # Examine each capture event
+  for(eventIndex in seq_along(captureDates)[-1]){
+    
+    # Skip if previous or current gropu is unknown
+    if(socialGroups[eventIndex-1] == "NA" || socialGroups[eventIndex] == "NA"){
+      next
+    }
+    
+    # Skip if previous and current group are the same
+    if(socialGroups[eventIndex-1] == socialGroups[eventIndex]){
+      next
+    }
+    
+    # Record the information for the current dispersal event
+    dispersalEvents[[length(dispersalEvents) + 1]] <- list("Tattoo"=tattoo,
+                                                           "FROM"=socialGroups[eventIndex-1],
+                                                           "TO"=socialGroups[eventIndex],
+                                                           "Year"=format(captureDates[eventIndex], "%Y"),
+                                                           "Date"=captureDates[eventIndex])
+  }
+  
+  return(dispersalEvents)
+}
+
+getAllSocialGroups <- function(territoryCoordsInEachYear){
+  
+  # Initialise a vector to store the social group name
+  socialGroups <- c()
+  
+  # Add the social groups from each year into the vector
+  for(year in names(territoryCoordsInEachYear)){
+    
+    socialGroups <- c(socialGroups, names(territoryCoordsInEachYear[[year]]))
+  }
+  
+  # Return the unique names
+  return(unique(socialGroups))
+}
+
+addTerritoryCentroids <- function(territoryCentroidsInEachYear, years, ...){
+  
+  # Examine each year
+  for(year in years){
+    
+    # Skip 2006 - territories are all messed up
+    if(year == 2006){
+      next
+    }
+    
+    # Convert year to character to act as key
+    year <- as.character(year)
+    
+    # Examine each social group
+    for(socialGroup in names(territoryCentroidsInEachYear[[year]])){
+
+      # Get the centroid for the current territory in the current year
+      centroidCoords <- territoryCentroidsInEachYear[[year]][[socialGroup]]
+
+      # Plot a point at current centroid
+      points(x=centroidCoords[1], y=centroidCoords[2], ...)
+    }
+  }
+}
+
+calculateTerritoryCentroidsInEachYear <- function(territoryCoordsInEachYear){
+  
+  # Initialise a list to stroe the centroid of each social group in each year
+  territoryCentroidsInEachYear <- list()
+  
+  # Examine each of the years
+  for(year in names(territoryCoordsInEachYear)){
+    
+    # Examine each social group present in the current year
+    for(socialGroup in names(territoryCoordsInEachYear[[year]])){
+      
+      # Get the coordinates for the territory of the current social group
+      coords <- territoryCoordsInEachYear[[year]][[socialGroup]][[1]]
+      
+      # Store the centroid for the current territory
+      territoryCentroidsInEachYear[[year]][[socialGroup]] <- c(mean(coords[, 1]), mean(coords[, 2]))
+    }
+  }
+  
+  return(territoryCentroidsInEachYear)
+}
+
+plotBadgerTerritories <- function(territoryCoordsInEachYear, years,
+                                  scale=TRUE, background="white", ...){
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, xlim=territoryCoordsInEachYear$rangeX, ylim=territoryCoordsInEachYear$rangeY,
+       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+
+  # Plot a background colour
+  if(background != "white"){
+    
+    # Get the axisLimits
+    axisLimits <- par()$usr
+    
+    # Plot rectangle to fill plotting background
+    rect(xleft=axisLimits[1], ybottom=axisLimits[3], xright=axisLimits[2], ytop=axisLimits[4], 
+         col=background)
+  }
+  
+  # Examine each year
+  for(year in years){
+    
+    # Skip 2006 - territories are all messed up
+    if(year == 2006){
+      next
+    }
+    
+    # Convert year to character to act as key
+    year <- as.character(year)
+
     # Examine each social group
     for(socialGroup in names(territoryCoordsInEachYear[[year]])){
       
@@ -107,14 +373,6 @@ plotBadgerTerritories <- function(territoryCoordsInEachYear, years, sleep=NULL, 
     points(x=c(axisLimits[2] - xPad - 1000, axisLimits[2] - xPad), y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
            type="l", lwd=4)
     text(x=axisLimits[2] - xPad - 500, y=axisLimits[3] + 0.07*yLength, labels="1KM", cex=2)
-  }
-  
-  # Reset the plotting margins
-  par(mar=currentMar)
-  
-  # Close the pdf if requested
-  if(is.null(file) == FALSE){
-    dev.off()
   }
 }
 
@@ -249,7 +507,7 @@ changeIDsToSocialGroupNames <- function(coords, data, year){
     row <- as.numeric(key) + 1
     
     # Convert the ID to a social group name
-    socialGroup <- removeSep(as.character(data[row, column]), sep=" ")
+    socialGroup <- toupper(removeSep(as.character(data[row, column]), sep=" "))
     
     # Store the polygon coords under social group name
     output[[socialGroup]] <- coords[[key]]
