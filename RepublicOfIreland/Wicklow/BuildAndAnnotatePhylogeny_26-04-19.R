@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-#path <- "J:\\WGS_Wicklow\\"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -29,13 +29,13 @@ file <- paste0(path, "IsolateSpeciesAndYear_26-04-19.csv")
 metadata <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the FASTA file
-#fastaFile <- paste(path, "vcfFiles\\sequences_Prox-10_19-03-2019.fasta", sep="")
 fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_21-10-2019.fasta", sep="")
+#fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_21-10-2019.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 
 # Read in the coverage information
-#coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_19-03-2019.txt")
 coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_21-10-2019.txt")
+#coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_21-10-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Load the spatial data ####
@@ -68,6 +68,9 @@ deerLocations <- data.frame("Aliquot"=as.character(deerShapeFile$ALIQUOT),
                             "Lat"=deerShapeFile$LAT,
                             "Long"=deerShapeFile$LONG)
 
+# Change the location of the deer in the sea!!
+deerLocations[which(deerLocations$Aliquot == "TB14-012200"), c("Lat", "Long")] <- c(53.14345, -6.19805)
+
 # Convert longitudes and latitudes to X and Y coordinates
 coords <- convertLatLongsToXY(latitudes=deerLocations$Lat, longitudes=deerLocations$Long)
 deerLocations$X <- coords$X
@@ -92,7 +95,7 @@ herdInfo <- cattleShapeFile@data
 #### Build phylogeny ####
 
 # Build a phylogeny using RAxML
-tree <- runRAXML(fastaFile, date="21-10-19", path, alreadyRun=RUN, outgroup="\\>Ref-1997")
+tree <- runRAXML(fastaFile, date="21-10-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
 
 # Remove NI isolates and Reference
 tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997|>182-MBovis|>161-MBovis")])
@@ -108,23 +111,23 @@ tree$edge.length <- tree$edge.length * nSites
 
 #### Identify and remove duplicates ####
 
-# Count how many times each aliquot ID appears
-aliquotCounts <- table(tipInfo$Aliquot)
-
-# Identify the duplicated aliquots
-duplicated <- names(aliquotCounts)[aliquotCounts > 1]
-
-# Get the tip information for the duplicates
-duplicatedTipInfo <- tipInfo[tipInfo$Aliquot %in% duplicated, ]
-
-# Pick which tip to keep - note I checked phylogeny and these tips are identical on the phylogeny :-)
-remove <- pickDuplicatedTipToRemove(duplicatedTipInfo)
-
-# Drop one of each duplicated tip
-tree <- drop.tip(tree, remove)
-
-# Update the tip information
-tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
+# # Count how many times each aliquot ID appears
+# aliquotCounts <- table(tipInfo$Aliquot)
+# 
+# # Identify the duplicated aliquots
+# duplicated <- names(aliquotCounts)[aliquotCounts > 1]
+# 
+# # Get the tip information for the duplicates
+# duplicatedTipInfo <- tipInfo[tipInfo$Aliquot %in% duplicated, ]
+# 
+# # Pick which tip to keep - note I checked phylogeny and these tips are identical on the phylogeny :-)
+# remove <- pickDuplicatedTipToRemove(duplicatedTipInfo)
+# 
+# # Drop one of each duplicated tip
+# tree <- drop.tip(tree, remove)
+# 
+# # Update the tip information
+# tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 
 #### Create FASTA file for pathogen genomics workshop ####
 
@@ -174,7 +177,7 @@ tipShapesAndColours <- list("Badger"=c("red", 19), "Cow"=c("blue", 17),
                             "Deer"=c("black", 15))
 
 # Open an output PDF
-outputPlotFile <- paste0(path, "MbovisAnnotatedPhylogeny_WICKLOW_", date, ".pdf")
+outputPlotFile <- paste0(path, "Figures\\MbovisAnnotatedPhylogeny_WICKLOW_", date, ".pdf")
 pdf(outputPlotFile)
 
 # Get and set the margins
@@ -190,7 +193,7 @@ tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
           cex=1.25)
 
 # Add scale bar
-addScaleBar(2, yPad=0.05)
+addScaleBar(2, yPad=0.05, xPad=0.7)
 
 # Add species legend
 legend("right", legend=c("Badger", "Cow", "Deer"), 
@@ -231,7 +234,7 @@ tipShapesAndColoursMAP <- list("Badger"=c("red", 21), "Cow"=c("blue", 24),
                                "Deer"=c("black", 22))
 
 # Open an output PDF
-outputPlotFile <- paste0(path, "SamplingLocations_", date, ".pdf")
+outputPlotFile <- paste0(path, "Figures\\SamplingLocations_", date, ".pdf")
 pdf(outputPlotFile)
 
 ### Including all land parcels
@@ -356,7 +359,7 @@ map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile,
                          yExpand=0.3, xExpand=0.05)
 
 # Open an output PDF
-outputPlotFile <- paste0(path, "LinkedPhylogenyAndLocations_", date, ".pdf")
+outputPlotFile <- paste0(path, "Figures\\LinkedPhylogenyAndLocations_", date, ".pdf")
 pdf(outputPlotFile, width=14, height=10)
 
 # # Plot phylogeny and map with sampling locations as shapes
@@ -382,15 +385,15 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
-# Plot phylogeny and sampling locations as sampling IDs
-plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-                    scaleTextColour="black", showTipLabels=TRUE,
-                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
-                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-                    plotMap=FALSE,
-                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
+# # Plot phylogeny and sampling locations as sampling IDs
+# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+#                     scaleTextColour="black", showTipLabels=TRUE,
+#                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
+#                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+#                     tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+#                     plotMap=FALSE,
+#                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+#                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
 # # Plot phylogeny and sampling locations as shapes
 # plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
@@ -425,7 +428,7 @@ median(geneticVsEpi$Genetic)
 quantile(geneticVsEpi$Genetic, probs=c(0.025, 0.975))
 
 # Open an output PDF
-outputPlotFile <- paste0(path, "Clustering_", date, ".pdf")
+outputPlotFile <- paste0(path, "Figures\\Clustering_", date, ".pdf")
 pdf(outputPlotFile, width=7, height=7)
 
 # Generate some exploratory plots
@@ -451,30 +454,30 @@ write.table(spatialDistanceMatrix, file=file, quote=FALSE, sep="\t", row.names=T
 
 ### Build figure to summarise the genetic ~ species relationship
 
-# Open an output PDF
-outputPlotFile <- paste0(path, "Clustering_genetic-species_", date, ".pdf")
-pdf(outputPlotFile, width=14, height=7)
-
-# Set the plotting dimensions
-par(mfrow=c(1,2))
-
-# Plot a summary of the genetic distances within and between species
-# Plot the genetic distances in each species comparisons
-boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE, border=rgb(0,0,0,0), outcol=rgb(0,0,0,0),
-        ylab="Genetic distance (SNVs)", xlab="Comparison",
-        main="Genetic distance distributions\nwithin and between species")
-spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
-                     categoriesColumn="Species", col="red", plotOutliers=TRUE)
-# Add a plot label
-axisLimits <- par()$usr
-mtext("a", side=3, line=1, at=axisLimits[1], cex=2.5)
-
-# Calculate the within and between species distances
-compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi, nReps=10000,
-                                           nBreaks=5, label="b")
-
-# Close the output pdf
-dev.off()
+# # Open an output PDF
+# outputPlotFile <- paste0(path, "Figures\\Clustering_genetic-species_", date, ".pdf")
+# pdf(outputPlotFile, width=14, height=7)
+# 
+# # Set the plotting dimensions
+# par(mfrow=c(1,1))
+# 
+# # Plot a summary of the genetic distances within and between species
+# # Plot the genetic distances in each species comparisons
+# boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE, border=rgb(0,0,0,0), outcol=rgb(0,0,0,0),
+#         ylab="Genetic distance (SNVs)", xlab="Comparison",
+#         main="Genetic distance distributions\nwithin and between species")
+# spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
+#                      categoriesColumn="Species", col="red", plotOutliers=TRUE)
+# # Add a plot label
+# axisLimits <- par()$usr
+# mtext("a", side=3, line=1, at=axisLimits[1], cex=2.5)
+# 
+# # Calculate the within and between species distances
+# compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi, nReps=10000,
+#                                            nBreaks=5, label="b")
+# 
+# # Close the output pdf
+# dev.off()
 
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
@@ -488,7 +491,7 @@ write.table(notSequencedInfo[, "Aliquot"], file=notSequencedFile, quote=FALSE, s
 #### Plot the temporal sampling range ####
 
 # Open an output PDF
-outputPlotFile <- paste0(path, "TemporalSampling_", date, ".pdf")
+outputPlotFile <- paste0(path, "Figures\\TemporalSampling_", date, ".pdf")
 pdf(outputPlotFile, width=15, height=7)
 
 plotTemporalSamplingRange(tipInfo)
@@ -1825,10 +1828,10 @@ addScaleBar <- function(scaleSize, cex=1, xPad=0.4, yPad=0.01){
          y=c(dimensions[3] + (yPad * yLength), dimensions[3] + (yPad * yLength)),
          type="l", lwd=3, xpd=TRUE)
   if(scaleSize == 1){
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + (yPad * yLength),
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + ((yPad-0.005) * yLength),
          labels=paste0("~ ", scaleSize, " SNV"), cex=cex, xpd=TRUE, pos=1)
   }else{
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + (yPad * yLength),
+    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] + ((yPad-0.005) * yLength),
          labels=paste0("~ ", scaleSize, " SNVs"), cex=cex, xpd=TRUE, pos=1)
   }
 }
