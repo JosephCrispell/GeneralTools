@@ -6,8 +6,8 @@ library(rgdal) # Convert X and Y to lat longs and reading in shape files
 #### Read in the sample data ####
 
 # Set the path 
-#path <- "J:\\WGS_Monaghan\\"
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
+path <- "J:\\WGS_Monaghan\\"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -21,11 +21,11 @@ file <- paste0(path, "Animal_HerdIDs_04-07-19.csv")
 herdIDs <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Read in the FASTA file
-fastaFile <- paste0(path, "sequences_Prox-10_30-07-2019.fasta")
+fastaFile <- paste0(path, "vcfFiles\\sequences_Prox-10_24-09-2019.fasta")
 nSites <- getNSitesInFASTA(fastaFile)
 
 # Read in the coverage information
-coverageFile <- paste0(path, "Quality/isolateCoverageSummary_DP-20_30-07-2019.txt")
+coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_24-09-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Read in the test summaries table
@@ -40,6 +40,21 @@ badgerCaptureData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FA
 # Read in the sett capture event information
 file <- paste0(path, "Badger_data/TBL_capture_events_2019_07_19.txt")
 settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
+
+
+#### EXAMINE THE SEQUENCE QUALITY!!! (REMOVE UNINFORMATIVE SITES!)
+
+
+
+
+
+
+
+
+
+
+
+
 
 #### Build the phylogeny ####
 
@@ -64,7 +79,7 @@ tipInfo <- addSlaughterOrCaptureDates(tipInfo, cattleTestInfo, badgerCaptureData
 #### Plot the phylogeny ####
 
 # Open a PDF
-pdf(paste0(path, "MbovisAnnotatedPhylogeny_", date, ".pdf"))
+pdf(paste0(path, "Figures\\MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
 
 # Plot the phylogeny
 plot.phylo(tree, show.tip.label=FALSE, edge.color=rgb(0,0,0, 0.5), edge.width=4)
@@ -78,7 +93,9 @@ tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
 addScaleBar(20)
 
 # Add species legend
-addSpeciesLegend(tipShapesAndColours)
+legend("right", legend=names(tipShapesAndColours), 
+       pch=as.numeric(unlist(tipShapesAndColours)[c(2, 4, 6)]),
+       col=unlist(tipShapesAndColours)[c(1, 3, 5)], bty="n", cex=1.5)
 
 # Close the pdf
 dev.off()
@@ -87,7 +104,7 @@ dev.off()
 #### Plot the temporal sampling ####
 
 # Open a PDF
-pdf(paste0(path, "TemporalSampling_", date, ".pdf"))
+pdf(paste0(path, "Figures\\TemporalSampling_", date, ".pdf"), width=14)
 
 plotTemporalSamplingRange(tipInfo)
 
@@ -399,6 +416,8 @@ addSlaughterOrCaptureDates <- function(tipInfo, cattleTestInfo, badgerCaptureDat
                                                                       settCaptureEventData[eventRow, "DATE_COMPLETED"])
     }
   }
+  
+  return(tipInfo)
 }
 
 estimateCaptureDate <- function(dateTrappingCommenced, dateTrappingCompleted){
@@ -428,7 +447,8 @@ getTipInfo <- function(tipLabels, animalTags, coverage, herdIDs){
     tipInfo[index, "Aliquot"] <- aliquot
     
     # Find the row in the coverage information for the current tip
-    coverageRow <- which(grepl(coverage$IsolateID, pattern=paste0("^", tipLabels[index])))
+    coverageRow <- which(grepl(coverage$IsolateID, pattern=paste0("^", tipLabels[index], "_"))
+                         | grepl(coverage$IsolateID, pattern=paste0("^", tipLabels[index], "p_")))
     
     # Check that row was found
     if(length(coverageRow) == 0){
@@ -512,35 +532,7 @@ editTipLabels <- function(tipLabels){
   return(output)
 }
 
-addSpeciesLegend <- function(tipShapesAndColours, cex=1){
-  
-  # Get the plotting region dimensions = x1, x2, y1, y2 
-  # (coordinates of bottom left and top right corners)
-  dimensions <- par("usr")
-  xLength <- dimensions[2] - dimensions[1]
-  yLength <- dimensions[4] - dimensions[3]
-  
-  # Set the Y position
-  yPos <- -0.08*yLength
-  
-  # Set the X start
-  xStart <- 0.1*xLength
-  
-  # Set the x spacing
-  xSpace <- 0.2*xLength
-  
-  # Loop through the tip options
-  species <- names(tipShapesAndColours)
-  for(i in seq_along(species)){
-    
-    # Plot a point for the current species
-    points(x=xStart+(i*xSpace), y=yPos, pch=as.numeric(tipShapesAndColours[[species[i]]][2]),
-           col=tipShapesAndColours[[species[i]]][1], xpd=TRUE, cex=cex)
-    
-    # Add a label
-    text(x=xStart+(i*xSpace), y=yPos, labels=species[i], pos=4, xpd=TRUE, cex=cex)
-  }
-}
+
 
 addScaleBar <- function(scaleSize, cex=1){
   
