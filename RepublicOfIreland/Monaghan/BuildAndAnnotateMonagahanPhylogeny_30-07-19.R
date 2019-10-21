@@ -44,7 +44,7 @@ settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors
 
 #### EXAMINE THE SEQUENCE QUALITY!!! (REMOVE UNINFORMATIVE SITES!)
 
-
+tipInfo[tipInfo$Coverage < 0.9, c("Tip", "Aliquot", "Coverage", "Species")]
 
 
 
