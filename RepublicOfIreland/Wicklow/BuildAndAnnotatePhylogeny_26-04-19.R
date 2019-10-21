@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-path <- "J:\\WGS_Wicklow\\"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+#path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -30,12 +30,12 @@ metadata <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep=",")
 
 # Read in the FASTA file
 #fastaFile <- paste(path, "vcfFiles\\sequences_Prox-10_19-03-2019.fasta", sep="")
-fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_19-03-2019.fasta", sep="")
+fastaFile <- paste(path, "vcfFiles/sequences_Prox-10_21-10-2019.fasta", sep="")
 nSites <- getNSitesInFASTA(fastaFile)
 
 # Read in the coverage information
 #coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_19-03-2019.txt")
-coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_19-03-2019.txt")
+coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_21-10-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Load the spatial data ####
@@ -92,7 +92,7 @@ herdInfo <- cattleShapeFile@data
 #### Build phylogeny ####
 
 # Build a phylogeny using RAxML
-tree <- runRAXML(fastaFile, date="26-04-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
+tree <- runRAXML(fastaFile, date="21-10-19", path, alreadyRun=RUN, outgroup="\\>Ref-1997")
 
 # Remove NI isolates and Reference
 tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997|>182-MBovis|>161-MBovis")])
@@ -160,6 +160,12 @@ tipSequences <- rbind(tipSequences, sequences["Ref-1997", ])
 rownames(tipSequences)[nrow(tipSequences)] <- "Reference_Cow_1997-10-15"
 fileName <- paste0(strsplit(fastaFile, split="\\.")[[1]][1], "_Gianluigi.fasta")
 write.dna(toupper(tipSequences), fileName, format="fasta", colsep="")
+
+# Remove uninformative sites
+nNucleotidesAtEachSite <- pathogenGenomicsWorkshop::countNucleotidesAtEachSite(toupper(tipSequences))
+tipSequences <- tipSequences[, nNucleotidesAtEachSite > 1]
+ncol(tipSequences)
+propNs <- pathogenGenomicsWorkshop::calculateProportionNsOfEachSequence(toupper(tipSequences))
 
 #### Plot the phylogeny ####
 

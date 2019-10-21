@@ -3,14 +3,14 @@
 ####################
 
 # Set directory path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/vcfFiles/PreviousMergings/1_22-03-18/"
+path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/vcfFiles/"
 newZealand <- grepl(x=path, pattern="NewZealand")
 
 # Read in the variant site coverage and alternate allele support files
-coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_22-03-2018.txt", sep="")
+coverageFile <- paste(path, "heterozygousSiteInfo_Coverage_19-03-2019.txt", sep="")
 siteInfoCoverage <- read.table(coverageFile, header=TRUE, stringsAsFactors=FALSE,
                                comment.char="~", check.names=FALSE)
-altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_22-03-2018.txt", sep="")
+altSupportFile <- paste(path, "heterozygousSiteInfo_AltSupport_19-03-2019.txt", sep="")
 siteInfoAltSupport <- read.table(altSupportFile, header=TRUE, stringsAsFactors=FALSE,
                                  comment.char="~", check.names=FALSE)
 
