@@ -385,15 +385,15 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
-# # Plot phylogeny and sampling locations as sampling IDs
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-#                     scaleTextColour="black", showTipLabels=TRUE,
-#                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
-#                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-#                     tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-#                     plotMap=FALSE,
-#                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-#                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
+# Plot phylogeny and sampling locations as sampling IDs
+plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", showTipLabels=TRUE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    plotMap=FALSE,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
 # # Plot phylogeny and sampling locations as shapes
 # plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
