@@ -3,7 +3,7 @@
 ###################################
 
 # Create a path variable
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Load the life history summaries
 file <- paste(path, "sampledAnimalsLifeHistories_05-04-2018.txt", sep="")
