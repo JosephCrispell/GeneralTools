@@ -34,17 +34,30 @@ tickCounts$Prevalence[is.nan(tickCounts$Prevalence)] <- 0
 
 # Open a pdf
 file <- paste0(substr(tickCountsFile, 1, nchar(tickCountsFile)-4), ".pdf")
-pdf(file)
+pdf(file, width=14)
 
 # Get and set the plotting margins
 currentMar <- par()$mar
-par(mar=c(0,0,0,0))
+par(mar=c(0,0,2,0), mfrow=c(1,2))
+
+# Plot the polygons from Ireland
+plotPolygons(irelandPolygons, lwd=1.5, border=rgb(0.4,0.4,0.4, 0.1), col=rgb(0,0,1, 0.1),
+             main="Sites sampled for presence of ticks from 2017 to 2019")
+
+# Plot the locations that were sampled
+points(x=tickCounts$Long, y=tickCounts$Lat, cex=1, pch=19, 
+       col=ifelse(tickCounts$No..of.collected.ticks > 0, rgb(1,0,0, 0.4), rgb(0,0,0, 0.4)))
+
+# Add a legend
+legend("right", legend=c("Present", "Absent"), pch=19, col=c(rgb(1,0,0, 0.4), rgb(0,0,0, 0.4)),
+       bty="n")
 
 # Plot the Ireland county polygons
-plotPolygons(irelandPolygons, lwd=1.5, border=rgb(0.4,0.4,0.4, 0.1), col=rgb(0,0,1, 0.1))
+plotPolygons(irelandPolygons, lwd=1.5, border=rgb(0.4,0.4,0.4, 0.1), col=rgb(0,0,1, 0.1),
+             main="Prevelance of Borrelia at screened sites")
 
 # Plot the tick counts
-addPoints(xCoords=tickCounts$Long, yCoords=tickCounts$Lat, pch=21, 
+addPoints(xCoords=tickCounts$Long, yCoords=tickCounts$Lat, pch=21,
           cex=(tickCounts$Ticks.screened/max(tickCounts$Ticks.screened))*4,
           bg=rgb(1,0,0, tickCounts$Prevalence),
           col="black", lty=2)
@@ -65,11 +78,9 @@ par(mar=currentMar, mfrow=c(1,1))
 # Close the pdf
 dev.off()
 
-#### WHAT ABOUT THE LOCATIONS THAT WERE VISITED BUT NO TICKS FOUND!?!?! ####
-
 #### FUNCTIONS ####
 
-plotPolygons <- function(polygons, xLim=NULL, yLim=NULL, ...){
+plotPolygons <- function(polygons, xLim=NULL, yLim=NULL, main="", asp=NULL, ...){
   
   # Get the axis limits of uk - enough to include ROI
   if(is.null(xLim)){
@@ -79,8 +90,13 @@ plotPolygons <- function(polygons, xLim=NULL, yLim=NULL, ...){
   }
   
   # Create an empty plot
-  plot(x=NULL, y=NULL, xlim=xLim, ylim=yLim,
-       bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=1)
+  if(is.null(asp)){
+    plot(x=NULL, y=NULL, xlim=xLim, ylim=yLim,
+         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", main=main)
+  }else{
+    plot(x=NULL, y=NULL, xlim=xLim, ylim=yLim,
+         bty="n", xaxt="n", yaxt="n", xlab="", ylab="", asp=asp, main=main)
+  }
   
   # Examine each set of polygons
   for(setID in names(polygons)){
