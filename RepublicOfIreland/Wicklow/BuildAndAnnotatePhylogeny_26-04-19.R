@@ -109,26 +109,6 @@ tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
 # Convert branch lengths to SNPs
 tree$edge.length <- tree$edge.length * nSites
 
-#### Identify and remove duplicates ####
-
-# # Count how many times each aliquot ID appears
-# aliquotCounts <- table(tipInfo$Aliquot)
-# 
-# # Identify the duplicated aliquots
-# duplicated <- names(aliquotCounts)[aliquotCounts > 1]
-# 
-# # Get the tip information for the duplicates
-# duplicatedTipInfo <- tipInfo[tipInfo$Aliquot %in% duplicated, ]
-# 
-# # Pick which tip to keep - note I checked phylogeny and these tips are identical on the phylogeny :-)
-# remove <- pickDuplicatedTipToRemove(duplicatedTipInfo)
-# 
-# # Drop one of each duplicated tip
-# tree <- drop.tip(tree, remove)
-# 
-# # Update the tip information
-# tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
-
 #### Create FASTA file for pathogen genomics workshop ####
 
 # Read in the FASTA file
@@ -351,61 +331,6 @@ legend("top", legend=c("Badger", "Cow", "Deer"),
 
 dev.off()
 
-#### Plot phylogeny linked to spatial locations ####
-
-# Get satellite image of area not including land parcels
-map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
-                         cattleShapeFile, includeLandParcels=FALSE,
-                         yExpand=0.3, xExpand=0.05)
-
-# Open an output PDF
-outputPlotFile <- paste0(path, "Figures\\LinkedPhylogenyAndLocations_", date, ".pdf")
-pdf(outputPlotFile, width=14, height=10)
-
-# # Plot phylogeny and map with sampling locations as shapes
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
-#                     scaleTextColour="white", addTipIndices=FALSE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
-#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km", tipCexOnMap=3)
-
-# # Plot phylogeny and map with sampling locations as indices
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=1.5, scaleCex=3,
-#                     scaleTextColour="white", addTipIndices=TRUE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km",
-#                     tipIndexBackground=rgb(1,1,1, 0.5), tipCexOnMap=2)
-
-# Plot phylogeny and sampling locations as indices
-plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-                    scaleTextColour="black", addTipIndices=TRUE,
-                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
-                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-                    plotMap=FALSE,
-                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
-
-# Plot phylogeny and sampling locations as sampling IDs
-plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-                    scaleTextColour="black", showTipLabels=TRUE,
-                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
-                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-                    plotMap=FALSE,
-                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
-
-# # Plot phylogeny and sampling locations as shapes
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
-#                     scaleTextColour="black", addTipIndices=FALSE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-#                     scaleX=0.65, scaleY=0.15, scaleLabel="    km", tipCexOnMap=3,
-#                     plotMap=FALSE)
-
-# Close the output pdf
-dev.off()
-
-
 #### CLUSTERING analyses ####
 
 # Build genetic distance matrix
@@ -479,6 +404,71 @@ write.table(spatialDistanceMatrix, file=file, quote=FALSE, sep="\t", row.names=T
 # # Close the output pdf
 # dev.off()
 
+#### Plot phylogeny linked to spatial locations ####
+
+# Get satellite image of area not including land parcels
+map <- getSatelliteImage(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                         cattleShapeFile, includeLandParcels=FALSE,
+                         yExpand=0.3, xExpand=0.05)
+
+# Identify spatial clusters based upon genetic and spatial distance thresholds
+geneticClusters <- getClustersFromMatrixWithThreshold(
+  geneticDistanceMatrix, threshold=3)
+clusters <- examineSpatialDistancesInEachCluster(spatialDistanceMatrix, geneticClusters,
+                                                 threshold=2500)
+
+# Open an output PDF
+outputPlotFile <- paste0(path, "Figures\\LinkedPhylogenyAndLocations_", date, ".pdf")
+pdf(outputPlotFile, width=14, height=10)
+
+# # Plot phylogeny and map with sampling locations as shapes
+# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
+#                     scaleTextColour="white", addTipIndices=FALSE,
+#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
+#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km", tipCexOnMap=3)
+
+# # Plot phylogeny and map with sampling locations as indices
+# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=1.5, scaleCex=3,
+#                     scaleTextColour="white", addTipIndices=TRUE,
+#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
+#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km",
+#                     tipIndexBackground=rgb(1,1,1, 0.5), tipCexOnMap=2)
+
+# Plot phylogeny and sampling locations as indices
+plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", addTipIndices=TRUE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    plotMap=FALSE,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2,
+                    spatialClusters=clusters,
+                    clusterBorder=rgb(0.5,0.5,0.5,1),
+                    clusterFill=rgb(0,0,0, 0.1),
+                    clusterExpandFactor=0.01)
+
+# # Plot phylogeny and sampling locations as sampling IDs
+# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+#                     scaleTextColour="black", showTipLabels=TRUE,
+#                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
+#                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+#                     tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+#                     plotMap=FALSE,
+#                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+#                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
+
+# # Plot phylogeny and sampling locations as shapes
+# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
+#                     scaleTextColour="black", addTipIndices=FALSE,
+#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
+#                     scaleX=0.65, scaleY=0.15, scaleLabel="    km", tipCexOnMap=3,
+#                     plotMap=FALSE)
+
+# Close the output pdf
+dev.off()
+
+
 #### Make a note of the aliquot IDs that we don't have sequence data for yet ####
 
 # Get the metadata for the aliquots that haven't been sequenced
@@ -499,6 +489,219 @@ plotTemporalSamplingRange(tipInfo)
 # Close the output pdf
 dev.off()
 
+
+
+#### FUNCTIONS - identify genetic and spatial clusters ####
+
+plotShapeAroundSpatialClusters <- function(tipInfo, clusters,
+                                           expand=0.1,
+                                           lty=2, lwd=2, 
+                                           border="blue",
+                                           fill=rgb(0,0,1, 0.1)){
+  
+  # Taken from this answer: https://stackoverflow.com/questions/41050532/is-there-any-way-to-draw-a-boundary-around-a-group-of-points-in-r
+  
+  # Examine each of the clusters
+  for(clusterID in names(clusters)){
+    
+    # Get coordinates of points in cluster
+    clusterInfo <- tipInfo[tipInfo$ID %in% clusters[[clusterID]], ]
+    
+    # Get the X and Y coordinates
+    x <- clusterInfo$MercatorX
+    y <- clusterInfo$MercatorY
+    
+    # Check if more than two individuals in cluster
+    if(nrow(clusterInfo) < 3){
+      points(x, y, type="l", lty=lty, lwd=lwd, col=border)
+      next
+    }
+    
+    # Calculate the centre of random points
+    meanX = mean(x)
+    meanY = mean(y)
+    
+    # Create convex hull around the random points
+    convexHullIndices = chull(data.frame(x, y))
+    convexHullXCoords <- x[convexHullIndices]
+    convexHullYCoords <- y[convexHullIndices]
+    
+    # Slightly expand convex hull away from centre
+    expandedConvexHullXCoords <- convexHullXCoords + 
+      (expand*(convexHullXCoords - meanX))
+    expandedConvexHullYCoords <- convexHullYCoords + 
+      (expand*(convexHullYCoords - meanY))
+    
+    # Plot a polygon for the expanded convex hull
+    polygon(expandedConvexHullXCoords, expandedConvexHullYCoords,
+            lty=lty, lwd=lwd, border=border, col=fill)
+  }
+}
+
+getSpatialDistancesForCluster <- function(isolates, distances){
+  
+  # Initialise a matrix to store the distances associated with the current cluster
+  matrix <- matrix(NA, nrow=length(isolates), ncol=length(isolates))
+  rownames(matrix) <- isolates
+  colnames(matrix) <- isolates
+  
+  # Fill in the distances for the matrix
+  for(i in seq_along(isolates)){
+    for(j in seq_along(isolates)){
+      
+      # Skip upper triangle
+      if(i >= j){
+        next
+      }
+      
+      # Store the current distance
+      matrix[i, j] <- distances[isolates[i], isolates[j]]
+      matrix[j, i] <- distances[isolates[i], isolates[j]]
+    }
+  }
+  
+  return(matrix)
+}
+
+examineSpatialDistancesInEachCluster <- function(distances, clusters, threshold){
+  
+  # Add a sub cluster column to the clusters table
+  clusters$SubSpatialCluster <- NA
+  
+  # Examine each cluster
+  for(cluster in unique(clusters$Cluster)){
+    
+    # Get the isolate IDs for the current cluster
+    isolates <- clusters[clusters$Cluster == cluster, "SequenceID"]
+    
+    # Get a spatial distance matrix for the current cluster
+    matrix <- getSpatialDistancesForCluster(isolates, distances)
+    
+    # Identify any sub-clusters based upon spatial distances
+    subClusters <- getClustersFromMatrixWithThreshold(matrix, threshold)
+    
+    # Assign the subclusters
+    for(row in seq_len(nrow(subClusters))){
+      clusters$SubSpatialCluster[which(clusters$SequenceID == subClusters[row, "SequenceID"])] <- subClusters[row, "Cluster"]
+    }
+  }
+  
+  # Note the overall cluster assignment
+  clusters$OverallCluster <- ifelse(is.na(clusters$SubSpatialCluster), NA,
+                                    paste0(clusters$Cluster, "-", clusters$SubSpatialCluster))
+  
+  # Return a list containing the isolates assigned to each cluster
+  output <- list()
+  for(row in seq_len(nrow(clusters))){
+    
+    # Skip NA rows
+    if(is.na(clusters[row, "OverallCluster"])){
+      next
+    }
+    
+    # Check if found cluster before
+    if(is.null(clusters[row, "OverallCluster"]) == FALSE){
+      output[[clusters[row, "OverallCluster"]]] <- c(output[[clusters[row, "OverallCluster"]]],
+                                                     clusters[row, "SequenceID"])
+    }else{
+      output[[clusters[row, "OverallCluster"]]] <- c(clusters[row, "SequenceID"])
+    }
+  }
+  
+  return(output)
+}
+
+mergeClusters <- function(clusters, a, b){
+  
+  # Examine every entry in the clusters list
+  for(id in names(clusters)){
+    
+    # Check if current isolate was assigned cluster b
+    if(clusters[[id]] == b){
+      
+      # Reassign current isolate to cluster a
+      clusters[[id]] <- a
+    }
+  }
+  
+  return(clusters)
+}
+
+getClustersFromMatrixWithThreshold <- function(matrix, threshold){
+  
+  # Create a list to note the cluster each sequence has been assigned
+  clusters <- list()
+  cluster <- 0
+  
+  # Get the row and column namaes
+  rowNames <- rownames(matrix)
+  colNames <- colnames(matrix)
+  
+  # Examine each cell in the matrix
+  for(i in seq_along(rowNames)){
+    
+    # Get the current row ID
+    row <- rowNames[i]
+    
+    for(j in seq_along(colNames)){
+      
+      # Skip diagonal, lower part of matrix and any values aboce threshold
+      if(i >= j || is.na(matrix[i, j]) || matrix[i, j] > threshold){
+        next
+      }
+      
+      # Get the current column ID
+      col <- colNames[j]
+      
+      # Check if row has already been assigned to a cluster
+      if(is.null(clusters[[row]]) == FALSE && is.null(clusters[[col]]) == TRUE){
+        
+        # Assign column to same cluster
+        clusters[[col]] <- clusters[[row]]
+        
+        # Check if column has already been assigned to a cluster
+      }else if(is.null(clusters[[row]]) == TRUE && is.null(clusters[[col]]) == FALSE){
+        
+        # Assign row to same cluster
+        clusters[[row]] <- clusters[[col]]
+        
+        # Check if neither row or column have been assigned to a cluster
+      }else if(is.null(clusters[[row]]) == TRUE && is.null(clusters[[col]]) == TRUE){
+        
+        # Create a new cluster
+        cluster <- cluster + 1
+        
+        # Put both row and olumn into new cluster
+        clusters[[row]] <- cluster
+        clusters[[col]] <- cluster
+        
+        # Check if have been assigned to different clusters!
+      }else if(clusters[[row]] != clusters[[col]]){
+        
+        # Merge the individuals into one of the clusters
+        clusters <- mergeClusters(clusters, clusters[[row]], clusters[[col]])
+      }
+    }
+  }
+  
+  # Initialise an output data.frame recording each sequences cluster
+  clusterTable <- data.frame("SequenceID"=rownames(matrix), "Cluster"=NA, stringsAsFactors=FALSE)
+  
+  # Retrieve the cluster assignments from the clusters list
+  for(sequenceID in names(clusters)){
+    
+    # Find row in cluster table
+    row <- which(clusterTable$SequenceID == sequenceID)
+    
+    # Assign the cluster
+    clusterTable[row, "Cluster"] <- clusters[[sequenceID]]
+  }
+  
+  # Remove NA rows
+  clusterTable <- clusterTable[is.na(clusterTable$Cluster) == FALSE, ]
+  
+  return(clusterTable)
+}
 
 #### FUNCTIONS - building sequences for pathogen genomics workshop ####
 
@@ -1017,7 +1220,12 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
                                 tipIndexBackground=rgb(1,1,1, 0.5),
                                 tipCexOnMap=2, plotMap=TRUE, 
                                 layoutMatrix=NULL, tipLabelOffset=1,
-                                tipLabelCexOnPhylogeny=2, showTipLabels=FALSE){
+                                tipLabelCexOnPhylogeny=2, showTipLabels=FALSE,
+                                spatialClusters=NULL, 
+                                clusterExpandFactor=0.1,
+                                clusterLty=2, clusterLwd=2, 
+                                clusterBorder="blue", 
+                                clusterFill=rgb(0,0,1, 0.1)){
   
   # Get and set the margins
   currentMar <- par()$mar
@@ -1060,6 +1268,15 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   scaleBar(map, abslen=5, x=scaleX, y=scaleY, cex=scaleCex, unit="km", 
            targs=list(col=scaleTextColour), label=scaleLabel)
   
+  # Plot shape around spatial clusters
+  if(is.null(spatialClusters) == FALSE){
+    plotShapeAroundSpatialClusters(tipInfo, spatialClusters,
+                                   expand=clusterExpandFactor,
+                                   lty=clusterLty, lwd=clusterLwd, 
+                                   border=clusterBorder,
+                                   fill=clusterFill)
+  }
+  
   # Plot the sampling locations
   if(addTipIndices){
     labels <- c(1:nrow(tipInfo))[is.na(tipInfo$MercatorX) == FALSE]
@@ -1089,7 +1306,6 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
                                                 which="colour", alpha=0.75),
            col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=tipCexOnMap)
   }
-  
   
   # Get coordinates of plotted sampling locations in plotting window
   tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo)

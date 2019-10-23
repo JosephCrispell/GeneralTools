@@ -1,7 +1,8 @@
 #### Preparation ####
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/PhylogeneticAndSpatialClusters/"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/PhylogeneticAndSpatialClusters/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Get the current date
 today <- format(Sys.Date(), "%d-%m-%y")
@@ -77,7 +78,29 @@ examineSpatialDistancesInEachCluster <- function(distances, clusters, threshold)
     }
   }
   
-  return(clusters)
+  # Note the overall cluster assignment
+  clusters$OverallCluster <- ifelse(is.na(clusters$SubSpatialCluster), NA,
+                                    paste0(clusters$Cluster, "-", clusters$SubSpatialCluster))
+  
+  # Return a list containing the isolates assigned to each cluster
+  output <- list()
+  for(row in seq_len(nrow(clusters))){
+    
+    # Skip NA rows
+    if(is.na(clusters[row, "OverallCluster"])){
+      next
+    }
+    
+    # Check if found cluster before
+    if(is.null(clusters[row, "OverallCluster"]) == FALSE){
+      output[[clusters[row, "OverallCluster"]]] <- c(output[[clusters[row, "OverallCluster"]]],
+                                                     clusters[row, "SequenceID"])
+    }else{
+      output[[clusters[row, "OverallCluster"]]] <- c(clusters[row, "SequenceID"])
+    }
+  }
+  
+  return(output)
 }
 
 mergeClusters <- function(clusters, a, b){
