@@ -421,23 +421,24 @@ clusters <- examineSpatialDistancesInEachCluster(spatialDistanceMatrix, geneticC
 outputPlotFile <- paste0(path, "Figures\\LinkedPhylogenyAndLocations_", date, ".pdf")
 pdf(outputPlotFile, width=14, height=10)
 
-# # Plot phylogeny and map with sampling locations as shapes
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
-#                     scaleTextColour="white", addTipIndices=FALSE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
-#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km", tipCexOnMap=3)
-
-# # Plot phylogeny and map with sampling locations as indices
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=1.5, scaleCex=3,
-#                     scaleTextColour="white", addTipIndices=TRUE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-#                     scaleX=0.65, scaleY=0.075, scaleLabel="    km",
-#                     tipIndexBackground=rgb(1,1,1, 0.5), tipCexOnMap=2)
-
 # Plot phylogeny and sampling locations as indices
 plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
                     scaleTextColour="black", addTipIndices=TRUE,
                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    plotMap=FALSE,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2,
+                    spatialClusters=clusters,
+                    clusterBorder=rgb(0.5,0.5,0.5,1),
+                    clusterFill=rgb(0,0,0, 0.1),
+                    clusterExpandFactor=0.01)
+
+# Plot phylogeny and sampling locations as indices without lines
+plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", addTipIndices=TRUE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0,
                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
                     tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
                     plotMap=FALSE,
@@ -458,12 +459,6 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
 #                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
 #                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
 
-# # Plot phylogeny and sampling locations as shapes
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=2, scaleCex=3,
-#                     scaleTextColour="black", addTipIndices=FALSE,
-#                     connectingLinesWidth=2.5, connectingLinesAlpha=0.2,
-#                     scaleX=0.65, scaleY=0.15, scaleLabel="    km", tipCexOnMap=3,
-#                     plotMap=FALSE)
 
 # Close the output pdf
 dev.off()
