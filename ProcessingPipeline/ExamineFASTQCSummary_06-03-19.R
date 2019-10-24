@@ -1,10 +1,10 @@
 #### Read in the data ####
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/Fastqs_24-09-19/FASTQC/"
+path <- "/home/josephcrispell/Desktop/Research/EdgeArea_UK/Fastqs_24-09-19/Fastqc/"
 
 # Read in the FASTQC file summary table
-summaryFile <- paste0(path, "Fastqc_summary_24-09-19.txt")
+summaryFile <- paste0(path, "Fastqc_summary_23-10-19.txt")
 summary <- read.table(summaryFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Sort the file names
