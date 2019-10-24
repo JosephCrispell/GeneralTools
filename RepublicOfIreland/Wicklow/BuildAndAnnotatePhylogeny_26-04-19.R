@@ -199,6 +199,9 @@ tipInfo <- addBadgerAndDeerLocationsToTipInfo(tipInfo, badgerLocations, deerLoca
 # Calculate the centroids of each herd's field
 herdCentroids <- calculateLandParcelCentroids(landParcelCoords, useMercator=TRUE)
 
+# Score the herd centroids based upon how close they are to their associated land parcels
+herdCentroids <- calculateDistancesToOverallCentroidForEachHerd(herdCentroids)
+
 # Note the herd IDs associated with each cow
 tipInfo <- addHerdIDsAndCentroidsToTipInfo(tipInfo, herdInfo, herdCentroids)
 
@@ -238,7 +241,7 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
        pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
                                              which="shape"),
        bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                            which="colour", alpha=0.75),
+                                            which="colour", alpha=1),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
 # Add species legend
@@ -268,7 +271,7 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
        pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
                                              which="shape"),
        bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                            which="colour", alpha=0.75),
+                                            which="colour", alpha=1),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
 # Add species legend
@@ -288,7 +291,7 @@ plot(x=tipInfo$MercatorX, y=tipInfo$MercatorY,
      pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
                                            which="shape"),
      bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                          which="colour", alpha=0.75),
+                                          which="colour", alpha=1),
      xaxt="n", yaxt="n", xlab="", ylab="", bty="n", cex=3)
 
 # Add scale bar
@@ -320,7 +323,7 @@ points(tipInfo$MercatorX, tipInfo$MercatorY,
        pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
                                              which="shape"),
        bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                            which="colour", alpha=0.75),
+                                            which="colour", alpha=1),
        col="white", xpd=TRUE, bty="n", yaxt="n", xaxt="n", cex=1.5)
 
 # Add species legend
@@ -1578,6 +1581,51 @@ addScale <- function(sizeInMetres){
 
 #### FUNCTIONS - Shape files ####
 
+calculateDistancesToOverallCentroidForEachHerd <- function(herdCentroids){
+  
+  # Create vector to store each herd's mean distance of land parcels to overall centroid
+  meanDistancesToCentroids <- c()
+  
+  # Examine each herd
+  for(herdID in names(herdCentroids)){
+    
+    # Initialise vector to store distance of each land parcel centroid to overall centroid
+    distances <- c()
+    
+    # Examine each land parcel centroid
+    for(index in seq_along(herdCentroids[[herdID]]$CentroidXs)){
+      
+      # Calculate the distance of the current land parcel centroid to overall centroid
+      distances[index] <- euclideanDistance(herdCentroids[[herdID]]$X, 
+                                            herdCentroids[[herdID]]$Y,
+                                            herdCentroids[[herdID]]$CentroidXs[index],
+                                            herdCentroids[[herdID]]$CentroidYs[index])
+    }
+    
+    # Store the distances and summarise the distribution
+    herdCentroids[[herdID]]$DistancesToCentroid <- distances
+    herdCentroids[[herdID]]$SummaryOfDistancesToCentroid <- list("Mean"=mean(distances), 
+                                                                 "Variance"=var(distances),
+                                                                 "Min"=min(distances),
+                                                                 "Max"=max(distances))
+    
+    # Store the mean distance for the current herd
+    meanDistancesToCentroids[length(meanDistancesToCentroids) + 1] <- 
+      herdCentroids[[herdID]]$SummaryOfDistancesToCentroid$Mean
+  }
+  
+  # Calculate the maximum mean distance of land parcels to a centroid
+  maxMean <- max(meanDistancesToCentroids)
+  
+  # Score each herd based upon how close its land parcels are to its centroid
+  for(herdID in names(herdCentroids)){
+    herdCentroids[[herdID]]$Score <- 1 - (herdCentroids[[herdID]]$SummaryOfDistancesToCentroid$Mean
+                                          / maxMean)
+  }
+  
+  return(herdCentroids)
+}
+
 calculateBoundsForAllSpatialData <- function(badgerBounds, deerBounds, cattleBounds){
   
   # Initialise a dataframe to store the overall bounds
@@ -1691,8 +1739,9 @@ plotHerdLandParcels <- function(tipInfo, landParcelCoords, herdCentroids,
 
 addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
   
-  # Add an empty herd code column
+  # Add an empty columsn to store the herd info
   tipInfo$HerdCode <- NA
+  tipInfo$HerdCentroidScore <- NA
   
   # Examine each of the tips
   for(row in seq_len(nrow(tipInfo))){
@@ -1720,6 +1769,9 @@ addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
       # Store the overall centroid coordinates
       tipInfo[row, "MercatorX"] <- herdCentroids[[herdCode]]$X
       tipInfo[row, "MercatorY"] <- herdCentroids[[herdCode]]$Y
+      
+      # Store the herd centroid score
+      tipInfo[row, "HerdCentroidScore"] <- herdCentroids[[herdCode]]$Score
     }
   }
   
@@ -2075,7 +2127,21 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
       if(which == "shape"){
         output[row] <- as.numeric(tipShapesAndColours[[tipInfo[row, "Species"]]][2])
       }else if(which == "colour"){
-        output[row] <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], alpha)
+        
+        # Get the species colour
+        colour <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
+        
+        # Check if herd centroid score available
+        if(is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE){
+          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], 
+                             tipInfo[row, "HerdCentroidScore"])
+        }else{
+          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], alpha)
+        }
+        
+        # Set the colour
+        output[row] <- colour
+        
       }else{
         cat(paste("Error! Option", which, "not recognised!"))
       }
