@@ -1,32 +1,101 @@
+#### Preparation ####
+
 # Load libraries
 library(basicPlotteR)
 library(randomForest)
 
-# Read in the data
-fileName <- "/home/josephcrispell/Desktop/HelpingNagwa/AnalysisEPGandECs_11-10-19.csv"
-eggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALSE)
+# Get the current date
+date <- format(Sys.Date(), "%d-%m-%y")
+
+# Set the working directory
+setwd(file.path("~", "Desktop", "HelpingNagwa"))
+
+#### Read in the data ####
+
+# Read in the corrected egg count data (eggs per gram)
+fileName <- "NagwaAnalysis_EPG_11-10-19.csv"
+correctedEggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALSE)
+
+# Read in the raw egg count data
+fileName <- "NagwaAnalysis_EC_25-10-19.csv"
+rawEggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALSE)
+
+#### Plot a data summary ####
 
 # Plot the raw data
-pdf(paste0(substr(fileName, 1, nchar(fileName)-4), ".pdf"))
-plotRawEggCounts(eggCounts)
+pdf(paste0("NagwaAnalysis_Figures_", date, ".pdf"))
+plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)")
+plotRawEggCounts(rawEggCounts, yLab="Faecal egg count (raw)")
 dev.off()
 
+#### Transform table structure for use in statistical analyses ####
+
 # Transform the table into long form
-eggCounts <- transformTableIntoLongform(eggCounts)
+correctedEggCounts <- transformTableIntoLongform(correctedEggCounts)
+
+#### Fit linear model ####
 
 # Fit a linear model to determine whether the methods are giving significantly results
-# Sample and Replicate should be a single variable
-modelFit <- glm(EggCount ~ Method + Sample + Replicate, family=poisson(), data=eggCounts)
-summary(modelFit)
+linearModel <- glm(EggCount ~ Method + Sample + Replicate, family=poisson(), data=correctedEggCounts)
+
+# Summarise the linear model results
+summary(linearModel)
+
+#### Fit random forest regression model ###
 
 # Fit a random forest model
-# Fit the Random Forest model
-rfModel <- randomForest(eggCounts$EggCount ~ ., data=eggCounts[, -1], mtry=3, importance=TRUE, ntree=1000, 
+rfModel <- randomForest(correctedEggCounts$EggCount ~ ., data=correctedEggCounts[, -1], mtry=3, importance=TRUE, ntree=1000, 
                         keep.forest=TRUE, norm.votes=FALSE, proximity=FALSE, do.trace=FALSE)
+
+# Examine whether number of trees was sufficient (should plateau)
+plot(rfModel, las=1)
+
+# Calculate the R squared value
 rSq <- rfModel$rsq[length(rfModel$rsq)]
-#plot(rfModel, las=1)
+
+# Look at the variable importance
 rfModel$importance
 
+#### Fit one-way ANOVA ####
+
+# Lot's of helpful information here: http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+
+# Fit a one-way anova model
+oneWayAnova <- aov(EggCount ~ Method, data=correctedEggCounts)
+
+# Summarise the one-way anova results
+summary(oneWayAnova)
+
+#### Fit two-way ANOVA ####
+
+# Lot's of helpful information here: http://www.sthda.com/english/wiki/two-way-anova-test-in-r
+
+# Fit a one-way anova model
+twoWayAnova <- aov(EggCount ~ Method + Sample, data=correctedEggCounts)
+
+# Summarise the one-way anova results
+summary(twoWayAnova)
+
+#### Fit two-way ANOVA for each sample seperately ####
+
+# Sample 1
+anovaSample1 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 1, ])
+summary(anovaSample1)
+
+# Sample 2
+anovaSample2 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 2, ])
+summary(anovaSample2)
+
+# Sample 3
+anovaSample3 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 3, ])
+summary(anovaSample3)
+
+#### Mann Whitney U test ####
+
+# Fit a pairwise Mann Whitney U test and correct for multiple testing
+mannWhitney <- pairwise.wilcox.test(x=correctedEggCounts$EggCount,
+                                    g=correctedEggCounts$Method, p.adjust.method="bonferroni")
+mannWhitney
 
 #### FUNCTIONS ####
 
@@ -67,7 +136,7 @@ transformTableIntoLongform <- function(eggCounts){
   return(output)
 }
 
-plotRawEggCounts <- function(eggCounts){
+plotRawEggCounts <- function(eggCounts, yLab){
   
   # Note the padding locations for the analyses
   padding <- seq(from=-0.1, to=0.1, length.out=4)
@@ -86,8 +155,8 @@ plotRawEggCounts <- function(eggCounts){
   par(mar=c(9,4.1,4.1,2.1))
   
   # Create an empty plot
-  plot(x=NULL, y=NULL, xlim=c(0.5, 3.5), ylim=range(eggCounts[, c(2,3,4)]), las=1, bty="n", xaxt="n",
-       ylab="Faecal egg count (eggs/gram)", xlab="",
+  plot(x=NULL, y=NULL, xlim=c(0.5, 3.5), ylim=range(eggCounts[, -1], na.rm=TRUE), las=1, bty="n", xaxt="n",
+       ylab=yLab, xlab="",
        main="Comparing methods to estimate faecal egg counts")
   
   # Add an X axis
@@ -111,8 +180,8 @@ plotRawEggCounts <- function(eggCounts){
       values <- eggCounts[row, grepl(colnames(eggCounts), pattern=method)]
       
       # Plot the data for the current sample
-      points(x=c(xPosition, xPosition), y=range(values), type="l", col=methodColours[[method]])
-      points(x=c(xPosition, xPosition, xPosition), y=values, pch=19, col=setAlpha(methodColours[[method]], 0.5))
+      points(x=c(xPosition, xPosition), y=range(values, na.rm=TRUE), type="l", col=methodColours[[method]], xpd=TRUE)
+      points(x=c(xPosition, xPosition, xPosition), y=values, pch=19, col=setAlpha(methodColours[[method]], 0.5), xpd=TRUE)
     }
   }
   

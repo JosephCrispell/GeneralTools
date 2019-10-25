@@ -751,7 +751,7 @@ plotTemporalSamplingRange <- function(tipInfo){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
-  par(mar=c(4.1, 6.1, 4.1, 6))
+  par(mar=c(4.1, 6.1, 1, 6))
   
   # Define the locations of the sampling ranges on the Y axis
   yLocations <- c(0.5, 0.75, 1)
@@ -760,7 +760,7 @@ plotTemporalSamplingRange <- function(tipInfo){
   # Create an empty plot
   plot(x=NULL, y=NULL, ylim=c(0.4,1.1), xlim=dateRange,
        bty="n", ylab="", yaxt="n", xlab="", 
-       main="Number of samples available in time", xaxt="n",
+       main="", xaxt="n",
        cex.main=3)
   
   # Add an X axis
