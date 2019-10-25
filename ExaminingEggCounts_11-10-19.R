@@ -59,6 +59,10 @@ rfModel$importance
 #### Fit one-way ANOVA ####
 
 # Lot's of helpful information here: http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+# Assumptions of ANOVA:
+# - The observations are obtained independently and randomly from the population defined by the factor levels
+# - The data of each factor level are normally distributed.
+# - These normal populations have a common variance. (Levene’s test can be used to check this.)
 
 # Fit a one-way anova model
 oneWayAnova <- aov(EggCount ~ Method, data=correctedEggCounts)
