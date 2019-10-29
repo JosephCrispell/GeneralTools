@@ -7,7 +7,8 @@ library(OpenStreetMap) # Downloading map
 library(sp) # Convert between map projections
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+#path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "~/Desktop/DataForStrikingImage/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -40,12 +41,33 @@ territoryCentroidsInEachYear <- calculateTerritoryCentroidsInEachYear(territoryC
 #### Construct badger social group contact network for each year ####
 
 # Read in the consolidated badger data
-consolidatedCaptureDataFile <- paste0(path, "BadgerCaptureData/WP_CaptureData_Consolidated_24-06-2019.txt")
+consolidatedCaptureDataFile <- paste0(path, "WP_CaptureData_Consolidated_24-06-2019.txt")
 captureData <- read.table(consolidatedCaptureDataFile, header=TRUE, check.names=FALSE, sep="\t", 
                           stringsAsFactors=FALSE)
 
 # Build a social group contact network for each year of interest
 dispersalNetworksInEachYear <- countDispersalEventsInEachYear(captureData, territoryCoordsInEachYear)
+
+#### Read in sampled animal life histories and construct movement network for cluster 4 ####
+
+# Read in the sampled animal life histories
+lifeHistoryInfoFile <- paste0(path, "sampledAnimalsLifeHistories_22-11-2018.txt")
+lifeHistories <- read.table(lifeHistoryInfoFile, header=TRUE, sep="\t", 
+                            stringsAsFactors=FALSE)
+
+# Remove in-contact animal info
+lifeHistories <- lifeHistories[is.na(lifeHistories$Isolates) == FALSE, ]
+
+# Select only information for cluster 4
+lifeHistories <- lifeHistories[grepl(lifeHistories$Clusters, pattern="3"), ]
+
+# Note the cattle movement network
+cattleMovementNetwork <- recordMovementNetwork(lifeHistories, species="COW")
+cattleMovementNetwork <- removeLocationsOfCertainTypes(cattleMovementNetwork,
+                                                       c("SR", "SW", "EX", "CC"))
+
+# Note the badger movement network
+badgerMovementNetwork <- recordMovementNetwork(lifeHistories, species="BADGER")
 
 #### Get a WP satellite image ####
 
@@ -69,29 +91,290 @@ mapUKGrid <- openproj(map, projection=CRS("+init=epsg:27700"))
 par(mar=c(0,0,0,0))
 
 # Note the years we are plotting data for
-years <- c(2003)
+year <- c(2003)
 
 # Plot the badger territories on top of one another
-plotBadgerTerritories(territoryCoordsInEachYear, years, scale=FALSE,
+plotBadgerTerritories(territoryCoordsInEachYear, year, scale=FALSE,
                       lwd=3, border=rgb(249,239,63, maxColorValue=255), 
                       #background=rgb(114,114,114, maxColorValue=255),
                       col=rgb(113,137,211, 50, maxColorValue=255), map=mapUKGrid)
 
-rgb(113,137,211, maxColorValue=255) # cyan
-rgb(183,48,121, maxColorValue=255) # pink
-rgb(195,59,45, maxColorValue=255) # orange
-rgb(50,63,98, maxColorValue=255) # dark blue
-rgb(249,239,63, maxColorValue=255) # yellow
+# rgb(113,137,211, maxColorValue=255) # cyan
+# rgb(183,48,121, maxColorValue=255) # pink
+# rgb(195,59,45, maxColorValue=255) # orange
+# rgb(50,63,98, maxColorValue=255) # dark blue
+# rgb(249,239,63, maxColorValue=255) # yellow
+
+# Overlay the cattle movements
+plotMovements(cattleMovementNetwork, type="l", lwd=6, col="blue")
+
+# Overlay the badger movements
+badgerMovementNetwork <- moveBadgerLocationsToClosestCentroid(badgerMovementNetwork,
+                                                              territoryCentroidsInEachYear,
+                                                              years[1])
+badgerMovementNetwork <- removeShortDistanceMovements(badgerMovementNetwork,
+                                                      threshold=500)
+plotMovements(badgerMovementNetwork, type="l", lwd=6, 
+              col="red")
 
 # Plot the territory centroids
 #addTerritoryCentroids(territoryCentroidsInEachYear, years, pch=19, cex=1.5, col="red")
 
 # Overlay the badger movements
-addDispersalEvents(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, 
-                   col=rgb(195,59,45, maxColorValue=255),
-                   lty=1, lwd=6, weighted=FALSE)
+# addDispersalEvents(dispersalNetworksInEachYear, territoryCentroidsInEachYear, years, 
+#                    col=rgb(195,59,45, maxColorValue=255),
+#                    lty=1, lwd=6, weighted=FALSE)
 
 #### FUNCTIONS ####
+
+removeShortDistanceMovements <- function(movementNetwork, threshold){
+  
+  # Extract the movement network and location information
+  locationInfo <- movementNetwork$LocationInfo
+  network <- movementNetwork$Network
+  
+  # Get the row and column names for the network
+  rowNames <- rownames(network)
+  colNames <- colnames(network)
+  
+  # Examine each edge on the network
+  for(row in 1:nrow(network)){
+    for(col in 1:ncol(network)){
+      
+      # Skip the upper triangle
+      if(row >= col){
+        next
+      }
+      
+      # Skip if no movements in either direction
+      if(network[row, col] == 0 && network[col, row] == 0){
+        next
+      }
+      
+      # Get coordinates for locations at edge ends
+      rowCoords <- locationInfo[[rowNames[row]]]$coords
+      colCoords <- locationInfo[[colNames[col]]]$coords
+      
+      # Calculate the distance between the locations movement between
+      distance <- euclideanDistance(x1=rowCoords[1], y1=rowCoords[2],
+                                    x2=colCoords[1], y2=colCoords[2])
+      
+      # Remove edge if distance below threhold
+      if(distance < threshold){
+        network[row, col] <- 0
+        network[col, row] <- 0
+      }
+    }
+  }
+  
+  # Store the updated information
+  movementNetwork$LocationInfo <- locationInfo
+  movementNetwork$Network <- network
+  
+  return(movementNetwork)
+}
+
+euclideanDistance <- function(x1, y1, x2, y2){
+  return(sqrt(sum((x1 - x2)^2 + (y1 - y2)^2)))
+}
+
+moveBadgerLocationsToClosestCentroid <- function(badgerMovementNetwork,
+                                                 territoryCentroidsInEachYear, year){
+  # Get the territory centroids for the year of interest
+  centroids <- territoryCentroidsInEachYear[[as.character(year)]]
+  
+  # Get the location info from the badger movement network
+  locationInfo <- badgerMovementNetwork$LocationInfo
+  
+  # Examine each badger location on movement network
+  for(location in names(locationInfo)){
+    
+    # Get the coordinates for the current location
+    coords <- locationInfo[[location]]$coords
+    
+    # Initialise a vector to store the distances to each centroid in year of interest
+    distances <- c()
+    
+    # Examine each of the locations in the year of interest
+    for(index in seq_along(centroids)){
+      
+      # Calculate the distance to the current centroid
+      distances[index] <- euclideanDistance(x1=coords[1], y1=coords[2], 
+                                            x2=centroids[[index]][1],
+                                            y2=centroids[[index]][2])
+    }
+    
+    # Identify the minimum distance
+    min <- which.min(distances)
+    locationInfo[[location]]$coords <- centroids[[min]]
+  }
+  
+  # Store the updated locations
+  badgerMovementNetwork$LocationInfo <- locationInfo
+  
+  return(badgerMovementNetwork)
+}
+
+removeLocationsOfCertainTypes <- function(movementNetwork, typesToIgnore){
+  
+  # Create a vector to note which locations to ignore
+  keep <- c()
+  
+  # Examine each location
+  for(location in names(movementNetwork$LocationInfo)){
+    
+    # Check if the type of the current location is one we want to ignore
+    if(movementNetwork$LocationInfo[[location]]$type %in% typesToIgnore){
+      
+      # Remove the information for the current location
+      movementNetwork$LocationInfo[[location]] <- NULL
+    }else{
+      
+      # Note that we want to keep the current location
+      keep[length(keep) + 1] <- location
+    }
+  }
+  
+  # Remove the locations to ignore fromteh movement network
+  movementNetwork$Network <- movementNetwork$Network[keep, keep]
+  
+  return(movementNetwork)
+}
+
+plotMovements <- function(movementNetwork, ...){
+  
+  # Extract the movement network and location information
+  locationInfo <- movementNetwork$LocationInfo
+  network <- movementNetwork$Network
+  
+  # Get the row and column names for the network
+  rowNames <- rownames(network)
+  colNames <- colnames(network)
+  
+  # Examine each edge on the network
+  for(row in 1:nrow(network)){
+    for(col in 1:ncol(network)){
+      
+      # Skip the upper triangle
+      if(row >= col){
+        next
+      }
+      
+      # Skip if no movements in either direction
+      if(network[row, col] == 0 && network[col, row] == 0){
+        next
+      }
+      
+      # Get coordinates for locations at edge ends
+      rowCoords <- locationInfo[[rowNames[row]]]$coords
+      colCoords <- locationInfo[[colNames[col]]]$coords
+      
+      # Add edge between locations
+      points(x=c(rowCoords[1], colCoords[1]), y=c(rowCoords[2], colCoords[2]), ...)
+    }
+  }
+}
+
+recordMovementNetwork <- function(lifeHistories, species){
+  
+  # Subset out the info for current species
+  lifeHistories <- lifeHistories[lifeHistories$Species == species, ]
+  
+  # Get the unique locations based on coordinates
+  locationInfo <- getUniqueLocations(lifeHistories)
+  
+  # Initialise a matrix to record the number of movements between each herd
+  movementNetwork <- matrix(0, nrow=length(locationInfo), ncol=length(locationInfo))
+  rownames(movementNetwork) <- names(locationInfo)
+  colnames(movementNetwork) <- names(locationInfo)
+  
+  # Examine each life history
+  for(row in seq_len(nrow(lifeHistories))){
+    
+    # Split the herd locations into coordinates
+    xCoords <- strsplit(lifeHistories[row, "Xs"], split=",")[[1]]
+    yCoords <- strsplit(lifeHistories[row, "Ys"], split=",")[[1]]
+    
+    # Remove NA locations
+    naIndices <- which(is.na(xCoords) | xCoords == "NA")
+    if(length(naIndices) > 0){
+      xCoords <- xCoords[-naIndices]
+      yCoords <- yCoords[-naIndices]
+    }
+    
+    # Skip individuals with only 1 coordinate
+    if(length(xCoords) < 2){
+      next
+    }
+    
+    # Examine each coordinate after the first
+    for(index in seq_along(xCoords)[-1]){
+      
+      # Get network indices for the current and previous locations using coordinates
+      previousIndex <- locationInfo[[paste0(xCoords[index-1], ":", yCoords[index-1])]]$index
+      currentIndex <- locationInfo[[paste0(xCoords[index], ":", yCoords[index])]]$index
+      
+      # Record the movement to current location
+      movementNetwork[previousIndex, currentIndex] <- movementNetwork[previousIndex, currentIndex] + 1
+    }
+  }
+  
+  # Create an object storing the herd information and movement network
+  output <- list("LocationInfo"=locationInfo, "Network"=movementNetwork)
+  
+  return(output)
+}
+
+getUniqueLocations <- function(lifeHistories){
+  
+  # Initialise list to store the unique locations based on coordinates
+  locations <- list()
+  locationIndex <- 0
+  
+  # Examine each life history
+  for(row in seq_len(nrow(lifeHistories))){
+    
+    # Split the locations into coordinates
+    xCoords <- strsplit(lifeHistories[row, "Xs"], split=",")[[1]]
+    yCoords <- strsplit(lifeHistories[row, "Ys"], split=",")[[1]]
+    
+    # Get the location types
+    types <- strsplit(lifeHistories[row, "PremisesTypes"], split=",")[[1]]
+    
+    # Remove NAs
+    naIndices <- which(is.na(xCoords) | xCoords == "NA")
+    if(length(naIndices) > 0){
+      xCoords <- xCoords[-naIndices]
+      yCoords <- yCoords[-naIndices]
+      types <- types[-naIndices]
+    }
+    
+    # Examine each coordinate
+    for(index in seq_along(xCoords)){
+      
+      # Create location ID using coordinates
+      location <- paste0(xCoords[index], ":", yCoords[index])
+      
+      # Check if we have encountered this location
+      if(is.null(locations[[location]]) == FALSE){
+        
+        locations[[location]]$count <- locations[[location]]$count + 1
+        
+      # Otherwise create location record
+      }else{
+        
+        locationIndex <- locationIndex + 1
+        
+        locations[[location]] <- list("coords"=as.numeric(c(xCoords[index], yCoords[index])),
+                                      "count"=1, 
+                                      "type"=types[index], 
+                                      "index"=locationIndex)
+      }
+    }
+  }
+  
+  return(locations)
+}
 
 convertXYToLatLongs <- function(x, y, ukGrid="+init=epsg:27700"){
   
@@ -445,7 +728,7 @@ readTerritoryCoordsFromEachYear <- function(years, shapeFileNames){
     shapeFileName <- shapeFileNames[i]
     
     # Read in the shape file
-    file <- paste(path, "BadgerCaptureData/BadgerTerritoryMarkingData/",
+    file <- paste(path, "BadgerTerritoryMarkingData/",
                   "Baitmarking ", year, "/", shapeFileName, sep="")
     territories <- readOGR(file) # Generates SpatialPolygonsDataFrame
     

@@ -3,10 +3,11 @@
 ###################################
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
+#path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
+path <- "~/Desktop/DataForStrikingImage/"
 
 # Load the life history summaries
-file <- paste(path, "sampledAnimalsLifeHistories_05-04-2018.txt", sep="")
+file <- paste(path, "sampledAnimalsLifeHistories_22-11-2018.txt", sep="")
 table <- read.table(file, header=TRUE, stringsAsFactors=FALSE, sep="\t",
                     colClasses = "character")
 
