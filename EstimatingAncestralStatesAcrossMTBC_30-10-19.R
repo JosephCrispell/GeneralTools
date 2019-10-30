@@ -12,7 +12,7 @@ path <- file.path("~", "Desktop")
 # Read in the Average Nucleotide Identify table
 aniFile <- file.path(path, "ani_matrix.csv")
 averageNucleotideIdentity <- read.table(aniFile, header=TRUE, sep=",", stringsAsFactors=FALSE, row.names=1)
-species <- averageNucleotideIdentity[, "species"]
+species <- averageNucleotideIdentity["species"]
 averageNucleotideIdentity <- averageNucleotideIdentity[, -which(colnames(averageNucleotideIdentity) == "species")]
 
 
@@ -53,11 +53,7 @@ tipInfo[tipInfo > 0] <- 1
 tipInfo$states <- as.factor(paste(tipInfo$pro_pknh1, tipInfo$pro_pknh2, tipInfo$pknh2_sensor, sep="-"))
 
 # Add the species
-indices <- sapply(rootedTree$tip.label, 
-                  function(x, rowNames){
-                    return(which(rowNames == x))
-                  }, rownames(averageNucleotideIdentity))
-tipInfo$species <- species[indices]
+tipInfo$species <- species[rootedTree$tip.label, "species"]
 
 #### Fit the ancestral character states ####
 
