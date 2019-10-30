@@ -1,8 +1,7 @@
 #### Preparation ####
 
 # Load libraries
-library(basicPlotteR)
-library(randomForest)
+library(MASS) # glm model with negative binomial distribution
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -36,45 +35,34 @@ correctedEggCounts <- transformTableIntoLongform(correctedEggCounts)
 #### Fit linear model ####
 
 # Fit a linear model to determine whether the methods are giving significantly results
-linearModel <- glm(EggCount ~ Method + Sample + Replicate, family=poisson(), data=correctedEggCounts)
+linearModel <- glm.nb(EggCount ~ Method + Sample + Replicate, data=correctedEggCounts)
 
 # Summarise the linear model results
 summary(linearModel)
 
-#### Fit random forest regression model ###
+#### Fit the linear model for each sample separately ####
 
-# Fit a random forest model
-rfModel <- randomForest(correctedEggCounts$EggCount ~ ., data=correctedEggCounts[, -1], mtry=3, importance=TRUE, ntree=1000, 
-                        keep.forest=TRUE, norm.votes=FALSE, proximity=FALSE, do.trace=FALSE)
+# Sample 1
+linearModelSample1 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 1, ])
+summary(linearModelSample1)
 
-# Examine whether number of trees was sufficient (should plateau)
-plot(rfModel, las=1)
+# Sample 2
+linearModelSample2 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 2, ])
+summary(linearModelSample2)
 
-# Calculate the R squared value
-rSq <- rfModel$rsq[length(rfModel$rsq)]
+# Sample 3
+linearModelSample3 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 3, ])
+summary(linearModelSample3)
 
-# Look at the variable importance
-rfModel$importance
+#### Fit two-way ANOVA ####
 
-#### Fit one-way ANOVA ####
-
-# Lot's of helpful information here: http://www.sthda.com/english/wiki/one-way-anova-test-in-r
+# Lot's of helpful information here: http://www.sthda.com/english/wiki/two-way-anova-test-in-r
 # Assumptions of ANOVA:
 # - The observations are obtained independently and randomly from the population defined by the factor levels
 # - The data of each factor level are normally distributed.
 # - These normal populations have a common variance. (Levene’s test can be used to check this.)
 
-# Fit a one-way anova model
-oneWayAnova <- aov(EggCount ~ Method, data=correctedEggCounts)
-
-# Summarise the one-way anova results
-summary(oneWayAnova)
-
-#### Fit two-way ANOVA ####
-
-# Lot's of helpful information here: http://www.sthda.com/english/wiki/two-way-anova-test-in-r
-
-# Fit a one-way anova model
+# Fit a two-way anova model
 twoWayAnova <- aov(EggCount ~ Method + Sample, data=correctedEggCounts)
 
 # Summarise the one-way anova results
