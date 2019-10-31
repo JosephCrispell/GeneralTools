@@ -37,9 +37,9 @@ bwa index reference.fasta
 ## Stage 1 - Examine FASTQ file quality and define trimming parameters
 
 Move to directory containing forward and reverse FASTQ files
-Run fastqc using:
+Run `fastqc` using:
 ```
-fastqc *.fastq.gz
+fastqc --threads 4 *.fastq.gz
 ```
 
 Examine each of the html files corresponding to each of the FASTQ files
@@ -48,7 +48,7 @@ called PrinseqSettings_DATE.txt (see notes at bottom of page)
 
 ## Stage 2 - Align the FASTQ files against reference and create VCF files
 Move to directory containing the forward and reverse FASTQ files and PrinseqSettings_DATE.txt file
-Run ProcessRawReads_DATE.sh using:
+Run `ProcessRawReads_DATE.sh` using:
 ```
 bash ProcessRawReads_DATE.sh [FASTQFileEnding] [pathToCutadapt|false] [pathToReferenceSequence] [pathToPickRandomReads_DATE.pl] [pathToExamineBlastOutput_DATE.pl]
 ```
@@ -65,37 +65,37 @@ TRIMR=0                          # Trim sequence at the 3' end by x positions
 
 ## Stage 3 - Merge the VCF files together
 Move to directory containing the VCF files resulting from the previous step - "vcfFiles"
-Run MergeVCFFiles_DATE.jar using:
+Run `MergeVCFFiles_DATE.jar` using:
 ```
 java -jar MergeVCFFiles_DATE.jar [pathToDirectoryToRunToolIn] [pathToAnnotationsOfRefenceGenome]
 ```
 
 ## Stage 4 - Examine genome coverage of isolates
-Run ExamineGenomeCoverage_DATE.pl using:
+Run `ExamineGenomeCoverage_DATE.pl` using:
 ```
 perl ExamineGenomeCoverage_DATE.pl [ReadDepthThreshold] genomeCoverage_DATE.txt
 ```
 
 ## Stage 5 - Filter the merged VCF file
-Run FilterVariants_DATE.pl using:
+Run `FilterVariants_DATE.pl` using:
 ```
 perl FilterVariants_DATE.pl 1 [ReadDepth] [HighQualityBaseDepth] [MappingQuality] [ProportionReadsSupportingAllele] [SiteCoverageAcrossIsolates] [GeneralQuality] [FQ] merged_DATE.txt
 ```
 
 ## Stage 6 - Rescuing site information for poorer quality isolates
-Run RescueVariantPositionInfo_DATE.pl using:
+Run `RescueVariantPositionInfo_DATE.pl` using:
 ```
 perl RescueVariantPositionInfo_DATE.pl [nIsolatesAlleleMustBePresentIn] [HighQualityBaseDepth] [ProportionReadsSupportingAllele] filtered_DATE.txt
 ```
 
 ## Stage 7 - Calculate isolate coverage in filtered OR filtered-rescued file
-Run CalculateIsolateCoverageFromFiltered_DATE.pl using:
+Run `CalculateIsolateCoverageFromFiltered_DATE.pl` using:
 ```
 perl CalculateIsolateCoverageFromFiltered_DATE.pl filtered_DATE.txt
 ```
 
 ## Stage 8 - Create FASTA file from filtered
-Run CreateFastaFromFiltered_DATE.pl using:
+Run `CreateFastaFromFiltered_DATE.pl` using:
 ```
 perl CreateFastaFromFiltered_DATE.pl 1 [MinNumberSitesBetweenVariantPositions] [pathToReferenceSequence] filtered-rescued_DATE.txt
 ```
@@ -108,5 +108,5 @@ If you have any problems please drop me an email at: crispelljoseph@gmail.com
 For additional help (including installation instructions of required tools) with particular
 scripts use "-help" directly after script name
 
-Full installation instructions for the require tools for ProcessRawReads_DATE.sh can be found
+Full installation instructions for the require tools for `ProcessRawReads_DATE.sh` can be found
 in the "checkToolsAreInstalled" function at the top of the script
