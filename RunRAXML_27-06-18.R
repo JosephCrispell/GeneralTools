@@ -3,10 +3,10 @@ library(ape)
 library(beepr)
 
 # Note the FASTA file name and path
-fastaFile <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/vcfFiles/sequences_Prox-10_24-09-2019.fasta"
+fastaFile <- "/home/josephcrispell/Desktop/Research/EdgeArea_UK/vcfFiles/sequences_Prox-10_31-10-2019.fasta"
 
 # Set the working directory
-setwd("/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/")
+setwd("/home/josephcrispell/Desktop/Research/EdgeArea_UK/vcfFiles/")
 
 # Build analysis name
 analysisName <- "RaxML-R_24-09-19"
