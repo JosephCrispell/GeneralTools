@@ -1,75 +1,84 @@
-#########
-# About #
-#########
-
 # Installation instructions for the processing pipeline
-# Created by Joseph Crispell
-# Email: crispelljoseph@gmail.com
+## Created by Joseph Crispell
+## Email: crispelljoseph@gmail.com
 
-###########################
-# Instructions for Ubuntu #
-###########################
+# Instructions for Ubuntu
 
-# fastqc - tool for assessing quality of reads in FASTQ files
-	Download the most recent version as a zip file from here: https://www.bioinformatics.babraham.ac.uk/projects/download.html
-		$unzip fastqc_vx.x.x.zip
-		$nano ~/.bashrc
-			Add: export PATH=$PATH:/path/to/fastqc_vx.x.x
-		$source ~/.bashrc
+## `fastqc` - tool for assessing quality of reads in FASTQ files
 
-# cutadapt - tool for trimming raw reads
-	Following the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html:
-		Requires python-dev:
-			$sudo apt-get install python-dev
-			$sudo apt install python-pip
-			$sudo pip3 install cutadapt
-			$pip install --user --upgrade cutadapt
+Download the most recent version as a zip file from here: https://www.bioinformatics.babraham.ac.uk/projects/download.html. Install with the following code:
+```
+unzip fastqc_vx.x.x.zip
+nano ~/.bashrc
+# Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/fastqc_vx.x.x
+source ~/.bashrc
+```
 
-# bwa - set of tools for sequence alignment
-	Download tar file from: https://sourceforge.net/projects/bio-bwa/files/
-		$tar -xvf bwa-x.x.x.tar.bz2
-		$cd bwa-x.x.x
-		$make
-		$nano ~/.bashrc
-			Add: export PATH=$PATH:/path/to/bwa-x.x.x
-		$source ~/.bashrc
+## `cutadapt` - tool for trimming raw reads
+Following the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html run the following code:
+```
+sudo apt-get install python-dev
+sudo apt install python-pip
+sudo pip3 install cutadapt
+pip install --user --upgrade cutadapt
+```
+
+## `bwa` - set of tools for sequence alignment
+Download tar file from: https://sourceforge.net/projects/bio-bwa/files/. Install with the following code:
+```
+tar -xvf bwa-x.x.x.tar.bz2
+cd bwa-x.x.x
+make
+nano ~/.bashrc
+# Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/bwa-x.x.x
+source ~/.bashrc
+```
 	
-# samtools - tools for processing aligned sequence data
-	Download tar file from: http://www.htslib.org/download/
-		$tar -xvf samtools-x.x.tar.bz2
-		$cd samtools-x.x
-		$make
-		$nano ~/.bashrc
-			Add: export PATH=$PATH:/path/to/samtools-x.x
-		$source ~/.bashrc
+## `samtools` - tools for processing aligned sequence data
+Download tar file from: http://www.htslib.org/download/. Install with the following code:
+```
+tar -xvf samtools-x.x.tar.bz2
+cd samtools-x.x
+make
+nano ~/.bashrc
+# Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/samtools-x.x
+source ~/.bashrc
+```
 
-# BLASTn - tool for comparing sequences to sequence databases
-	(Note if previously installed blastn with sudo apt-get install ncbi-blast+. Remove using sudo apt-get remove ncbi-blast+)
-	(Note that blastn requires access to the internet to work properly)
-	Download tar file from: http://mirrors.vbi.vt.edu/mirrors/ftp.ncbi.nih.gov/blast/executables/LATEST/
-	Following the instructions available here: https://www.ncbi.nlm.nih.gov/books/NBK52640/:
-		$tar zxvpf ncbi-blast+2.2.29-x64-linux.tar.gz
-		$nano ~/.bashrc
-			Add: export PATH=$PATH:/path/to/ncbi-blast-2.2.29+/bin
-		$source ~/.bashrc
+# `blastn` - tool for comparing sequences to sequence databases
+*Note* if you previously installed blastn with sudo apt-get install ncbi-blast+. Remove using sudo apt-get remove ncbi-blast+)
+*Note* that blastn requires access to the internet to work properly)
+Download tar file from: http://mirrors.vbi.vt.edu/mirrors/ftp.ncbi.nih.gov/blast/executables/LATEST/. Following the instructions available here: https://www.ncbi.nlm.nih.gov/books/NBK52640/:
+```
+tar zxvpf ncbi-blast+2.2.29-x64-linux.tar.gz
+nano ~/.bashrc
+# Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/ncbi-blast-2.2.29+/bin
+source ~/.bashrc
+```
 
-
-# bcftools - tools for variant calling 
-	Download tar file from: http://www.htslib.org/download/
-		$tar -xvf bcftools-x.x.tar.bz2
-		$cd bcftools-x.x
-		$make
-		$nano ~/.bashrc
-			Add: export PATH=$PATH:/path/to/bcftools-x.x
-		$source ~/.bashrc
+# `bcftools` - tools for variant calling 
+Download tar file from: http://www.htslib.org/download/. Install with the following code:
+```
+tar -xvf bcftools-x.x.tar.bz2
+cd bcftools-x.x
+make
+nano ~/.bashrc
+# Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/bcftools-x.x
+source ~/.bashrc
+```
 	
-# java - programming language used by some scripts
-	Following the instructions available here: http://tipsonubuntu.com/2016/07/31/install-oracle-java-8-9-ubuntu-16-04-linux-mint-18/
-		$sudo add-apt-repository ppa:webupd8team/java
-		$sudo apt update
-		$sudo apt install oracle-java8-installer
+# `java` - programming language used by some scripts
+Following the instructions available here: http://tipsonubuntu.com/2016/07/31/install-oracle-java-8-9-ubuntu-16-04-linux-mint-18/. Install with the following code:
+```
+sudo add-apt-repository ppa:webupd8team/java
+sudo apt update
+sudo apt install oracle-java8-installer
+```
 
-# perl - programming language used by some scripts
-	Comes with Ubuntu but if not working can install by following these instructions available here: https://www.howtoinstall.co/en/ubuntu/xenial/perl
-		$sudo apt-get update
-		$sudo apt-get install perl
+# `perl` - programming language used by some scripts
+Comes with Ubuntu but if it's not working you can install by following these instructions available here: https://www.howtoinstall.co/en/ubuntu/xenial/perl
+```
+sudo apt-get update
+sudo apt-get install perl
+```
+		
