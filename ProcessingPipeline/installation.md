@@ -2,6 +2,7 @@
 ## Created by Joseph Crispell
 ## Email: crispelljoseph@gmail.com
 
+
 # Instructions for Ubuntu
 
 ## `fastqc` - tool for assessing quality of reads in FASTQ files
@@ -14,6 +15,7 @@ nano ~/.bashrc
 source ~/.bashrc
 ```
 
+
 ## `cutadapt` - tool for trimming raw reads
 Following the instructions available here: http://cutadapt.readthedocs.io/en/stable/installation.html run the following code:
 ```
@@ -22,6 +24,7 @@ sudo apt install python-pip
 sudo pip3 install cutadapt
 pip install --user --upgrade cutadapt
 ```
+
 
 ## `bwa` - set of tools for sequence alignment
 Download tar file from: https://sourceforge.net/projects/bio-bwa/files/. Install with the following code:
@@ -33,7 +36,8 @@ nano ~/.bashrc
 # Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/bwa-x.x.x
 source ~/.bashrc
 ```
-	
+
+
 ## `samtools` - tools for processing aligned sequence data
 Download tar file from: http://www.htslib.org/download/. Install with the following code:
 ```
@@ -44,6 +48,7 @@ nano ~/.bashrc
 # Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/samtools-x.x
 source ~/.bashrc
 ```
+
 
 # `blastn` - tool for comparing sequences to sequence databases
 *Note* if you previously installed blastn with sudo apt-get install ncbi-blast+. Remove using sudo apt-get remove ncbi-blast+)
@@ -56,6 +61,7 @@ nano ~/.bashrc
 source ~/.bashrc
 ```
 
+
 # `bcftools` - tools for variant calling 
 Download tar file from: http://www.htslib.org/download/. Install with the following code:
 ```
@@ -66,7 +72,8 @@ nano ~/.bashrc
 # Add the following text at the end of .bashrc file: export PATH=$PATH:/path/to/bcftools-x.x
 source ~/.bashrc
 ```
-	
+
+
 # `java` - programming language used by some scripts
 Following the instructions available here: http://tipsonubuntu.com/2016/07/31/install-oracle-java-8-9-ubuntu-16-04-linux-mint-18/. Install with the following code:
 ```
@@ -75,10 +82,10 @@ sudo apt update
 sudo apt install oracle-java8-installer
 ```
 
+
 # `perl` - programming language used by some scripts
 Comes with Ubuntu but if it's not working you can install by following these instructions available here: https://www.howtoinstall.co/en/ubuntu/xenial/perl
 ```
 sudo apt-get update
 sudo apt-get install perl
 ```
-		
