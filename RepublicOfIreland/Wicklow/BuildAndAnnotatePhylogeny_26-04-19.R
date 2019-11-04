@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-#path <- "J:\\WGS_Wicklow\\"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -360,7 +360,7 @@ outputPlotFile <- paste0(path, "Figures\\Clustering_", date, ".pdf")
 pdf(outputPlotFile, width=7, height=7)
 
 # Generate some exploratory plots
-generateExploratoryPlots(geneticVsEpi)
+generateExploratoryPlots(geneticVsEpi, boxPlotBorderColour=rgb(0,0,0,0))
 
 # Examine whether clustering in genetic/spatial/temporal distances based on species
 compareWithinAndBetweenDistancesForSpecies("Genetic", geneticVsEpi)
@@ -370,6 +370,10 @@ compareWithinAndBetweenDistancesForSpecies("Temporal", geneticVsEpi)
 # Fit a Random Forest models (all genetic distances, then only short ones)
 fitRandomForestModel(geneticVsEpi)
 fitRandomForestModel(geneticVsEpi, distanceThreshold=15)
+
+# Plot the genetic distribution
+generateExploratoryPlots(geneticVsEpi[grepl(geneticVsEpi$Species, pattern="B") == FALSE, ],
+                         boxPlotBorderColour=rgb(0,0,0, 0.1))
 
 # Close the output pdf
 dev.off()
@@ -913,7 +917,6 @@ compareWithinAndBetweenDistancesForSpecies <- function(responseColumn, geneticVs
        xlab="median(between) - median(within)", las=1,
        main=paste0("Clustering analysis: ", responseColumn, " distances"))
   
-  
   # Highlight the actual difference
   points(x=c(difference,difference), y=c(0, max(hist$counts)), col="blue", 
          type="l", lwd=3)
@@ -928,7 +931,7 @@ compareWithinAndBetweenDistancesForSpecies <- function(responseColumn, geneticVs
   }
 }
 
-generateExploratoryPlots <- function(geneticVsEpi){
+generateExploratoryPlots <- function(geneticVsEpi, boxPlotBorderColour="black"){
   
   # Plot the genetic distance distribution
   hist(geneticVsEpi$Genetic, breaks=30, las=1, xlab="Genetic distance (N. SNVs)", main="")
@@ -945,19 +948,19 @@ generateExploratoryPlots <- function(geneticVsEpi){
   
   # Plot the genetic distances in each species comparisons
   boxplot(Genetic ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
-          ylab="Genetic distance (SNVs)", xlab="Comparison")
+          ylab="Genetic distance (SNVs)", xlab="Comparison", border=boxPlotBorderColour)
   spreadPointsMultiple(data=geneticVsEpi, responseColumn="Genetic",
                        categoriesColumn="Species", col="red", plotOutliers=TRUE)
   
   # Plot the genetic distances in each species comparisons
   boxplot(Spatial ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
-          ylab="Spatial distance (m)", xlab="Comparison")
+          ylab="Spatial distance (m)", xlab="Comparison", border=boxPlotBorderColour)
   spreadPointsMultiple(data=geneticVsEpi, responseColumn="Spatial",
                        categoriesColumn="Species", col="red", plotOutliers=TRUE)
   
   # Plot the genetic distances in each species comparisons
   boxplot(Temporal ~ Species, data = geneticVsEpi, lwd = 2, las=1, frame=FALSE,
-          ylab="Temporal distance (days)", xlab="Comparison")
+          ylab="Temporal distance (days)", xlab="Comparison", border=boxPlotBorderColour)
   spreadPointsMultiple(data=geneticVsEpi, responseColumn="Temporal",
                        categoriesColumn="Species", col="red", plotOutliers=TRUE)
 }
