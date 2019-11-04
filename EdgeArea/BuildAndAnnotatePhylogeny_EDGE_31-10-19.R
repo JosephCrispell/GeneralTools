@@ -2,6 +2,7 @@
 
 # Load libraries
 library(ape) # Reading and phylogeny
+library(geiger) # For the tips function in used in defineBranchColoursOfClade
 library(basicPlotteR) # Because I made it! :-)
 
 # Set the path 
@@ -56,20 +57,52 @@ tipInfo <- getTipInfo(tree$tip.label, sampleInfo, propNs)
 # Count number of tips that we have no data for
 warning(length(which(is.na(tipInfo$Sample.Ref))), " sequence labels not found in sample information!")
 
-# Plot the spatial sampling
-plotSamplingLocations(tipInfo$Mapx, tipInfo$Mapy, bty="n", xaxt="n", yaxt="n", xlab="", ylab="", pch=19, col=rgb(0,0,0, 0.25), asp=1,
-                      main="Sampling locations")
-
-# Plot the temporal sampling
-hist(tipInfo$Year, breaks=25, las=1, main="Sampling dates", xlab="Year", xaxt="n")
-yearRange <- range(tipInfo$Year, na.rm=TRUE)
-axis(side=1, at=seq(from=yearRange[1], to=yearRange[2]+2, by=2), xpd=TRUE)
-
 #### Plot the phylogeny ####
 
-plot.phylo(tree, show.tip.label=FALSE, edge.color=rgb(0.1,0.1,0.1, 1), edge.width=2)
+# Extract the densely sample clade
+node <- 121
+clade <- extract.clade(tree, node=node)
+
+# Open an output pdf
+pdf(file.path(path, paste0("SummaryPlots_EGDE_", date, ".pdf")))
+
+# Plot the full phylogeny and highlight the densely sampled clade
+branchColours <- defineBranchColoursOfClade(tree, nodeDefiningClade=node, colour="red", defaultColour="black")
+plot.phylo(tree, show.tip.label=FALSE, edge.width=2, edge.color=branchColours)
+addSNPScale(position="bottom", size=50, lineWidth=4, cex=1.5)
+
+# Plot the densely sample clade
+plot.phylo(clade, show.tip.label=FALSE, edge.color=rgb(0.1,0.1,0.1, 1), edge.width=2)
+addSNPScale(position="bottom", size=1, lineWidth=4, cex=1.5)
+
+# Plot the spatial sampling
+plotSamplingLocations(tipInfo$Mapx, tipInfo$Mapy, bty="n", xaxt="n", yaxt="n", xlab="", ylab="", pch=19,
+                      asp=1, main="Sampling locations", 
+                      col=ifelse(tipInfo$Sample.Ref %in% clade$tip.label, rgb(1,0,0, 0.25), rgb(0,0,0, 0.25)))
+legend("right", legend=c("all", "in clade"), text.col=c(rgb(0.1,0.1,0.1, 0.75), rgb(1,0,0, 0.75)), bty="n")
+
+# Plot the temporal sampling
+plotMultipleHistograms(distributions=list(tipInfo$Year, tipInfo[tipInfo$Sample.Ref %in% clade$tip.label, "Year"]),
+                       colours=c(rgb(0.1,0.1,0.1, 0.5), rgb(1,0,0, 0.5)), nBins=25, las=1, xaxt="n", xlab="Year",
+                       main="Sampling dates")
+yearRange <- range(tipInfo$Year, na.rm=TRUE)
+axis(side=1, at=seq(from=yearRange[1], to=yearRange[2]+2, by=2), xpd=TRUE)
+legend("top", legend=c("all", "in clade"), text.col=c(rgb(0.1,0.1,0.1, 0.75), rgb(1,0,0, 0.75)), bty="n")
+
+# Close the output pdf
+dev.off()
 
 #### FUNCTIONS ####
+
+defineBranchColoursOfClade <- function(tree, nodeDefiningClade,
+                                       colour, defaultColour){
+  branchColours <- rep(defaultColour, dim(tree$edge)[1])
+  clade <- tips(tree, node=nodeDefiningClade)
+  branchesInClades <- which.edge(tree, clade)
+  branchColours[branchesInClades] <- colour
+  
+  return(branchColours)
+}
 
 plotSamplingLocations <- function(xCoords, yCoords, scaleSize=10000, xPad=0.75, yPad=0.1, ...){
   
@@ -91,7 +124,7 @@ plotSamplingLocations <- function(xCoords, yCoords, scaleSize=10000, xPad=0.75, 
   rect(xleft=xStart, ybottom=yStart, xright=xEnd, ytop=yEnd)
   
   # Add label for scale box
-  label <- bquote(paste(.(scaleSize/1000), "km")^2)
+  label <- bquote(paste(.((scaleSize/1000)*(scaleSize/1000)), "km")^2)
   text(x=xStart+(0.5*scaleSize), y=yStart, labels=label, pos=1)
 }
 
