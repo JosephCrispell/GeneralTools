@@ -6,10 +6,10 @@ library(maptools) # Read shape file
 ###################################
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Paratuberculosis/"
+path <- "/home/josephcrispell/Desktop/Research/"
 
 # Read in the shape file
-file <- paste(path, "/home/josephcrispell/Desktop/Research/ROI_CountyBoundaries/counties.shp", sep="")
+file <- paste(path, "ROI_CountyBoundaries/counties.shp", sep="")
 countyBorders <- readShapePoly(file) # Generates SpatialPolygonsDataFrame
 
 # Get the coordinates of the counties
@@ -23,7 +23,7 @@ countyNames <- getPolygonNames(countyBorders@data, "NAME_TAG")
 #########################
 
 # Read in the statistics file
-file <- paste0(path, "HerdTbStatistics_2010-2018.csv")
+file <- paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019.csv") # source: https://statbank.cso.ie/px/pxeirestat/Database/eirestat/Animal%20Disease%20Statistics/Animal%20Disease%20Statistics_statbank.asp?sp=Animal%20Disease%20Statistics&Planguage=0&ProductID=DB_DA
 statistics <- readTBStatisticsFile(file)
 
 # Calculate the per county proportion test positive animals in most recent report - 2018Q3
@@ -34,7 +34,7 @@ summaryTables <- calculateSummaryStatisticsPerQuarter(statistics)
 #################
 
 # Open an output pdf
-pdf(paste0(path, "HerdTbStatistics_2010-2018.pdf"))
+pdf(paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019.pdf"))
 
 # Plot Wicklow
 plotCounty(countyCoords, countyNames, "WICKLOW")
@@ -43,13 +43,13 @@ plotCounty(countyCoords, countyNames, "WICKLOW")
 plotCountyOutlines(countyCoords, countyNames)
 
 # Plot the proportion of herds infected in the country - compare to number of herds
-plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2018Q3`, column="ProportionHerds", digits=1, units="%",
+plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2019Q3`, column="ProportionHerds", digits=1, units="%",
                   main="Proportion herds infected", cex=0.75)
-plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2018Q3`, column="NumberHerdsTested", units="",
+plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2019Q3`, column="NumberHerdsTested", units="",
                   main="Number of herds", cex=0.75)
 
 # Plot the trend in the proportion of infected
-yearsOfInterest <- 2010:2018
+yearsOfInterest <- 2010:2019
 plotProportionTrends(summaryTables, yearsOfInterest)
 
 dev.off()
@@ -253,13 +253,16 @@ readTBStatisticsFile <- function(fileName){
   row <- 0
   
   # Loop through each of the lines in file
-  for(i in 2:length(fileLines)){
+  for(i in 4:length(fileLines)){
+    
+    # Remove quotes
+    fileLines[i] <- gsub(pattern="\"", replacement="", x=fileLines[i])
     
     # Split the current line into its parts
     parts <- strsplit(fileLines[i], split=",")[[1]]
     
-    # If 2nd line get the years initialise a dataframe to store the statistics
-    if(i == 2){
+    # If 24th line get the years initialise a dataframe to store the statistics
+    if(i == 4){
       statistics <- data.frame(matrix(nrow=1, ncol=length(parts)), stringsAsFactors=FALSE)
       colnames(statistics) <- c("County", "Statistic", parts[-c(1,2)])
       next
@@ -292,8 +295,8 @@ plotInfoPerCounty <- function(countyCoords, countyNames, summaryTable, column, d
   # Note the names of the counties in Northern Ireland
   niCounties <- c("LONDONDERRY", "ANTRIM", "DOWN", "ARMAGH", "TYRONE", "FERMANAGH")
   
-  # Calculate max proportion herds infected
-  maxProp <- max(summaryTable[-1, column])
+  # Calculate max value in column
+  max <- max(summaryTable[-1, column])
   
   # Create an empty plot
   plot(x=NULL, y=NULL, yaxt="n", xaxt="n", ylab="", xlab="", bty="n",
@@ -320,16 +323,23 @@ plotInfoPerCounty <- function(countyCoords, countyNames, summaryTable, column, d
     
     # Plot a polygon for the current county
     polygon(countyCoords[[key]], border=rgb(0,0,0, 1), 
-            col=rgb(0,0,1, countyInfo[1, column] / maxProp), lwd=2)
+            col=rgb(0,0,1, countyInfo[1, column] / max), lwd=2)
     
     # Find the mid-point of the polygon
     middleX <- mean(countyCoords[[key]][, 1])
     middleY <- mean(countyCoords[[key]][, 2])
-      
-    # Add the value of interest
-    text(x=middleX, y=middleY,
-         labels=paste(round(countyInfo[1, column] * 100, digits=digits), units, sep=""), cex=cex, col="red")
   }
+  
+  # Add a legend
+  range <- range(summaryTable[-1, column])
+  legendValues <- seq(from=range[1], to=range[2], length.out=5)
+  legend("bottomright", legend=signif(legendValues, digits=2), pch=22, 
+         pt.bg=c(rgb(0,0,1, legendValues[1]/max),
+                 rgb(0,0,1, legendValues[2]/max),
+                 rgb(0,0,1, legendValues[3]/max),
+                 rgb(0,0,1, legendValues[4]/max),
+                 rgb(0,0,1, legendValues[5]/max)),
+         bty="n", pt.cex=2, col="black")
   
   # Reset the margins
   par(mar=currentMar)
