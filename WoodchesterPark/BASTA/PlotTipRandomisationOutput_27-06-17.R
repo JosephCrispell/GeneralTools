@@ -76,7 +76,7 @@ boxplot(rateEstimates, las=1, border=c("red", rep("black", nReplicates)),
         outcol=setAlphaOfColours(c("red", rep("black", nReplicates)), alpha=0.5),
         names=c("Actual", 1:nReplicates),
         ylab="Substitution Rate Estimate (per genome per year)",
-        cex.axis=0.75)
+        cex.axis=0.75, frame=FALSE)
 quantiles <- quantile(actualRate, probs=c(0.025, 0.975))
 points(x=c(0.5, nReplicates+1.5), y=c(quantiles[1], quantiles[1]), type="l", lty=2, 
        col=2, lwd=2)
@@ -93,28 +93,28 @@ for(i in 1:ncol(rateEstimates)){
   points(x=c(i,i), y=quantiles, pch=16, col="blue")
 }
 
-# Quantify the difference between the rates estimated on actual and randomised data
-nSamples <- 10000
-
-differences <- sampleRateEstimateDistributionsAndCalculateDifferences(nSamples,
-                                                                      rateEstimatesFromRandomised,
-                                                                      actualRate)
-
-# Plot the differences
-boxplot(differences, las=1, pch=20, outcol=rgb(0,0,0, 0.5), names=1:nReplicates,
-        main=paste("Difference between substitution rate estimates based on actual
-and randomised dates using ", nSamples, " paired samples", sep=""))
-points(x=c(0.5, nReplicates+1.5), y=c(0,0), type="l", col="red", lty=2, lwd=2)
-
-# Add points to show 95% bounds
-for(i in 1:ncol(differences)){
-  
-  # Get the upper and lowerr bounds
-  quantiles <- quantile(differences[, i], probs=c(0.025, 0.975))
-  
-  # Add points to figure
-  points(x=c(i,i), y=quantiles, pch=16, col="blue")
-}
+# # Quantify the difference between the rates estimated on actual and randomised data
+# nSamples <- 10000
+# 
+# differences <- sampleRateEstimateDistributionsAndCalculateDifferences(nSamples,
+#                                                                       rateEstimatesFromRandomised,
+#                                                                       actualRate)
+# 
+# # Plot the differences
+# boxplot(differences, las=1, pch=20, outcol=rgb(0,0,0, 0.5), names=1:nReplicates,
+#         main=paste("Difference between substitution rate estimates based on actual
+# and randomised dates using ", nSamples, " paired samples", sep=""))
+# points(x=c(0.5, nReplicates+1.5), y=c(0,0), type="l", col="red", lty=2, lwd=2)
+# 
+# # Add points to show 95% bounds
+# for(i in 1:ncol(differences)){
+#   
+#   # Get the upper and lowerr bounds
+#   quantiles <- quantile(differences[, i], probs=c(0.025, 0.975))
+#   
+#   # Add points to figure
+#   points(x=c(i,i), y=quantiles, pch=16, col="blue")
+# }
 
 dev.off()
 

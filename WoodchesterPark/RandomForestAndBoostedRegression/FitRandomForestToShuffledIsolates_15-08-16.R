@@ -5,7 +5,7 @@ suppressMessages(library(randomForest))
 ######################
 
 # Get the path to the necessary files
-path <- "C:/Users/Joseph Crisp/Desktop/UbuntuSharedFolder/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/Mislabelling/Badger-RF-BR/ShufflingProportion/"
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/Mislabelling/Badger-RF-BR/ShufflingProportion/"
 
 # Set up the file name
 prefix <- paste(path, "geneticVsEpiTable_SHUFFLED_", sep="")
@@ -84,6 +84,13 @@ for(prop in shufflingProps){
 shufflingResults$ProportionShuffled <- as.numeric(shufflingResults$ProportionShuffled)
 shufflingResults$PseudoRSquared[shufflingResults$PseudoRSquared < 0] <- 0
 
+###############################################
+# Read in the data from file - IF ALREADY RUN #
+###############################################
+
+file <- paste(path, "ShufflingProportion_RFModelResults_26-03-18.csv", sep="")
+shufflingResults <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
+
 ####################
 # Plot the Results #
 ####################
@@ -121,17 +128,19 @@ for(i in 1:length(shufflingProps)){
 file <- paste(path, "ShufflingProportion_26-03-18.pdf", sep="")
 pdf(file)
 
-plot(summary$ProportionShuffled, summary$Mean,
+plot(x=NULL, y=NULL,
      xlab="Proportion of Isolates Shuffled",
      ylab="Variation Explained (Psuedo R Squared)",
      main="Effect of Shuffling on a Fitted RF Model",
-     las=1, pch=20, type="o")
+     las=1, ylim=c(0,1), xlim=c(0,1), bty="n")
 
 for(row in 1:nrow(summary)){
   points(x=c(summary[row, 1], summary[row, 1]),
          y=c(summary[row, 4], summary[row, 5]), 
-         type="l", col=rgb(0,0,0, 0.6))
+         type="l", col=rgb(0,0,0, 0.6), lwd=2)
 }
+
+points(summary$ProportionShuffled, summary$Mean, type="o", pch=20, cex=1.5)
 
 dev.off()
 
