@@ -22,9 +22,11 @@ countyNames <- getPolygonNames(countyBorders@data, "NAME_TAG")
 # Read in TP statistics #
 #########################
 
-# Read in the statistics file
+# Read in the statistics file (INCORRECT VALUE FOR WICKLOW WEST IN 2015Q2 1590/310 herds restricted
 file <- paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019.csv") # source: https://statbank.cso.ie/px/pxeirestat/Database/eirestat/Animal%20Disease%20Statistics/Animal%20Disease%20Statistics_statbank.asp?sp=Animal%20Disease%20Statistics&Planguage=0&ProductID=DB_DA
 statistics <- readTBStatisticsFile(file)
+statistics[which(statistics$County == "WICKLOW W" & statistics$Statistic == "Herds Restricted Since 1st of January (Number)"), 
+           "2015Q2"] <- NA
 
 # Calculate the per county proportion test positive animals in most recent report - 2018Q3
 summaryTables <- calculateSummaryStatisticsPerQuarter(statistics)
@@ -52,11 +54,50 @@ plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2019Q3`, column="Num
 yearsOfInterest <- 2010:2019
 plotProportionTrends(summaryTables, yearsOfInterest)
 
+# Plot the trends in each county
+plotCountyTrends(summaryTables, column="ProportionHerds")
+
 dev.off()
 
 #############
 # FUNCTIONS #
 #############
+
+plotCountyTrends <- function(summaryTables, column){
+  
+  # Initialise a table to store the column values per county per quarter
+  values <- data.frame(matrix(0, nrow=nrow(summaryTables[[1]]), ncol=length(summaryTables)))
+  rownames(values) <- summaryTables[[1]]$County
+  colnames(values) <- names(summaryTables)
+  
+  # Initialise a vector to store the quarters stored as numeric values
+  quarters <- c(3, 6, 9, 12)/12
+  times <- c()
+  
+  # Examine data from each quarter
+  for(quarter in names(summaryTables)){
+    
+    # Store the current quarter as a time in year
+    parts <- as.numeric(strsplit(quarter, split="Q")[[1]])
+    times[length(times) + 1] <- parts[1] + quarters[parts[2]]
+    
+    # Store the values of the selected column
+    values[, quarter] <- summaryTables[[quarter]][, column]
+  }
+
+  # Plot the trends for the selected column
+  plot(x=times, y=values["STATE", ], ylim=range(values, na.rm=TRUE), las=1, bty="n", type="l", lwd=4,
+       ylab="Proportion", xlab="Year", main="Proportion tested herds positive", col="blue")
+  
+  # Plot the trends for each county
+  for(row in 2:nrow(values)){
+    
+    points(x=times, y=values[row, ], type="l", col=ifelse(rownames(values)[row] == "WICKLOW", rgb(1,0,0, 0.5), rgb(0,0,0,0.5)))
+  }
+  
+  # Add a legend
+  legend("top", legend=c("Wicklow", "Country average"), text.col=c("red", "blue"), bty="n")
+}
 
 plotCounty <- function(countyCoords, countyNames, name){
   
@@ -261,7 +302,7 @@ readTBStatisticsFile <- function(fileName){
     # Split the current line into its parts
     parts <- strsplit(fileLines[i], split=",")[[1]]
     
-    # If 24th line get the years initialise a dataframe to store the statistics
+    # If 4th line get the years initialise a dataframe to store the statistics
     if(i == 4){
       statistics <- data.frame(matrix(nrow=1, ncol=length(parts)), stringsAsFactors=FALSE)
       colnames(statistics) <- c("County", "Statistic", parts[-c(1,2)])

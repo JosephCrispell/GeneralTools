@@ -22,6 +22,10 @@ nSites <- ncol(sequences)
 fastaPlotFile <- paste0(substr(fastaFile, 0, nchar(fastaFile) - 6), ".pdf")
 plotFASTA(sequences, pdfFileName=fastaPlotFile, pdfHeight=14, pdfWidth=21, lineForSequenceNames=-3)
 
+# Calculate coverage from sequences file
+propNs <- data.frame("PropNs"=sapply(1:nrow(sequences), calculatePropNsInSequence, sequences))
+rownames(propNs) <- rownames(sequences)
+
 #### Build the phylogeny ####
 
 # Build a phylogeny using RAxML
@@ -52,27 +56,86 @@ wicklowVCFs <- read.table(file.path(path, "Wicklow_vcfFiles.txt"), stringsAsFact
 monaghanVCFs <- read.table(file.path(path, "Monaghan_vcfFiles.txt"), stringsAsFactors=FALSE)
 
 # Get the tip information
-tipInfo <- getTipInfo(tipLabels, wicklowInfo, wicklowLinkTable, monaghanInfo, wicklowVCFs, monaghanVCFs)
+tipInfo <- getTipInfo(tree$tip.label, wicklowInfo, wicklowLinkTable, monaghanInfo, wicklowVCFs, monaghanVCFs)
+tipInfo$PropNs <- propNs[tree$tip.label, "PropNs"]
 
 # Note the ID of animals outside of Wicklow and Monaghan studies
 other <- "1034_1.vcf.gz"
 tipInfo[tipInfo$ID == ">1034_1.vcf.gz", c("Region", "Species")] <- "OTHER"
 
+# Set the row names of the tip information
+rownames(tipInfo) <- tipInfo$ID
+
 #### Plot the phylogeny ####
+
+################################################################################
+# NOTE: NOT SURE WHAT 161 & 182 Wicklow VCFs ARE - IGNORED IN WICKLOW ANALYSES #
+################################################################################
+
+# Set the plotting margins
+par(mar=c(2,0,0,10))
 
 # Define the tip shapes and colours
 tipShapesAndColours <- list("BADGER"=c("red", 19), "COW"=c("blue", 17),
                             "DEER"=c("black", 15), "OTHER"=c("green", 18),
                             "NA"=c("grey", 8))
+
+### Plot the full phylogeny ###
+
+# Define the tip shapes and colours based on species
 tipShapes <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape")
 tipColours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour")
 
+# Plot the phylogeny
 plot.phylo(tree, show.tip.label=FALSE)
+
+# Add tip shapes
 tiplabels(pch=tipShapes, col=tipColours)
-tiplabels(text=tipInfo$Region, offset=15, frame="none", cex=0.5)
+
+# Add region information
+tiplabels(text=tipInfo$Region, offset=15, frame="none", cex=0.5, xpd=TRUE)
+
+# Add a SNP scale
+addSNPScale(position="bottom", size=10)
+
+### Plot the Wicklow clade ###
+
+# Note the node defining the clade and select it
+node <- 200
+clade <- extract.clade(tree, node)
+
+# Define the tip shapes and colours
+tipShapes <- getTipShapeOrColourBasedOnSpecies(tipInfo[clade$tip.label, ], tipShapesAndColours, which="shape")
+tipColours <- getTipShapeOrColourBasedOnSpecies(tipInfo[clade$tip.label, ], tipShapesAndColours, which="colour")
+
+# Plot the phylogeny
+plot.phylo(clade, show.tip.label=FALSE)
+
+# Add tip shapes
+tiplabels(pch=tipShapes, col=tipColours)
+
+# Add region information
+tiplabels(text=tipInfo[clade$tip.label, "Region"], offset=1, frame="none", cex=0.5, xpd=TRUE)
+
+# Add a SNP scale
 addSNPScale(position="bottom", size=10)
 
 #### FUNCTIONS ####
+
+calculatePropNsInSequence <- function(sequenceIndex, sequences){
+  
+  # Count the number of Ns in the sequence
+  nucleotideCounts <- table(sequences[sequenceIndex, ])
+  names(nucleotideCounts) <- toupper(names(nucleotideCounts))
+  
+  # Note the number of Ns
+  numberMissing <- 0
+  if("N" %in% names(nucleotideCounts)){
+    numberMissing <- nucleotideCounts[["N"]]
+  }
+  
+  return(numberMissing / ncol(sequences))
+}
 
 getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which,
                                               alpha=1){
@@ -185,7 +248,7 @@ getSpeciesWICKLOW <- function(tipLabel, wicklowInfo, wicklowLinkTable){
     
     # Get the full aliquot code
     if(length(row) == 1){
-      aliquotCode <-wicklowInfo[row, "Aliquot"]
+      aliquotCode <- wicklowInfo[row, "Aliquot"]
     }else{
       cat(paste("Problem for new WICKLOW batch. Couldn't find aliquot part: ", aliquotCodePart, " (found ", length(row), " matches)\n\n"))
     }
@@ -214,18 +277,15 @@ getSpeciesMONAGHAN <- function(tipLabel, monaghanInfo){
   
   # Build an aliquot code for the current isolate
   aliquot <- paste0("TB19-", paste(rep(0, 6-nchar(tipLabel)), collapse=""), tipLabel)
-  tipInfo[index, "Aliquot"] <- aliquot
-    
+
   # find the row in the animal info table
   tagRow <- which(monaghanInfo$Aliquot == aliquot)
     
   # Check that row was found
   if(length(tagRow) == 0){
-    warning("Unable to find sampling information for: ", tipLabels[index],
-            "\tAliquot: ", aliquot)
+    warning("Unable to find sampling information for: ", tipLabel, "\tAliquot: ", aliquot)
   }else if(length(tagRow) > 1){
-    warning("Multiple entries in sampling information for: ", tipLabels[index],
-            "\tAliquot: ", aliquot)
+    warning("Multiple entries in sampling information for: ", tipLabel, "\tAliquot: ", aliquot)
   }else{
 
     # Store the species
