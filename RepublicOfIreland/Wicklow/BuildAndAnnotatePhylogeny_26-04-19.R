@@ -17,8 +17,8 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-#path <- "J:\\WGS_Wicklow\\"
+#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
 file <- paste0(path, "Mbovis_SamplingInfo_17-07-18.tsv")
@@ -102,6 +102,9 @@ tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997|>
 
 # Edit the tip labels
 tree$tip.label <- editTipLabels(tree$tip.label)
+
+# Reorder main clades in tree to help visualisation
+tree <- rotateNodes(tree, nodes=c(47,56))
 
 # Get the tip information (species and sampling date)
 tipInfo <- getTipInfo(tree$tip.label, metadata, linkTable, coverage)
@@ -284,7 +287,7 @@ legend("top", legend=c("Badger", "Cow", "Deer"),
 
 # Get and set the plotting margins
 currentMar <- par()$mar
-par(mar=c(4,0,0,0))
+par(mar=c(4,0,1,0))
 
 # Create an empty plot
 plot(x=tipInfo$MercatorX, y=tipInfo$MercatorY,
@@ -308,6 +311,18 @@ legend(x=axisLimits[1] + (0.1*xLength), y=axisLimits[3],
        pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
        col=c("red", "blue", "black"),
        pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
+
+# Add a legend for the cattle herd location certainty
+range <- range(tipInfo$HerdCentroidMeanDistance, na.rm=TRUE)
+legendValues <- c(500, 1000, 5000, 10000, 15000)
+legend("topleft", legend=legendValues/1000, pch=24, 
+       pt.bg=c(rgb(0,0,1, 1 - legendValues[1]/range[2]),
+               rgb(0,0,1, 1 - legendValues[2]/range[2]),
+               rgb(0,0,1, 1 - legendValues[3]/range[2]),
+               rgb(0,0,1, 1 - legendValues[4]/range[2]),
+               rgb(0,0,1, 1 - floor(legendValues[5]/range[2]))),
+       bty="n", pt.cex=2, col="black",
+       title="Mean distance to\n land parcels (km)", xpd=TRUE)
 
 ### Plot without map and land parcels
 
@@ -429,7 +444,9 @@ outputPlotFile <- paste0(path, "Figures\\LinkedPhylogenyAndLocations_", date, ".
 pdf(outputPlotFile, width=14, height=10)
 
 # Plot phylogeny and sampling locations as indices
-plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
+# Note rotated two main clades to help visualisation
+plotPhylogenyAndMap(map, tree, tipInfo, 
+                    tipShapeCexOnPhylogeny=3, scaleCex=3,
                     scaleTextColour="black", addTipIndices=TRUE,
                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
@@ -441,31 +458,6 @@ plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
                     clusterBorder=rgb(0.5,0.5,0.5,1),
                     clusterFill=rgb(0,0,0, 0.1),
                     clusterExpandFactor=0.01)
-
-# Plot phylogeny and sampling locations as indices without lines
-plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-                    scaleTextColour="black", addTipIndices=TRUE,
-                    connectingLinesWidth=1, connectingLinesAlpha=0,
-                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-                    plotMap=FALSE,
-                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2,
-                    spatialClusters=clusters,
-                    clusterBorder=rgb(0.5,0.5,0.5,1),
-                    clusterFill=rgb(0,0,0, 0.1),
-                    clusterExpandFactor=0.01)
-
-# # Plot phylogeny and sampling locations as sampling IDs
-# plotPhylogenyAndMap(map, tree, tipInfo, tipShapeCexOnPhylogeny=3, scaleCex=3,
-#                     scaleTextColour="black", showTipLabels=TRUE,
-#                     connectingLinesWidth=1, connectingLinesAlpha=0.1,
-#                     scaleX=0.1, scaleY=0.11, scaleLabel="    km",
-#                     tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
-#                     plotMap=FALSE,
-#                     layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-#                     tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2)
-
 
 # Close the output pdf
 dev.off()
@@ -1284,7 +1276,8 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
     xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
     yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
     colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                                 which="colour", alpha=0.75)[
+                                                 which="colour", alpha=0.75, 
+                                                 scoreForHerds=FALSE)[
                                                    is.na(tipInfo$MercatorX) == FALSE]
     addTextLabels(xCoords, yCoords, labels=labels,
                   col.label=colours, avoidPoints=FALSE, cex.label=tipCexOnMap,
@@ -1537,7 +1530,11 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
     
     # Plot tree with tip labels
     plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
-               cex=indexCex, label.offset=labelOffset, xpd=TRUE)
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE,
+               tip.color=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                           tipShapesAndColours,
+                                                           which="colour",
+                                                           scoreForHerds=FALSE))
   }else if(showTipLabels){
     plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
                cex=indexCex, label.offset=labelOffset, xpd=TRUE)
@@ -1551,7 +1548,8 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
                                                   which="shape"),
             col=getTipShapeOrColourBasedOnSpecies(tipInfo,
                                                   tipShapesAndColours,
-                                                  which="colour"), cex=tipCex)
+                                                  which="colour",scoreForHerds=FALSE),
+            cex=tipCex)
   
   # Add scale bar
   addScaleBar(2, cex=scaleCex)
@@ -1745,6 +1743,7 @@ addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
   # Add an empty columsn to store the herd info
   tipInfo$HerdCode <- NA
   tipInfo$HerdCentroidScore <- NA
+  tipInfo$HerdCentroidMeanDistance <- NA
   
   # Examine each of the tips
   for(row in seq_len(nrow(tipInfo))){
@@ -1773,8 +1772,9 @@ addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
       tipInfo[row, "MercatorX"] <- herdCentroids[[herdCode]]$X
       tipInfo[row, "MercatorY"] <- herdCentroids[[herdCode]]$Y
       
-      # Store the herd centroid score
+      # Store the herd centroid score and mean distance
       tipInfo[row, "HerdCentroidScore"] <- herdCentroids[[herdCode]]$Score
+      tipInfo[row, "HerdCentroidMeanDistance"] <- herdCentroids[[herdCode]]$SummaryOfDistancesToCentroid$Mean
     }
   }
   
@@ -2103,7 +2103,7 @@ addScaleBar <- function(scaleSize, cex=1, xPad=0.4, yPad=0.01){
 }
 
 getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which,
-                                              alpha=1){
+                                              alpha=1, scoreForHerds=TRUE){
   
   # Initialise a vector to store the shapes or colours
   output <- c()
@@ -2135,7 +2135,7 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
         colour <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
         
         # Check if herd centroid score available
-        if(is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE){
+        if(is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE && scoreForHerds == TRUE){
           colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], 
                              tipInfo[row, "HerdCentroidScore"])
         }else{
