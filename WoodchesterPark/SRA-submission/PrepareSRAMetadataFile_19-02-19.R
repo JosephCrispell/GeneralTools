@@ -1,29 +1,21 @@
-#### Preparation ####
-
-# Load libraries
-library(ape)
-
-# Get the current date
-date <- format(Sys.Date(), "%d-%m-%y")
-
-# Set the path
-path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
-
 #### Read in the Biosample attributes table ####
 
+# Set the path
+path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+
 # Read in the biosample attributes table - maps sample IDs to biosample accession numbers
-attributesFile <- paste0(path, "SRA_submission_18-11-19/Biosample_Attributes_18-11-19.tsv")
+attributesFile <- paste0(path, "SRA_submission_19-02-19/Biosample_Attributes_19-02-19.tsv")
 attributes <- read.table(attributesFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 #### Note the Bioproject number ####
 
-bioProject <- "PRJNA589836"
+bioProject <- "PRJNA523164"
 
 #### Create the SRA metadata file ####
 
 # Read in the template file
-templateFile <- paste0(path, "SRA_submission_18-11-19/SRA_SampleMetadata_template_18-11-19.tsv")
-template <- read.table(templateFile, header=TRUE, check.names=FALSE, sep="\t", stringsAsFactors=FALSE)
+templateFile <- paste0(path, "SRA_submission_19-02-19/SRA_SampleMetadata_template_19-02-19.csv")
+template <- read.table(templateFile, header=TRUE, check.names=FALSE, sep=",", stringsAsFactors=FALSE)
 
 # Create a table to hold the sample info
 output <- as.data.frame(matrix(NA, nrow=nrow(attributes), ncol=ncol(template)), stringsAsFactors=FALSE)
@@ -45,13 +37,17 @@ output$filetype <- rep("fastq", nrow(output))
 
 #### Add in the FASTQ file names ####
 
-# Get an array of the FASTQ files and select those used in analyses
-fastqs <- c(getFilesInDirectory(paste0(path, "Fastqs/"), "fastq.gz"),
-            getFilesInDirectory(paste0(path, "Fastqs_15-03-19/"), "fastq.gz"),
-            getFilesInDirectory(paste0(path, "New_Fastqs_07-01-18/"), "fastq.gz"))
+# Get an array of the badger FASTQ files and select those used in analyses
+badgerFastqs <- c(getFilesInDirectory(paste0(path, "Badger_Batch1/"), "fastq.gz"),
+                      getFilesInDirectory(paste0(path, "Badger_Batch2/"), "fastq.gz"))
+
+# Get an array of the cattle FASTQ files and select those used in analyses
+cattleFastqs <- c(getFilesInDirectory(paste0(path, "Cattle_FASTQ_1stRound/"), "fastq.gz"),
+                      getFilesInDirectory(paste0(path, "Cattle_FASTQ_2ndRound/"), "fastq.gz"),
+                      getFilesInDirectory(paste0(path, "NewCattle_16-03-18/fastqs/"), "fastq.gz"))
 
 # Note the FASTQ files associated with each of the IDs that we are interested in
-fastqsForEachID <- noteFastqFilesForID(fastqs, attributes)
+fastqsForEachID <- noteFastqFilesForID(badgerFastqs, cattleFastqs, attributes)
 
 # Add in the FASTQ file names into the output table
 for(row in seq_len(nrow(output))){
@@ -61,7 +57,7 @@ for(row in seq_len(nrow(output))){
 #### Create the output file ####
 
 # Write the output table to file
-outputFile <- paste0(path, "SRA_submission_18-11-19/SRA_Wicklow_18-11-19.tsv")
+outputFile <- paste0(path, "SRA_submission_19-02-19/SampleInfo_NCBI_19-02-19.tsv")
 write.table(output, file=outputFile, quote=FALSE, sep="\t", row.names=FALSE, na="")
 
 #### Copy the FASTQ files into a single directory ####
@@ -93,13 +89,13 @@ copyFASTQsInDirectoryToAnother <- function(path, from, to, attributes){
   file.copy(paste0(path, from, fastqs[ids %in% attributes$sample_name]), to)
 }
 
-noteFastqFilesForID <- function(fastqs, attributes){
+noteFastqFilesForID <- function(badgerFastqs, cattleFastqs, attributes){
   
   # Initialise a list to store the pair of FASTQs associated with each ID
   fastqsForEachID <- list()
   
   # Examine the FASTQ files
-  for(fastq in fastqs){
+  for(fastq in c(badgerFastqs, cattleFastqs)){
     
     # Get the ID from the current FASTQ
     id <- strsplit(fastq, split="_")[[1]][1]
