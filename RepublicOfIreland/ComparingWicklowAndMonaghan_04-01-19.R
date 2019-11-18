@@ -60,17 +60,13 @@ tipInfo <- getTipInfo(tree$tip.label, wicklowInfo, wicklowLinkTable, monaghanInf
 tipInfo$PropNs <- propNs[tree$tip.label, "PropNs"]
 
 # Note the ID of animals outside of Wicklow and Monaghan studies
-other <- "1034_1.vcf.gz"
 tipInfo[tipInfo$ID == ">1034_1.vcf.gz", c("Region", "Species")] <- "OTHER"
+tipInfo[tipInfo$ID %in% c(">182-MBovis_3.vcf.gz", ">161-MBovis_2.vcf.gz"), c("Region", "Species")] <- c("NORTHERNIRELAND", NA)
 
 # Set the row names of the tip information
 rownames(tipInfo) <- tipInfo$ID
 
 #### Plot the phylogeny ####
-
-################################################################################
-# NOTE: NOT SURE WHAT 161 & 182 Wicklow VCFs ARE - IGNORED IN WICKLOW ANALYSES #
-################################################################################
 
 # Set the plotting margins
 par(mar=c(2,0,0,10))

@@ -17,6 +17,7 @@ date <- format(Sys.Date(), "%d-%m-%y")
 sampleInfoFile <- file.path(path, "SampleInformation_28-05-19.csv")
 sampleInfo <- read.table(sampleInfoFile, header=TRUE, sep=",", stringsAsFactors=FALSE)
 sampleInfo <- sampleInfo[sampleInfo$Sample.Ref != "", ]
+rownames(sampleInfo) <- sampleInfo$Sample.Ref
 
 # Read in the FASTA file
 fastaFile <- file.path(path, "vcfFiles", "sequences_Prox-10_31-10-2019.fasta")
@@ -192,23 +193,6 @@ calculatePropNsInSequence <- function(sequenceIndex, sequences){
   }
   
   return(numberMissing / ncol(sequences))
-}
-
-getNSitesInFASTA <- function(fastaFile){
-  
-  # Open a connection to a file to read (open="r")
-  connection <- file(fastaFile, open="r")
-  
-  # Get first line of file
-  firstLine <- readLines(connection, n=1)
-  
-  # Close file connection
-  close(connection)
-  
-  # Get the number of sites used in the FASTA file from first line
-  nSites <- as.numeric(strsplit(firstLine, " ")[[1]][2])
-  
-  return(nSites)
 }
 
 runRAXML <- function(fastaFile, date, path, nBootstraps=100, nThreads=10, outgroup=NULL, model="GTRCAT"){
