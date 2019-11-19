@@ -82,9 +82,13 @@ pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
 plot.phylo(tree, show.tip.label=FALSE, edge.color=rgb(0,0,0, 0.5), edge.width=4)
 
 # Add tips coloured by species
-tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19), "COW"=c(rgb(0,0,1,1), 17), "NA"=c("grey", 15))
-tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape"),
-          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
+tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19),
+                            "COW"=c(rgb(0,0,1,1), 17),
+                            "NA"=c("grey", 15))
+tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape", 
+                                                scoreForHerds=FALSE),
+          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour", 
+                                                scoreForHerds=FALSE), cex=1.25)
 
 # Add scale bar
 addSNPScale(position="bottom", size=10)
@@ -144,6 +148,378 @@ addScale(size=10000)
 
 
 #### Plot the phylogeny and sampling locations together ####
+
+plotPhylogenyAndMap(tree, tipInfo, tipShapesAndColours,
+                    tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", addTipIndices=TRUE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2,
+                    spatialClusters=NULL,
+                    clusterBorder=rgb(0.5,0.5,0.5,1),
+                    clusterFill=rgb(0,0,0, 0.1),
+                    clusterExpandFactor=0.01, snpScaleSize=50)
+
+#### FUNCTIONS - joint phylogeny and spatial data ####
+
+plotPhylogenyAndMap <- function(tree, tipInfo, tipShapesAndColours, map=NULL,
+                                tipShapeCexOnPhylogeny=2, scaleCex=1.5,
+                                scaleTextColour="white", addTipIndices=FALSE,
+                                connectingLinesWidth=2.5, connectingLinesAlpha=0.3,
+                                scaleX=0.1, scaleY=0.15, scaleLabel="   km",
+                                tipIndexBackground=rgb(1,1,1, 0.5),
+                                tipCexOnMap=2, 
+                                layoutMatrix=NULL, tipLabelOffset=1,
+                                tipLabelCexOnPhylogeny=2, showTipLabels=FALSE,
+                                spatialClusters=NULL, 
+                                clusterExpandFactor=0.1,
+                                clusterLty=2, clusterLwd=2, 
+                                clusterBorder="blue", 
+                                clusterFill=rgb(0,0,1, 0.1), snpScaleSize=2){
+
+  # Get and set the margins
+  currentMar <- par()$mar
+  par(mar=c(0,0,0,0))
+  
+  # Redefine shapes to give them an outline
+  tipShapesAndColoursMAP <- list("BADGER"=c("red", 21), "COW"=c("blue", 24),
+                                 "NA"=c("grey", 22))
+  
+  # Set the number plots in window - 1 row of 2
+  # Leave more space for map in second column
+  if(is.null(layoutMatrix)){
+    layout(matrix(c(1,2,2,2,2), nrow=1, ncol=5, byrow=TRUE))
+  }else{
+    layout(layoutMatrix)
+  }
+  
+  ### Plot the phylogeny on the left
+  plotPhylogeny(tree, tipInfo, tipCex=tipShapeCexOnPhylogeny, scaleCex=scaleCex,
+                tipShapesAndColours=tipShapesAndColours,
+                addTipIndices=addTipIndices, indexCex=tipLabelCexOnPhylogeny,
+                labelOffset=tipLabelOffset, showTipLabels=showTipLabels, scaleSize=snpScaleSize)
+  
+  # Note the tip coordinates
+  tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
+  
+  ### Plot the sampling locations map
+  
+  # Plot the map
+  if(is.null(map) == FALSE){
+    plot(map)
+  }else{
+    par(mar=c(4,0,0,0))
+    plot(x=NULL, y=NULL, xlim=range(tipInfo$X, na.rm=TRUE),
+         ylim=range(tipInfo$Y, na.rm=TRUE),
+         xaxt="n", yaxt="n", xlab="", ylab="", bty="n")
+  }
+  
+  # Add scale bar
+  if(is.null(map) == FALSE){
+    scaleBar(map, abslen=5, x=scaleX, y=scaleY, cex=scaleCex, unit="km", 
+             targs=list(col=scaleTextColour), label=scaleLabel)
+  }else{
+    addScale(size=10000)
+  }
+  
+  
+  # Plot shape around spatial clusters
+  if(is.null(spatialClusters) == FALSE){
+    plotShapeAroundSpatialClusters(tipInfo, spatialClusters,
+                                   expand=clusterExpandFactor,
+                                   lty=clusterLty, lwd=clusterLwd, 
+                                   border=clusterBorder,
+                                   fill=clusterFill)
+  }
+  
+  # Plot the sampling locations
+  labels <- c(1:nrow(tipInfo))[is.na(tipInfo$X) == FALSE]
+  xCoords <- tipInfo$X[is.na(tipInfo$X) == FALSE]
+  yCoords <- tipInfo$Y[is.na(tipInfo$X) == FALSE]
+  colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
+                                               which="colour", alpha=0.75, 
+                                               scoreForHerds=FALSE)[
+                                                 is.na(tipInfo$X) == FALSE]
+  addTextLabels(xCoords, yCoords, labels=labels,
+                col.label=colours, avoidPoints=FALSE, cex.label=tipCexOnMap,
+                col.background=tipIndexBackground)
+  
+  # Get coordinates of plotted sampling locations in plotting window
+  tipCoordsOnMap <- getTipCoordinatesOnMap(tipInfo)
+  
+  ### Connect tips on phylogeny to sampling locations on map
+  plotConnectingLines(tree$tip.label, tipCoordsOnPhylogeny,
+                      tipCoordsOnMap, tipInfo, lwd=connectingLinesWidth,
+                      alpha=connectingLinesAlpha)
+  
+  # Add species legend
+  if(is.null(map)){
+    
+    # Get the axis limits
+    axisLimits <- par()$usr
+    xLength <- axisLimits[2] - axisLimits[1]
+    yLength <- axisLimits[4] - axisLimits[3]
+    
+    # Add a legend
+    legend(x=axisLimits[1] + (0.6*xLength), y=axisLimits[3],
+           legend=c("Badger", "Cow", "Deer"),
+           pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+           col=c("red", "blue", "black"),
+           pt.cex=3, xpd=TRUE, horiz=TRUE, bty="n", cex=2)
+  }else{
+    legend("right", legend=c("Badger", "Cow", "Deer"),
+           pch=c(19, 17, 15), text.col=c("red", "blue", "black"),
+           col=c("red", "blue", "black"),
+           pt.cex=3, xpd=TRUE, horiz=FALSE, cex=2, bty="n")
+  }
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
+
+setAlpha <- function(colour, alpha){
+  
+  # Convert the input colour into rgb values
+  rgbValues <- col2rgb(colour)
+  
+  # Place rgb values within rgb function and insert alpha value
+  # Note that col2rgb returns rgbvlues from 0 to 255
+  rgbColour <- rgb(rgbValues["red", 1], rgbValues["green", 1], rgbValues["blue", 1],
+                   alpha=alpha*255, maxColorValue=255)
+  return(rgbColour)
+}
+
+plotConnectingLines <- function(tipLabels, tipCoordsOnPhylogeny,
+                                tipCoordsOnMap, tipInfo, alpha=1, ...){
+  
+  # Prepare for adding lines across the plot panels - using grid package
+  pushViewport(viewport())
+  popViewport()
+  
+  # Examine each of the tips
+  for(tipLabel in tipLabels){
+    
+    # Skip the tips without locations
+    if(is.na(tipCoordsOnMap[[tipLabel]][1])){
+      next
+    }
+    
+    # Define the line colour based on species
+    lineColour <- "red"
+    if(tipInfo[which(tipInfo$Tip == tipLabel), "Species"] == "COW"){
+      lineColour <- "blue"
+    }
+    
+    # Set the line alpha
+    lineColour <- setAlpha(lineColour, alpha)
+    
+    # Prepare to add a single line
+    pushViewport(viewport())
+    
+    # Plot line from phylogeny to sampling location for current tip
+    grid.lines(x = c(tipCoordsOnPhylogeny[[tipLabel]][1],
+                     tipCoordsOnMap[[tipLabel]][1]), 
+               y = c(tipCoordsOnPhylogeny[[tipLabel]][2],
+                     tipCoordsOnMap[[tipLabel]][2]), 
+               gp = gpar(col=lineColour, ...))
+    
+    # Add the changes to the plot (the line)
+    popViewport()
+  }
+  
+}
+
+getSatelliteImage <- function(landparcelCoords, badgerShapeFile, deerShapeFile, 
+                              cattleShapeFile, includeLandParcels=FALSE,
+                              xExpand=NULL, yExpand=NULL){
+  
+  # Initialise a variable to store the map bounds
+  bounds <- NULL
+  
+  # Check bounds should include land parcels
+  if(includeLandParcels){
+    
+    # Calculate bounds based on badger and deer sampling locations and herd land parcels
+    bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
+                                               cattleShapeFile@bbox)
+  }else{
+    
+    # Calculate the herd centroids based upon the Irish grid coordinates
+    herdCentroidsAsXY <- calculateLandParcelCentroids(landParcelCoords, useGrid=TRUE)
+    
+    # Calculate bounds just using badger and deer locations and overal herd centroids
+    bounds <- calculateBoundsForAllSpatialData(badgerShapeFile@bbox, deerShapeFile@bbox,
+                                               getLimitsOfHerdCentroids(herdCentroidsAsXY))
+  }
+  
+  # Expand the X bounds if requested
+  if(is.null(xExpand) == FALSE){
+    
+    # Calculate the X length
+    xLength <- bounds[1, 2] - bounds[1, 1]
+    
+    # Adjust the bounds
+    bounds[1, 1] <- bounds[1, 1] - (0.5*xExpand*xLength)
+    bounds[1, 2] <- bounds[1, 2] + (0.5*xExpand*xLength)
+  }
+  
+  # Expand the Y bounds if requested
+  if(is.null(yExpand) == FALSE){
+    
+    # Calculate the X length
+    yLength <- bounds[2, 2] - bounds[2, 1]
+    
+    # Adjust the bounds
+    bounds[2, 1] <- bounds[2, 1] - (0.5*yExpand*yLength)
+    bounds[2, 2] <- bounds[2, 2] + (0.5*yExpand*yLength)
+  }
+  
+  # Convert the bounds to longitudes and latitudes
+  boundsLongsLats <- convertXYToLatLongs(x=bounds[1, ],y=bounds[2, ])
+  
+  # Get a satellite image of the area
+  map <- openmap(upperLeft=c(boundsLongsLats[2, 1], boundsLongsLats[1, 2]), 
+                 lowerRight=c(boundsLongsLats[1, 1], boundsLongsLats[2, 2]),
+                 type="bing")
+  
+  return(map)
+}
+
+getLimitsOfHerdCentroids <- function(herdCentroids){
+  
+  # Initialise a table to store the coordinates bounds
+  bbox <- matrix(c(Inf, -Inf), nrow=2, ncol=2, byrow=TRUE)
+  colnames(bbox) <- c("min", "max")
+  rownames(bbox) <- c("x", "y")
+  
+  # Examine each of the herds
+  for(herdID in names(herdCentroids)){
+    
+    # Check if we need to update the X min and max
+    if(herdCentroids[[herdID]]$X < bbox["x", "min"]){
+      bbox["x", "min"] <- herdCentroids[[herdID]]$X
+    }
+    if(herdCentroids[[herdID]]$X > bbox["x", "max"]){
+      bbox["x", "max"] <- herdCentroids[[herdID]]$X
+    }
+    
+    # Check if we need to update the Y min and max
+    if(herdCentroids[[herdID]]$Y < bbox["y", "min"]){
+      bbox["y", "min"] <- herdCentroids[[herdID]]$Y
+    }
+    if(herdCentroids[[herdID]]$Y > bbox["y", "max"]){
+      bbox["y", "max"] <- herdCentroids[[herdID]]$Y
+    }
+  }
+  
+  return(bbox)
+}
+
+getTipCoordinatesOnMap <- function(tipInfo){
+  
+  # Convert the available mercator coordinates into grid coordinates
+  tipInfo$GridX <- grconvertX(tipInfo$X, from="user", to="ndc")
+  tipInfo$GridY <- grconvertY(tipInfo$Y, from="user", to="ndc")
+  
+  # Initialise a list to store the grid coordinates
+  coords <- list()
+  
+  # For the cattle - convert the herd centroids to grid coordinates
+  for(row in seq_len(nrow(tipInfo))){
+    
+    # Store the coordinates for the current row
+    coords[[tipInfo[row, "Tip"]]] <- c(tipInfo[row, "GridX"], tipInfo[row, "GridY"])
+  }
+  
+  return(coords)
+}
+
+getTipCoordinatesOnPhylogeny <- function(tipLabels){
+  
+  # Get all the information about the last phylogenetic tree plotted
+  lastPP <- get("last_plot.phylo", envir = .PlotPhyloEnv)
+  
+  # Create an empty list to store the coordinates
+  tips <- list()
+  
+  # Examine each of the tip labels - order must match tree$tip.labels of plotted tree
+  for(i in 1:length(tipLabels)){
+    
+    # Get and store the coordinates for the current tip label
+    # Note that you are converting them to actual coordinates within the plotting window
+    tips[[as.character(tipLabels[i])]] <- c(grconvertX(lastPP$xx[i], "user", "ndc"), 
+                                            grconvertY(lastPP$yy[i], "user", "ndc"))
+  }
+  
+  return(tips)
+}
+
+plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
+                          scaleCex=1, tipShapesAndColours,
+                          addTipIndices=FALSE, indexCex=1, labelOffset=1,
+                          showTipLabels=FALSE, scaleSize=2){
+  
+  # Get and set the plotting margins
+  currentMar <- par()$mar
+  par(mar=c(3,0,0,0))
+  
+  # Plot the phylogeny
+  if(addTipIndices){
+    
+    # Re-define tip labels as indices
+    tree$tip.label <- 1:length(tree$tip.label)
+    
+    # Plot tree with tip labels
+    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE,
+               tip.color=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                           tipShapesAndColours,
+                                                           which="colour",
+                                                           scoreForHerds=FALSE))
+  }else if(showTipLabels){
+    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE)
+  }else{
+    plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
+  }
+  
+  # Add tips coloured by species
+  tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                  tipShapesAndColours,
+                                                  which="shape"),
+            col=getTipShapeOrColourBasedOnSpecies(tipInfo,
+                                                  tipShapesAndColours,
+                                                  which="colour",scoreForHerds=FALSE),
+            cex=tipCex)
+  
+  # Add scale bar
+  addSNPScale(position="bottom", size=scaleSize, cex=scaleCex)
+  
+  # Reset the plotting margins
+  par(mar=currentMar)
+}
+
+addScale <- function(sizeInMetres){
+  
+  # Get the plotting dimensions
+  axisLimits <- par()$usr
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  
+  # Define y value - scale height
+  height <- axisLimits[3] + 0.075 * yLength
+  
+  # Define X value start
+  start <- axisLimits[1] + 0.5 * xLength
+  
+  # Define the size
+  Xs <- c(0, sizeInMetres)
+
+  # Plot the scale bar
+  points(x=c(start, start), y=c(height, height), xpd=TRUE, col="red")
+}
 
 #### FUNCTIONS - spatial data ####
 
@@ -559,7 +935,8 @@ editTipLabels <- function(tipLabels){
 
 #### FUNCTIONS - Phylogeny ####
 
-getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which){
+getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, which,
+                                              alpha=1, scoreForHerds=TRUE){
   
   # Initialise a vector to store the shapes or colours
   output <- c()
@@ -574,9 +951,9 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
       if(which == "shape"){
         output[row] <- as.numeric(tipShapesAndColours[["NA"]][2])
       }else if(which == "colour"){
-        output[row] <- tipShapesAndColours[["NA"]][1]
+        output[row] <- setAlpha(tipShapesAndColours[["NA"]][1], alpha)
       }else{
-        stop(paste("Option", which, "not recognised!"))
+        cat(paste("Error! Option", which, "not recognised!"))
       }
       
       # If species available assign appropriate colour or shape
@@ -586,9 +963,23 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
       if(which == "shape"){
         output[row] <- as.numeric(tipShapesAndColours[[tipInfo[row, "Species"]]][2])
       }else if(which == "colour"){
-        output[row] <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
+        
+        # Get the species colour
+        colour <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
+        
+        # Check if herd centroid score available
+        if(is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE && scoreForHerds == TRUE){
+          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], 
+                             tipInfo[row, "HerdCentroidScore"])
+        }else{
+          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], alpha)
+        }
+        
+        # Set the colour
+        output[row] <- colour
+        
       }else{
-        stop(paste("Option", which, "not recognised!"))
+        cat(paste("Error! Option", which, "not recognised!"))
       }
     }
   }
