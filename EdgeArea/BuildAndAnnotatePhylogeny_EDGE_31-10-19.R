@@ -65,7 +65,7 @@ node <- 121
 clade <- extract.clade(tree, node=node)
 
 # Open an output pdf
-pdf(file.path(path, paste0("SummaryPlots_EGDE_", date, ".pdf")))
+pdf(file.path(path, paste0("SummaryPlots_EDGE_", date, ".pdf")))
 
 # Plot the full phylogeny and highlight the densely sampled clade
 branchColours <- defineBranchColoursOfClade(tree, nodeDefiningClade=node, colour="red", defaultColour="black")

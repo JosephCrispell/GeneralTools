@@ -2,6 +2,7 @@
 
 library(ape) # Reading and phylogeny
 library(rgdal) # Convert X and Y to lat longs and reading in shape files
+library(basicPlotteR) # Add SNV scale
 
 #### Read in the sample data ####
 
@@ -21,39 +22,29 @@ file <- paste0(path, "Animal_HerdIDs_04-07-19.csv")
 herdIDs <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Read in the FASTA file
-fastaFile <- paste0(path, "vcfFiles\\sequences_Prox-10_24-09-2019.fasta")
-nSites <- getNSitesInFASTA(fastaFile)
+fastaFile <- paste0(path, "vcfFiles/sequences_Prox-10_24-09-2019.fasta")
+sequences <- read.dna(fastaFile, as.character=TRUE, format="fasta")
+nSites <- ncol(sequences)
 
 # Read in the coverage information
-coverageFile <- paste0(path, "vcfFiles\\isolateCoverageSummary_DP-20_24-09-2019.txt")
+coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_24-09-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
-# Read in the test summaries table
-file <- paste0(path, "AHCS_data/Joe_20190731_TestSummaryOnly.csv")
-cattleTestInfo <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE,
-                             check.names=FALSE)
+# Read in the test summaries tables
+file <- paste0(path, "AHCS_data/Batch1_TestingInformation_20190731.csv")
+cattleTestInfoBatch1 <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE,
+                                   check.names=FALSE)
+file <- paste0(path, "AHCS_data/Batch2_TestingInformation_20191119.csv")
+cattleTestInfoBatch2 <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE,
+                                   check.names=FALSE)
 
 # Read in the badger capture information
-file <- paste0(path, "Badger_data/TBL_captured_badgers_2019_07_19.txt")
+file <- paste0(path, "Badger_data/TBL_captured_badgers_2019_10_31.txt")
 badgerCaptureData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Read in the sett capture event information
-file <- paste0(path, "Badger_data/TBL_capture_events_2019_07_19.txt")
+file <- paste0(path, "Badger_data/TBL_capture_events_2019_10_31.txt")
 settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
-
-
-#### EXAMINE THE SEQUENCE QUALITY!!! (REMOVE UNINFORMATIVE SITES!)
-
-tipInfo[tipInfo$Coverage < 0.9, c("Tip", "Aliquot", "Coverage", "Species")]
-
-
-
-
-
-
-
-
-
 
 
 #### Build the phylogeny ####
@@ -74,12 +65,18 @@ tipInfo <- getTipInfo(tree$tip.label, animalTags, coverage, herdIDs)
 tree$edge.length <- tree$edge.length * nSites
 
 # Add in slaughter and capture dates
-tipInfo <- addSlaughterOrCaptureDates(tipInfo, cattleTestInfo, badgerCaptureData, settCaptureEventData)
+tipInfo <- addSlaughterOrCaptureDates(tipInfo, cattleTestInfoBatch1, cattleTestInfoBatch2,
+                                      badgerCaptureData, settCaptureEventData)
+
+#### EXAMINE THE SEQUENCE QUALITY!!! (REMOVE UNINFORMATIVE SITES!) ####
+
+tipInfo[tipInfo$Coverage < 0.9, c("Tip", "Aliquot", "Coverage", "Species")]
+
 
 #### Plot the phylogeny ####
 
 # Open a PDF
-pdf(paste0(path, "Figures\\MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
+pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
 
 # Plot the phylogeny
 plot.phylo(tree, show.tip.label=FALSE, edge.color=rgb(0,0,0, 0.5), edge.width=4)
@@ -90,7 +87,7 @@ tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
           col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"), cex=1.25)
 
 # Add scale bar
-addScaleBar(20)
+addSNPScale(position="bottom", size=10)
 
 # Add species legend
 legend("right", legend=names(tipShapesAndColours), 
@@ -104,7 +101,7 @@ dev.off()
 #### Plot the temporal sampling ####
 
 # Open a PDF
-pdf(paste0(path, "Figures\\TemporalSampling_", date, ".pdf"), width=14)
+pdf(paste0(path, "Figures/TemporalSampling_", date, ".pdf"), width=14)
 
 plotTemporalSamplingRange(tipInfo)
 
@@ -143,16 +140,32 @@ plot(tipInfo[, c("X", "Y")],
      pch=ifelse(tipInfo$Species == "BADGER", 19, 17),
      col=rgb(0,0,0,0.5), cex=2, bty="n", xaxt="n", yaxt="n",
      xlab="", ylab="")
-axisLimits <- par()$usr
-xLength <- axisLimits[2] - axisLimits[1]
-yLength <- axisLimits[4] - axisLimits[3]
-points(x=c(axisLimits[1], axisLimits[1] + 10000),
-       y=c(axisLimits[3] + 0.1*yLength, axisLimits[3] + 0.1*yLength),
-       type="l", lwd=2)
-text(x=axisLimits[1]+5000, y=axisLimits[3] + 0.05*yLength,
-     labels="10km")
+addScale(size=10000)
+
+
+#### Plot the phylogeny and sampling locations together ####
 
 #### FUNCTIONS - spatial data ####
+
+addScale <- function(size, xPad=0.1, yPad=0.1, ...){
+  
+  # Get the axis limits
+  axisLimits <- par()$usr
+  
+  # Calculate the lengths of the X and Y axes
+  xLength <- axisLimits[2] - axisLimits[1]
+  yLength <- axisLimits[4] - axisLimits[3]
+  
+  # Note the bottom left corner of scale box
+  xLeft <- axisLimits[1] + (xPad*xLength)
+  yBottom <- axisLimits[3] + (yPad*yLength)
+  
+  # Plot a scale box
+  rect(xleft=xLeft, ybottom=yBottom, xright=xLeft+size, ytop=yBottom+size, ...)
+  
+  # Add a label
+  text(x=xLeft + (0.5*size), y=yBottom, labels=paste0(size/100, "km2"), pos=1)
+}
 
 addHerdCentroidsAndSettLocationsToTipInfo <- function(tipInfo, settLocations,
                                                       landParcelCentroids){
@@ -349,7 +362,8 @@ plotTemporalSamplingRange <- function(tipInfo){
 
 #### FUNCTIONS - linking to metadata ####
 
-addSlaughterOrCaptureDates <- function(tipInfo, cattleTestInfo, badgerCaptureData, settCaptureEventData){
+addSlaughterOrCaptureDates <- function(tipInfo, cattleTestInfoBatch1, cattleTestInfoBatch2,
+                                       badgerCaptureData, settCaptureEventData){
   
   # Add a date into the tip info table
   tipInfo$DateAtSlaughterOrCapture <- NA
@@ -366,17 +380,15 @@ addSlaughterOrCaptureDates <- function(tipInfo, cattleTestInfo, badgerCaptureDat
     if(tipInfo[row, "Species"] == "COW"){
       
       # Try to find test information row for current cow
-      testRow <- which(cattleTestInfo[, "Animal No."] == tipInfo[row, "AnimalID"])
+      testRowBatch1 <- which(cattleTestInfoBatch1[, "Animal No."] == tipInfo[row, "AnimalID"])
+      testRowBatch2 <- which(cattleTestInfoBatch2[, "Animal ID"] == tipInfo[row, "AnimalID"])
       
-      # Check if found
-      if(length(testRow) == 0){
-        warning("Not able to find testing information for cattle eartag: ", tipInfo[row, "AnimalID"])
-      
-      # Look at slaughter dates
-      }else{
+      # Check if found in batch 1
+      if(length(testRowBatch1) > 0){
         
         # Get the unique slaughter dates for the current animal
-        slaughterDates <- unique(as.Date(cattleTestInfo[testRow, "PM (Date of SL)"], format="%d/%m/%Y"))
+        slaughterDates <- unique(as.Date(cattleTestInfoBatch1[testRowBatch1, "PM (Date of SL)"],
+                                         format="%d/%m/%Y"))
         
         # Check if more than unique date available
         if(length(slaughterDates) > 1){
@@ -385,6 +397,19 @@ addSlaughterOrCaptureDates <- function(tipInfo, cattleTestInfo, badgerCaptureDat
         
         # Store a slaughter date
         tipInfo[row, "DateAtSlaughterOrCapture"] <- as.character(slaughterDates[1])
+        
+      # Check if found in batch 2
+      }else if(length(testRowBatch2) > 0){
+        
+        # Get the test date
+        testDate <- as.Date(cattleTestInfoBatch2[testRowBatch2, "Test Date"], format="%d/%m/%Y")
+        
+        # Store a test date
+        tipInfo[row, "DateAtSlaughterOrCapture"] <- as.character(testDate)
+        
+      # Otherwise throw an error
+      }else{
+        warning("Not able to find testing information for cattle eartag: ", tipInfo[row, "AnimalID"])
       }
     
     # Get the capture date for the badger
@@ -530,31 +555,6 @@ editTipLabels <- function(tipLabels){
   }
   
   return(output)
-}
-
-
-
-addScaleBar <- function(scaleSize, cex=1){
-  
-  # Get the plotting region dimensions = x1, x2, y1, y2 
-  # (coordinates of bottom left and top right corners)
-  dimensions <- par("usr")
-  xLength <- dimensions[2] - dimensions[1]
-  yLength <- dimensions[4] - dimensions[3]
-  
-  # Add Scale bar
-  xPad <- 0.4 * xLength
-  
-  points(x=c(dimensions[1] + xPad, dimensions[1] + xPad + scaleSize), 
-         y=c(dimensions[3] + (0.01 * yLength), dimensions[3] + (0.01 * yLength)),
-         type="l", lwd=3, xpd=TRUE)
-  if(scaleSize == 1){
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.02 * yLength),
-         labels=paste0("~ ", scaleSize, " SNV"), cex=cex, xpd=TRUE)
-  }else{
-    text(x=dimensions[1] + xPad + (0.5*scaleSize), y=dimensions[3] - (0.02 * yLength),
-         labels=paste0("~ ", scaleSize, " SNVs"), cex=cex, xpd=TRUE)
-  }
 }
 
 #### FUNCTIONS - Phylogeny ####
