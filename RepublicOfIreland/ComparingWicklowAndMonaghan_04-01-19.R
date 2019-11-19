@@ -24,7 +24,7 @@ plotFASTA(sequences, pdfFileName=fastaPlotFile, pdfHeight=14, pdfWidth=21, lineF
 
 # Calculate coverage from sequences file
 propNs <- data.frame("PropNs"=sapply(1:nrow(sequences), calculatePropNsInSequence, sequences))
-rownames(propNs) <- rownames(sequences)
+rownames(propNs) <- paste0(">", rownames(sequences))
 
 #### Build the phylogeny ####
 
@@ -61,15 +61,18 @@ tipInfo$PropNs <- propNs[tree$tip.label, "PropNs"]
 
 # Note the ID of animals outside of Wicklow and Monaghan studies
 tipInfo[tipInfo$ID == ">1034_1.vcf.gz", c("Region", "Species")] <- "OTHER"
-tipInfo[tipInfo$ID %in% c(">182-MBovis_3.vcf.gz", ">161-MBovis_2.vcf.gz"), c("Region", "Species")] <- c("NORTHERNIRELAND", NA)
+tipInfo[tipInfo$ID %in% c(">182-MBovis_3.vcf.gz", ">161-MBovis_2.vcf.gz"), "Region"] <- "NORTHERNIRELAND"
 
 # Set the row names of the tip information
 rownames(tipInfo) <- tipInfo$ID
 
 #### Plot the phylogeny ####
 
+# Open an output pdf
+pdf(paste0(path, "ComparingWicklowAndMonagahan_", date, ".pdf"))
+
 # Set the plotting margins
-par(mar=c(2,0,0,10))
+par(mar=c(2,0,0,2))
 
 # Define the tip shapes and colours
 tipShapesAndColours <- list("BADGER"=c("red", 19), "COW"=c("blue", 17),
@@ -86,13 +89,18 @@ tipColours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, wh
 plot.phylo(tree, show.tip.label=FALSE)
 
 # Add tip shapes
-tiplabels(pch=tipShapes, col=tipColours)
+tiplabels(pch=tipShapes, col=tipColours, cex=0.5)
 
 # Add region information
-tiplabels(text=tipInfo$Region, offset=15, frame="none", cex=0.5, xpd=TRUE)
+tiplabels(text=tipInfo$Region, offset=5, frame="none", cex=0.35, xpd=TRUE, adj=0)
 
 # Add a SNP scale
 addSNPScale(position="bottom", size=10)
+
+# Add a legend
+legend("bottomright", legend=names(tipShapesAndColours), bty="n",
+       pch=as.numeric(unlist(tipShapesAndColours)[seq(from=2, by=2, length.out=length(tipShapesAndColours))]),
+       col=unlist(tipShapesAndColours)[seq(from=1, by=2, length.out=length(tipShapesAndColours))])
 
 ### Plot the Wicklow clade ###
 
@@ -111,10 +119,18 @@ plot.phylo(clade, show.tip.label=FALSE)
 tiplabels(pch=tipShapes, col=tipColours)
 
 # Add region information
-tiplabels(text=tipInfo[clade$tip.label, "Region"], offset=1, frame="none", cex=0.5, xpd=TRUE)
+tiplabels(text=tipInfo[clade$tip.label, "Region"], offset=0.2, frame="none", cex=0.5, xpd=TRUE, adj=0)
 
 # Add a SNP scale
 addSNPScale(position="bottom", size=10)
+
+# Add a legend
+legend("bottomright", legend=names(tipShapesAndColours), bty="n",
+       pch=as.numeric(unlist(tipShapesAndColours)[seq(from=2, by=2, length.out=length(tipShapesAndColours))]),
+       col=unlist(tipShapesAndColours)[seq(from=1, by=2, length.out=length(tipShapesAndColours))])
+
+# Close the output pdf
+dev.off()
 
 #### FUNCTIONS ####
 
@@ -291,8 +307,6 @@ getSpeciesMONAGHAN <- function(tipLabel, monaghanInfo){
   
   return(species)
 }
-
-getMonaghanTipInformation <- 
 
 checkIfWicklowOrMonaghan <- function(tipLabel, wicklowVCFs, monaghanVCFs){
   
