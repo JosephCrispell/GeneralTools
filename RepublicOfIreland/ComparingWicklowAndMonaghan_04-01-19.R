@@ -6,7 +6,7 @@ library(geiger) # For the tips function in used in defineBranchColoursOfClade
 library(basicPlotteR) # Because I made it! :-)
 
 # Set the path 
-path <- file.path("~", "Desktop", "Research", "RepublicOfIreland", "Mbovis", "WorkingWithDogSample", "")
+path <- file.path("~", "storage", "Research", "RepublicOfIreland", "Mbovis", "AllROIComparison", "")
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -128,6 +128,36 @@ addSNPScale(position="bottom", size=10)
 legend("bottomright", legend=names(tipShapesAndColours), bty="n",
        pch=as.numeric(unlist(tipShapesAndColours)[seq(from=2, by=2, length.out=length(tipShapesAndColours))]),
        col=unlist(tipShapesAndColours)[seq(from=1, by=2, length.out=length(tipShapesAndColours))])
+
+### Remove other and plot ###
+
+# Remove the "other"
+treeWithoutOther <- drop.tip(tree, tipInfo[which(tipInfo$Species == "OTHER"), "ID"])
+
+# Remove teh "other" from tip shapes and colours list
+tipShapesAndColours[["OTHER"]] <- NULL
+
+# Define the tip shapes and colours
+tipShapes <- getTipShapeOrColourBasedOnSpecies(tipInfo[treeWithoutOther$tip.label, ], tipShapesAndColours, which="shape")
+tipColours <- getTipShapeOrColourBasedOnSpecies(tipInfo[treeWithoutOther$tip.label, ], tipShapesAndColours, which="colour")
+
+# Plot the phylogeny
+plot.phylo(treeWithoutOther, show.tip.label=FALSE)
+
+# Add tip shapes
+tiplabels(pch=tipShapes, col=tipColours, cex=0.5)
+
+# Add region information
+tiplabels(text=tipInfo[treeWithoutOther$tip.label, "Region"], offset=5, frame="none", cex=0.35, xpd=TRUE, adj=0)
+
+# Add a SNP scale
+addSNPScale(position="bottom", size=10)
+
+# Add a legend
+legend("bottomright", legend=names(tipShapesAndColours), bty="n",
+       pch=as.numeric(unlist(tipShapesAndColours)[seq(from=2, by=2, length.out=length(tipShapesAndColours))]),
+       col=unlist(tipShapesAndColours)[seq(from=1, by=2, length.out=length(tipShapesAndColours))])
+
 
 # Close the output pdf
 dev.off()
