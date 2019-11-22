@@ -57,7 +57,9 @@ yearsOfInterest <- 2010:2019
 plotProportionTrends(summaryTables, yearsOfInterest)
 
 # Plot the trends in each county
+par(mar=c(5.1, 6.1, 1.1, 2.1))
 plotCountyTrends(summaryTables, column="ProportionHerds")
+plotCountyTrends(summaryTables, column="ProportionHerds", wicklow.lwd=2, wicklow.col="red")
 
 dev.off()
 
@@ -65,7 +67,7 @@ dev.off()
 # FUNCTIONS #
 #############
 
-plotCountyTrends <- function(summaryTables, column){
+plotCountyTrends <- function(summaryTables, column, wicklow.lwd=1, wicklow.col=rgb(0,0,0,0.5)){
 
   # Initialise a table to store the column values per county per quarter
   values <- data.frame(matrix(0, nrow=nrow(summaryTables[[1]]), ncol=length(summaryTables)))
@@ -89,16 +91,27 @@ plotCountyTrends <- function(summaryTables, column){
 
   # Plot the trends for the selected column
   plot(x=times, y=values["STATE", ], ylim=range(values, na.rm=TRUE), las=1, bty="n", type="l", lwd=4,
-       ylab="Proportion", xlab="Year", main="Proportion tested herds positive", col="blue")
+       ylab="", xlab="Year", col="blue",
+       cex.axis=1.5, cex.lab=2, cex.main=2)
+  mtext(side=2, text="Proportion herds testing positive", cex=2, line=4)
 
   # Plot the trends for each county
   for(row in 2:nrow(values)){
 
-    points(x=times, y=values[row, ], type="l", col=ifelse(rownames(values)[row] == "WICKLOW", rgb(1,0,0, 0.5), rgb(0,0,0,0.5)))
+    points(x=times, y=values[row, ], type="l",
+           col=ifelse(rownames(values)[row] == "WICKLOW", wicklow.col, rgb(0,0,0,0.5)),
+           lwd=ifelse(rownames(values)[row] == "WICKLOW", wicklow.lwd, 1))
   }
 
   # Add a legend
-  legend("top", legend=c("Wicklow", "Country average"), text.col=c("red", "blue"), bty="n")
+  if(wicklow.col != rgb(0,0,0, 0.5)){
+    legend("top", legend=c("Individual county trends", "Country average", "Wicklow"),
+           text.col=c(rgb(0,0,0,0.5), "blue", "red"),
+           bty="n")
+  }else{
+    legend("top", legend=c("Individual county trends", "Country average"), text.col=c(rgb(0,0,0,0.5), "blue"), bty="n")
+  }
+
 }
 
 plotCounty <- function(countyCoords, countyNames, name){
