@@ -2,6 +2,8 @@
 
 # Load libraries
 library(MASS) # glm model with negative binomial distribution
+library(basicPlotteR) # alpha colours in plotting
+library(broom) # simple table from model outputs
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -45,14 +47,20 @@ summary(linearModel)
 # Sample 1
 linearModelSample1 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 1, ])
 summary(linearModelSample1)
+write.table(tidy(linearModelSample1), file=paste("NegativeBinomial_sample1_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 # Sample 2
 linearModelSample2 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 2, ])
 summary(linearModelSample2)
+write.table(tidy(linearModelSample2), file=paste("NegativeBinomial_sample2_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 # Sample 3
 linearModelSample3 <- glm.nb(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 3, ])
 summary(linearModelSample3)
+write.table(tidy(linearModelSample3), file=paste("NegativeBinomial_sample3_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 #### Fit two-way ANOVA ####
 
@@ -73,14 +81,20 @@ summary(twoWayAnova)
 # Sample 1
 anovaSample1 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 1, ])
 summary(anovaSample1)
+write.table(tidy(anovaSample1), file=paste("ANOVA_sample1_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 # Sample 2
 anovaSample2 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 2, ])
 summary(anovaSample2)
+write.table(tidy(anovaSample2), file=paste("ANOVA_sample2_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 # Sample 3
 anovaSample3 <- aov(EggCount ~ Method + Replicate, data=correctedEggCounts[correctedEggCounts$Sample == 3, ])
 summary(anovaSample3)
+write.table(tidy(anovaSample3), file=paste("ANOVA_sample3_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
 
 #### Mann Whitney U test ####
 
