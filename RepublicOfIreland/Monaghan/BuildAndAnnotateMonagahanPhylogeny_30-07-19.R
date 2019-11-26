@@ -40,11 +40,11 @@ cattleTestInfoBatch2 <- read.table(file, header=TRUE, sep=",", stringsAsFactors=
                                    check.names=FALSE)
 
 # Read in the badger capture information
-file <- paste0(path, "Badger_data/TBL_captured_badgers_2019_10_31.txt")
+file <- paste0(path, "Badger_data/TBL_captured_badgers_25_11_2019.txt")
 badgerCaptureData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Read in the sett capture event information
-file <- paste0(path, "Badger_data/TBL_capture_events_2019_10_31.txt")
+file <- paste0(path, "Badger_data/TBL_capture_events_25_11_2019.txt")
 settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 
@@ -68,6 +68,12 @@ tree$edge.length <- tree$edge.length * nSites
 # Add in slaughter and capture dates
 tipInfo <- addSlaughterOrCaptureDates(tipInfo, cattleTestInfoBatch1, cattleTestInfoBatch2,
                                       badgerCaptureData, settCaptureEventData)
+
+# Note badgers not able to find capture data for
+missing <- tipInfo[is.na(tipInfo$HerdOrSettID) & tipInfo$Species == "BADGER", ]
+missing <- missing[is.na(missing$Tip) == FALSE, ]
+write.table(missing[, c("Aliquot", "AnimalID")], sep=",", quote=FALSE, row.names=FALSE,
+            file=paste0(path, "MissingBadgerTags_", date, ".csv"))
 
 #### EXAMINE THE SEQUENCE QUALITY!!! (REMOVE UNINFORMATIVE SITES!) ####
 
@@ -124,13 +130,15 @@ settLocations <- data.frame("SettID"=badgerShapeFile@data$SETT_NO,
 
 # Read in the cattle land parcels
 shapeFile <- paste0(path, "Cattle_data/herds_mn_july_2019.shp")
-cattleShapeFile <- readOGR(dsn = shapeFile)
+cattleShapeFileJuly <- readOGR(dsn = shapeFile)
+shapeFile <- paste0(path, "Cattle_data/herds_mn_november_2019.shp")
+cattleShapeFileNovember <- readOGR(dsn = shapeFile)
+cattleShapeFile <- bind(cattleShapeFileJuly, cattleShapeFileNovember)
 
 # Extract the polygon coords
-landParcelCoords <- getPolygonCoords(cattleShapeFile)
-
-# Extract the sampld herd information
-herdInfo <- cattleShapeFile@data
+landParcelCoordsJuly <- getPolygonCoords(cattleShapeFileJuly)
+landParcelCoordsNovember <- getPolygonCoords(cattleShapeFileNovember)
+landParcelCoords <- c(landParcelCoordsJuly, landParcelCoordsNovember)
 
 # Calculate the herd centroids
 landParcelCentroids <- calculateLandParcelCentroids(landParcelCoords)
@@ -161,6 +169,12 @@ clusters <- examineSpatialDistancesInEachCluster(spatialDistanceMatrix, geneticC
 
 # Set the rownames of the tip information dataframe
 rownames(tipInfo) <- tipInfo$Tip
+
+# Set the tip shapes and colours
+tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19),
+                            "COW"=c(rgb(0,0,1,1), 17),
+                            "NA"=c("grey", 15))
+
 
 # Open a pdf
 file <- paste0(path, "Figures/", "PhylogenyAndLocations_", date, ".pdf")
@@ -201,7 +215,7 @@ plotShapeAroundSpatialClusters <- function(tipInfo, clusters,
                                            lty=2, lwd=2, 
                                            border="blue",
                                            fill=rgb(0,0,1, 0.1),
-                                           pch=5, cex=1){
+                                           pch=23, cex=1, threshold=2500){
   
   # Taken from this answer: https://stackoverflow.com/questions/41050532/is-there-any-way-to-draw-a-boundary-around-a-group-of-points-in-r
   
@@ -238,14 +252,26 @@ plotShapeAroundSpatialClusters <- function(tipInfo, clusters,
     # Check if only two coordinates
     if(length(x) == 2){
 
-      points(x, y, type="l", lty=lty, lwd=lwd, col=border)
-      next
+      # Find the middle between the two coordinates
+      x <- x[1] + (0.5*(x[2] - x[1]))
+      y <- y[1] + (0.5*(y[2] - y[1]))
+      
+      # Create four new coordinates
+      x <- c(x-(0.5*threshold), x, x+(0.5*threshold), x)
+      y <- c(y, y+(0.5*threshold), y, y-(0.5*threshold))
+      
+      #points(x, y, type="l", lty=lty, lwd=lwd, col=border)
+      #next
       
     # Check if only one coordinate
     }else if(length(x) == 1){
 
-      points(x, y, pch=pch, cex=cex, col=border)
-      next
+      # Create four new coordinates
+      x <- c(x[1]-(0.5*threshold), x[1], x[1]+(0.5*threshold), x[1])
+      y <- c(y[1], y[1]+(0.5*threshold), y[1], y[1]-(0.5*threshold))
+      
+      #points(x, y, pch=pch, cex=cex, col=border, bg=fill)
+      #next
     }
 
     # Calculate the centre of random points
@@ -262,7 +288,7 @@ plotShapeAroundSpatialClusters <- function(tipInfo, clusters,
       (expand*(convexHullXCoords - meanX))
     expandedConvexHullYCoords <- convexHullYCoords + 
       (expand*(convexHullYCoords - meanY))
-    
+
     # Plot a polygon for the expanded convex hull
     polygon(expandedConvexHullXCoords, expandedConvexHullYCoords,
             lty=lty, lwd=lwd, border=border, col=fill)
@@ -505,7 +531,7 @@ plotPhylogenyAndLocations <- function(tree, tipInfo, tipShapesAndColours,
                                       clusterLty=2, clusterLwd=2, 
                                       clusterBorder=rgb(0.5,0.5,0.5,1), 
                                       clusterFill=rgb(0,0,0, 0.1), snpScaleSize=2,
-                                      clusterPCH=5, clusterPointCex=10){
+                                      clusterPCH=23, clusterPointCex=10){
 
   # Get and set the margins
   currentMar <- par()$mar
