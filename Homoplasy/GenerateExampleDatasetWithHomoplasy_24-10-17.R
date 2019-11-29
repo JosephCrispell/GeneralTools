@@ -399,6 +399,44 @@ legend("bottomleft", legend=c("Before recombination", "After recombination"), te
 
 dev.off()
 
+#### Generate example dataset ####
+
+# Set the working directory
+setwd("/home/josephcrispell/Desktop/WorkingOnHomoplasyFinder/")
+
+# Simulation settings
+popSize <- 200
+mutationRate <- 0.5
+infectiousness <- 0.001
+samplingProb <- 0.05
+nToSample <- 100
+nHomoplasiesValues <- 10
+
+# Generate the sequences
+simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
+                                  samplingProb, nToSample)
+
+# Build phylogeny
+trueTreeFile <- paste("example-TRUE_", date, ".tree", sep="")
+treeBefore <- buildPhylogeny(sequences, trueTreeFile, maximumLikelihood=TRUE)
+
+# Build the sequences based upon the mutation events
+sequences <- buildSequences(simulationOutput, nToSample)
+sequences[["REF"]] <- NULL
+
+# Insert homoplasies
+homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
+sequences <- homoplasyInsertionInfo[["sequences"]]
+
+# Build FASTA
+fastaFile <- paste("example_", date, ".fasta", sep="")
+writeFasta(sequences, fastaFile)
+
+# Build phylogeny
+treeFile <- paste("example-AFTER_", date, ".tree", sep="")
+buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+
+
 #### FUNCTIONS ####
 
 simulateRecombination <- function(sequences, tree, segmentSize, nEvents){
