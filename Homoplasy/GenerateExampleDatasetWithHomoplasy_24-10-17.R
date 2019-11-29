@@ -404,40 +404,93 @@ dev.off()
 # Set the working directory
 setwd("/home/josephcrispell/Desktop/WorkingOnHomoplasyFinder/")
 
+# Current date
+date <- format(Sys.Date(), "%d-%m-%y")
+
 # Simulation settings
 popSize <- 200
 mutationRate <- 0.5
 infectiousness <- 0.001
 samplingProb <- 0.05
 nToSample <- 100
-nHomoplasiesValues <- 10
+nHomoplasies <- 10
 
 # Generate the sequences
 simulationOutput <- runSimulation(popSize, mutationRate, infectiousness,
                                   samplingProb, nToSample)
 
-# Build phylogeny
-trueTreeFile <- paste("example-TRUE_", date, ".tree", sep="")
-treeBefore <- buildPhylogeny(sequences, trueTreeFile, maximumLikelihood=TRUE)
-
 # Build the sequences based upon the mutation events
 sequences <- buildSequences(simulationOutput, nToSample)
 sequences[["REF"]] <- NULL
+
+# Build phylogeny
+treeBefore <- buildPhylogeny(sequences, maximumLikelihood=TRUE)
 
 # Insert homoplasies
 homoplasyInsertionInfo <- insertHomoplasies(sequences, n=nHomoplasies, tree=treeBefore)
 sequences <- homoplasyInsertionInfo[["sequences"]]
 
 # Build FASTA
-fastaFile <- paste("example_", date, ".fasta", sep="")
+fastaFile <- paste0("example_", date, ".fasta")
 writeFasta(sequences, fastaFile)
 
 # Build phylogeny
-treeFile <- paste("example-AFTER_", date, ".tree", sep="")
+treeFile <- paste0("example_", date, ".tree")
 buildPhylogeny(sequences, treeFile, maximumLikelihood=TRUE)
+
+# Create a random INDEL presence absence table
+indelPresenceAbsence <- createRandomExmapleINDELTable(nINDELs=10, names=names(sequences), 
+                                                      sequenceLength=length(sequences[[1]]),
+                                                      averageSize=10,
+                                                      file=paste0("example_INDELs_", date, ".csv"))
+
+
+# Create a random traits table
+traits <- createRandomTraitTable(names=names(sequences), file=paste0("example_traits_", date, ".csv"))
 
 
 #### FUNCTIONS ####
+
+createRandomTraitTable <- function(names, file=NULL){
+
+  # Create a dataframe full of random traits
+  nSequences <- length(names)
+  traits <- data.frame("Treatment"=sample(c("Placebo", "Vaccine"), size=nSequences, replace=TRUE),
+                       "Sex"=sample(c("M", "F"), size=nSequences, replace=TRUE),
+                       "Location"=sample(c("East", "West", "North", "South"), size=nSequences, replace=TRUE),
+                       "Resistant"=sample(c("TRUE", "FALSE"), size=nSequences, replace=TRUE),
+                       "Age"=sample(c(0, 1, 2), size=nSequences, replace=TRUE))
+  
+  # Write to file
+  if(is.null(file) == FALSE){
+    write.table(traits, file=file, sep=",", quote=FALSE, row.names=FALSE)
+  }else{
+    return(traits)
+  }
+}
+
+createRandomExmapleINDELTable <- function(nINDELs, names, sequenceLength, averageSize=10, file=NULL){
+  
+  # Create some random INDEL coordinates
+  starts <- sample(seq(from=1, to=sequenceLength, by=5*averageSize), size=nINDELS)
+  ends <- starts + rpois(nINDELS, lambda=averageSize)
+  
+  # Create presence absence table
+  presenceAbsence <- as.data.frame(matrix(sample(c(0,1), size=length(names)*nINDELS, replace=TRUE),
+                                   nrow=length(names), ncol=nINDELS))
+  colnames(presenceAbsence) <- paste0(starts, ":", ends)
+  
+  # Add sequence names
+  presenceAbsence$ID <- names
+  presenceAbsence <- presenceAbsence[, c(nINDELS+1, 1:nINDELS)]
+  
+  # Write to file
+  if(is.null(file) == FALSE){
+    write.table(presenceAbsence, file=file, sep=",", quote=FALSE, row.names=FALSE)
+  }else{
+    return(presenceAbsence)
+  }
+}
 
 simulateRecombination <- function(sequences, tree, segmentSize, nEvents){
   
