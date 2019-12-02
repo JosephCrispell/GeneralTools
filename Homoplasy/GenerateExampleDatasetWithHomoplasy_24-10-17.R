@@ -455,7 +455,8 @@ createRandomTraitTable <- function(names, file=NULL){
 
   # Create a dataframe full of random traits
   nSequences <- length(names)
-  traits <- data.frame("Treatment"=sample(c("Placebo", "Vaccine"), size=nSequences, replace=TRUE),
+  traits <- data.frame("ID"=names,
+                       "Treatment"=sample(c("Placebo", "Vaccine"), size=nSequences, replace=TRUE),
                        "Sex"=sample(c("M", "F"), size=nSequences, replace=TRUE),
                        "Location"=sample(c("East", "West", "North", "South"), size=nSequences, replace=TRUE),
                        "Resistant"=sample(c("TRUE", "FALSE"), size=nSequences, replace=TRUE),
@@ -472,17 +473,17 @@ createRandomTraitTable <- function(names, file=NULL){
 createRandomExmapleINDELTable <- function(nINDELs, names, sequenceLength, averageSize=10, file=NULL){
   
   # Create some random INDEL coordinates
-  starts <- sample(seq(from=1, to=sequenceLength, by=5*averageSize), size=nINDELS)
-  ends <- starts + rpois(nINDELS, lambda=averageSize)
+  starts <- sample(seq(from=1, to=sequenceLength, by=5*averageSize), size=nINDELs)
+  ends <- starts + rpois(nINDELs, lambda=averageSize)
   
   # Create presence absence table
-  presenceAbsence <- as.data.frame(matrix(sample(c(0,1), size=length(names)*nINDELS, replace=TRUE),
-                                   nrow=length(names), ncol=nINDELS))
+  presenceAbsence <- as.data.frame(matrix(sample(c(0,1), size=length(names)*nINDELs, replace=TRUE),
+                                   nrow=length(names), ncol=nINDELs))
   colnames(presenceAbsence) <- paste0(starts, ":", ends)
   
   # Add sequence names
   presenceAbsence$ID <- names
-  presenceAbsence <- presenceAbsence[, c(nINDELS+1, 1:nINDELS)]
+  presenceAbsence <- presenceAbsence[, c(nINDELs+1, 1:nINDELs)]
   
   # Write to file
   if(is.null(file) == FALSE){

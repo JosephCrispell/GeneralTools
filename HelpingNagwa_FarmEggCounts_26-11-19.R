@@ -16,6 +16,11 @@ setwd(file.path("~", "Desktop", "HelpingNagwa"))
 fileName <- "FarmEggCounts_26-11-19.csv"
 eggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=TRUE)
 
+# Fix Category names
+eggCounts$Category[eggCounts$Category %in% c("Filly", "fily", "Fily")] <- "Filly"
+eggCounts$Category[eggCounts$Category %in% c("Gelding", "geloling", "Golding")] <- "Gelding"
+eggCounts$Category <- factor(eggCounts$Category)
+
 # Set farm code to factor
 eggCounts$Farm.code <- as.factor(eggCounts$Farm.code)
 
