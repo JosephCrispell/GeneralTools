@@ -171,8 +171,10 @@ par(mar=c(0,0,0,0))
 plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
 
 # Add tips coloured by species
-tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape"),
-          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour"),
+tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, 
+                                                which="shape"),
+          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, 
+                                                which="colour", scoreForHerds=FALSE),
           cex=1.25)
 
 # Add scale bar
@@ -459,6 +461,21 @@ plotPhylogenyAndMap(map, tree, tipInfo,
                     clusterFill=rgb(0,0,0, 0.1),
                     clusterExpandFactor=0.01)
 
+plotPhylogenyAndMap(map, tree, tipInfo, 
+                    tipShapeCexOnPhylogeny=3, scaleCex=3,
+                    scaleTextColour="black", addTipIndices=FALSE,
+                    connectingLinesWidth=1, connectingLinesAlpha=0.1,
+                    scaleX=0.1, scaleY=0.11, scaleLabel="    km",
+                    tipIndexBackground=rgb(0,0,0, 0.1), tipCexOnMap=2,
+                    plotMap=FALSE,
+                    layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
+                    tipLabelOffset=0.5, tipLabelCexOnPhylogeny=2,
+                    spatialClusters=clusters,
+                    clusterBorder=rgb(0.5,0.5,0.5,1),
+                    clusterFill=rgb(0,0,0, 0.1),
+                    clusterExpandFactor=0.01, showTipLabels=TRUE, 
+                    plotTipInfoColumn="HerdID")
+
 # Close the output pdf
 dev.off()
 
@@ -484,6 +501,28 @@ plotTemporalSamplingRange(tipInfo)
 dev.off()
 
 
+
+#### Add Deer tags to tip information ####
+
+# Read in the deer tag table
+deerTable <- read.table("J:/WGS_Wicklow/LinkTable_DeerAliquots-DeerTags_02-12-19.csv", header=TRUE, sep=",", stringsAsFactors=FALSE)
+
+# Create deer tag column
+tipInfo$DeerTag <- NA
+for(row in 1:nrow(tipInfo)){
+  
+  # Skip non-deer
+  if(tipInfo[row, "Species"] != "Deer"){
+    next
+  }
+  
+  # Get deer tag
+  tipInfo[row, "DeerTag"] <- deerTable[which(deerTable$Aliquot == tipInfo[row, "Aliquot"]), "SDG"]
+}
+
+# Write the tip information to file
+write.table(tipInfo[, c("ID", "Aliquot", "Species", "Date", "HerdID", "DeerTag")], 
+            file="J:/WGS_Wicklow/TipInformation_02-12-19.csv", sep=",", quote=FALSE, row.names=TRUE)
 
 #### FUNCTIONS - identify genetic and spatial clusters ####
 
@@ -1218,7 +1257,8 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
                                 clusterExpandFactor=0.1,
                                 clusterLty=2, clusterLwd=2, 
                                 clusterBorder="blue", 
-                                clusterFill=rgb(0,0,1, 0.1)){
+                                clusterFill=rgb(0,0,1, 0.1),
+                                plotTipInfoColumn=NULL){
   
   # Get and set the margins
   currentMar <- par()$mar
@@ -1240,7 +1280,8 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   plotPhylogeny(tree, tipInfo, tipCex=tipShapeCexOnPhylogeny, scaleCex=scaleCex,
                 tipShapesAndColours=tipShapesAndColours,
                 addTipIndices=addTipIndices, indexCex=tipLabelCexOnPhylogeny,
-                labelOffset=tipLabelOffset, showTipLabels=showTipLabels)
+                labelOffset=tipLabelOffset, showTipLabels=showTipLabels,
+                plotTipInfoColumn=plotTipInfoColumn)
   
   # Note the tip coordinates
   tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
@@ -1273,6 +1314,10 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   # Plot the sampling locations
   if(addTipIndices){
     labels <- c(1:nrow(tipInfo))[is.na(tipInfo$MercatorX) == FALSE]
+    if(is.null(plotTipInfoColumn) == FALSE){
+      labels <- ifelse(is.na(tipInfo[, plotTipInfoColumn]) == FALSE, 
+                       tipInfo[, plotTipInfoColumn], tipInfo[, "ID"])[is.na(tipInfo$MercatorX) == FALSE]
+    }
     xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
     yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
     colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
@@ -1284,10 +1329,15 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
                   col.background=tipIndexBackground)
   }else if(showTipLabels){
     labels <- tipInfo$ID[is.na(tipInfo$MercatorX) == FALSE]
+    if(is.null(plotTipInfoColumn) == FALSE){
+      labels <- ifelse(is.na(tipInfo[, plotTipInfoColumn]) == FALSE, 
+                       tipInfo[, plotTipInfoColumn], tipInfo[, "ID"])[is.na(tipInfo$MercatorX) == FALSE]
+    }
     xCoords <- tipInfo$MercatorX[is.na(tipInfo$MercatorX) == FALSE]
     yCoords <- tipInfo$MercatorY[is.na(tipInfo$MercatorX) == FALSE]
     colours <- getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColoursMAP,
-                                                 which="colour", alpha=0.75)[
+                                                 which="colour", alpha=0.75, 
+                                                 scoreForHerds=FALSE)[
                                                    is.na(tipInfo$MercatorX) == FALSE]
     addTextLabels(xCoords, yCoords, labels=labels,
                   col.label=colours, avoidPoints=FALSE, cex.label=tipCexOnMap,
@@ -1516,7 +1566,7 @@ getTipCoordinatesOnPhylogeny <- function(tipLabels){
 plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
                           scaleCex=1, tipShapesAndColours,
                           addTipIndices=FALSE, indexCex=1, labelOffset=1,
-                          showTipLabels=FALSE){
+                          showTipLabels=FALSE, plotTipInfoColumn=NULL){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
@@ -1527,6 +1577,10 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
     
     # Re-define tip labels as indices
     tree$tip.label <- 1:length(tree$tip.label)
+    if(is.null(plotTipInfoColumn) == FALSE){
+      tree$tip.label <- ifelse(is.na(tipInfo[, plotTipInfoColumn]) == FALSE, 
+                               tipInfo[, plotTipInfoColumn], tipInfo[, "ID"])
+    }
     
     # Plot tree with tip labels
     plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
@@ -1536,6 +1590,13 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
                                                            which="colour",
                                                            scoreForHerds=FALSE))
   }else if(showTipLabels){
+    
+    # Re-define tip labels as indices
+    if(is.null(plotTipInfoColumn) == FALSE){
+      tree$tip.label <- ifelse(is.na(tipInfo[, plotTipInfoColumn]) == FALSE, 
+                               tipInfo[, plotTipInfoColumn], tipInfo[, "ID"])
+    }
+    
     plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
                cex=indexCex, label.offset=labelOffset, xpd=TRUE)
   }else{
@@ -1742,6 +1803,7 @@ addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
   
   # Add an empty columsn to store the herd info
   tipInfo$HerdCode <- NA
+  tipInfo$HerdID <- NA
   tipInfo$HerdCentroidScore <- NA
   tipInfo$HerdCentroidMeanDistance <- NA
   
@@ -1767,6 +1829,7 @@ addHerdIDsAndCentroidsToTipInfo <- function(tipInfo, herdInfo, herdCentroids){
       
       # Store the herd code
       tipInfo[row, "HerdCode"] <- herdCode
+      tipInfo[row, "HerdID"] <- as.character(herdInfo[rowInHerdInfo, "HERD_NO"])
       
       # Store the overall centroid coordinates
       tipInfo[row, "MercatorX"] <- herdCentroids[[herdCode]]$X
@@ -2135,11 +2198,10 @@ getTipShapeOrColourBasedOnSpecies <- function(tipInfo, tipShapesAndColours, whic
         colour <- tipShapesAndColours[[tipInfo[row, "Species"]]][1]
         
         # Check if herd centroid score available
-        if(is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE && scoreForHerds == TRUE){
-          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], 
-                             tipInfo[row, "HerdCentroidScore"])
+        if(scoreForHerds == TRUE && is.na(tipInfo[row, "HerdCentroidScore"]) == FALSE){
+          colour <- setAlpha(colour, tipInfo[row, "HerdCentroidScore"])
         }else{
-          colour <- setAlpha(tipShapesAndColours[[tipInfo[row, "Species"]]][1], alpha)
+          colour <- setAlpha(colour, alpha)
         }
         
         # Set the colour
