@@ -18,8 +18,9 @@
 ####################################################################
 
 # Initialise an output file
-OUTPUT="timeTaken_24-10-18.csv"
-echo "NSequences	Replicate	NSites	Java	R	Phangorn	TreeTime" > $OUTPUT
+OUTPUT="timeTaken_05-12-19.csv"
+#echo "NSequences	Replicate	NSites	Java	R	Phangorn	TreeTime	Java2" > $OUTPUT
+echo "NSequences	Replicate	NSites	Java	Java2" > $OUTPUT
 
 # Set the date the datasets were created
 DATE="17-08-18"
@@ -35,42 +36,49 @@ do
 		TIME=`date +"%T"`
 		echo -e "\e[0;34m Processing example data set with $NSEQUENCES sequences. Replicate $REPLICATE... \e[0m""	"$TIME
 
-		# Build fasta file
+		# Build fasta file name
 		FASTA="Example_"$((2 * $NSEQUENCES))"-"$NSEQUENCES"_"$REPLICATE"_"$DATE".fasta"
 
 		# Get the number of sites in the fasta file - calculate rescale for homoplasy_scanner
 		NSITES=`head -n 1 $FASTA | awk '{split($0, array, " "); print array[2]}'`
 		RESCALE=`perl -E "say 1 / $NSITES"`
 
-		# Build tree file
+		# Build tree file name
 		TREE="Example_"$((2 * $NSEQUENCES))"-"$NSEQUENCES"_"$REPLICATE"_"$DATE".tree"
 
 		# Run homoplasy_scanner
-		START="$(date -u +%s.%N)"
-		homoplasy_scanner.py --aln $FASTA --tree $TREE --rescale $RESCALE > temp.txt
-		END="$(date -u +%s.%N)"
-		TREETIME="$(bc <<<"$END-$START")"
+#		START="$(date -u +%s.%N)"
+#		homoplasy_scanner.py --aln $FASTA --tree $TREE --rescale $RESCALE > temp.txt
+#		END="$(date -u +%s.%N)"
+#		TREETIME="$(bc <<<"$END-$START")"
 
 		# Run HomoplasyFinder Java tool
 		START="$(date -u +%s.%N)"
-		java -Xmx8000m -jar ../../Java/ExecutableJarFiles/HomoplasyFinder.jar --fasta $FASTA --tree $TREE
+		java -Xmx8000m -jar ~/Java/ExecutableJarFiles/HomoplasyFinder.jar --fasta $FASTA --tree $TREE
 		END="$(date -u +%s.%N)"
 		JAVATIME="$(bc <<<"$END-$START")"
 
-		# Run HomoplasyFinder in R
-		START="$(date -u +%s.%N)"
-		Rscript ../../GeneralTools/Homoplasy/SpeedTestConsistencyIndexInHomoplasyFinder_17-08-18.R ./ $TREE $FASTA
-		END="$(date -u +%s.%N)"
-		RTIME="$(bc <<<"$END-$START")"
+#		# Run HomoplasyFinder in R
+#		START="$(date -u +%s.%N)"
+#		Rscript ~/GeneralTools/Homoplasy/SpeedTestConsistencyIndexInHomoplasyFinder_17-08-18.R ./ $TREE $FASTA
+#		END="$(date -u +%s.%N)"
+#		RTIME="$(bc <<<"$END-$START")"
 
-		# Run phangorn in R
+#		# Run phangorn in R
+#		START="$(date -u +%s.%N)"
+#		Rscript ~/GeneralTools/Homoplasy/SpeedTestConsistencyIndexInPhangorn_10-08-18.R . $TREE $FASTA
+#		END="$(date -u +%s.%N)"
+#		PHANGORN="$(bc <<<"$END-$START")"
+
+		# Run HomoplasyFinder Java tool - VERSION 2
 		START="$(date -u +%s.%N)"
-		Rscript ../../GeneralTools/Homoplasy/SpeedTestConsistencyIndexInPhangorn_10-08-18.R . $TREE $FASTA
+		java -Xmx8000m -jar ~/Java/ExecutableJarFiles/HomoplasyFinder_v2.jar --fasta $FASTA --tree $TREE
 		END="$(date -u +%s.%N)"
-		PHANGORN="$(bc <<<"$END-$START")"
+		JAVA2TIME="$(bc <<<"$END-$START")"
 
 		# Store the times
-		echo $NSEQUENCES"	"$REPLICATE"	"$NSITES"	"$JAVATIME"	"$RTIME"	"$PHANGORN"	"$TREETIME >> $OUTPUT
+#		echo $NSEQUENCES"	"$REPLICATE"	"$NSITES"	"$JAVATIME"	"$RTIME"	"$PHANGORN"	"$TREETIME >> $OUTPUT
+		echo $NSEQUENCES"	"$REPLICATE"	"$NSITES"	"$JAVATIME"	"$JAVA2TIME >> $OUTPUT
 
 	done
 done
