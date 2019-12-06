@@ -38,12 +38,6 @@ summaryTables <- calculateSummaryStatisticsPerQuarter(statistics)
 # Open an output pdf
 pdf(paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019.pdf"))
 
-# Plot Wicklow
-plotCounty(countyCoords, countyNames, "WICKLOW")
-
-# Plot the county outlines for Ireland
-plotCountyOutlines(countyCoords, countyNames)
-
 # Plot the proportion of herds infected in the country - compare to number of herds
 plotInfoPerCounty(countyCoords, countyNames, summaryTables$`2019Q3`, column="ProportionHerds", digits=1, units="%",
                   main="Proportion herds infected", cex=0.75)
@@ -59,7 +53,8 @@ plotProportionTrends(summaryTables, yearsOfInterest)
 # Plot the trends in each county
 par(mar=c(5.1, 6.1, 1.1, 2.1))
 plotCountyTrends(summaryTables, column="ProportionHerds")
-plotCountyTrends(summaryTables, column="ProportionHerds", wicklow.lwd=2, wicklow.col="red")
+plotCountyTrends(summaryTables, column="ProportionHerds", county="WICKLOW", county.lwd=2, county.col="red")
+plotCountyTrends(summaryTables, column="ProportionHerds", county="MONAGHAN", county.lwd=2, county.col="red")
 
 dev.off()
 
@@ -67,7 +62,7 @@ dev.off()
 # FUNCTIONS #
 #############
 
-plotCountyTrends <- function(summaryTables, column, wicklow.lwd=1, wicklow.col=rgb(0,0,0,0.5)){
+plotCountyTrends <- function(summaryTables, column, county=NULL, county.lwd=1, county.col=rgb(1,0,0,1)){
 
   # Initialise a table to store the column values per county per quarter
   values <- data.frame(matrix(0, nrow=nrow(summaryTables[[1]]), ncol=length(summaryTables)))
@@ -99,14 +94,14 @@ plotCountyTrends <- function(summaryTables, column, wicklow.lwd=1, wicklow.col=r
   for(row in 2:nrow(values)){
 
     points(x=times, y=values[row, ], type="l",
-           col=ifelse(rownames(values)[row] == "WICKLOW", wicklow.col, rgb(0,0,0,0.5)),
-           lwd=ifelse(rownames(values)[row] == "WICKLOW", wicklow.lwd, 1))
+           col=ifelse(is.null(county) == FALSE && rownames(values)[row] == county, county.col, rgb(0,0,0,0.5)),
+           lwd=ifelse(is.null(county) == FALSE && rownames(values)[row] == county, county.lwd, 1))
   }
 
   # Add a legend
-  if(wicklow.col != rgb(0,0,0, 0.5)){
-    legend("top", legend=c("Individual county trends", "Country average", "Wicklow"),
-           text.col=c(rgb(0,0,0,0.5), "blue", "red"),
+  if(is.null(county) == FALSE){
+    legend("top", legend=c("Individual county trends", "Country average", county),
+           text.col=c(rgb(0,0,0,0.5), "blue", county.col),
            bty="n")
   }else{
     legend("top", legend=c("Individual county trends", "Country average"), text.col=c(rgb(0,0,0,0.5), "blue"), bty="n")
