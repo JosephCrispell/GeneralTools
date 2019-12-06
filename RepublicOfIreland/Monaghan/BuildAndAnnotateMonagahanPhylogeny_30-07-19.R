@@ -4,6 +4,9 @@ library(ape) # Reading and phylogeny
 library(rgdal) # Convert X and Y to lat longs and reading in shape files
 library(basicPlotteR) # Add SNV scale
 library(grid) # Used to plot lines between plot panels
+library(raster) # Binding two shape files
+library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
+library(geiger) # For the tips function
 
 #### Read in the sample data ####
 
@@ -82,28 +85,24 @@ tipInfo[tipInfo$Coverage < 0.9, c("Tip", "Aliquot", "Coverage", "Species")]
 
 #### Plot the phylogeny ####
 
-# Open a PDF
-pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
+# Define the nodes defining clades of interest
+nodesDefiningClades <- c(144, 100, 116, 129)
+cladeColours <- c("cyan", "magenta", "green", "darkorchid4")
 
-# Plot the phylogeny
-plot.phylo(tree, show.tip.label=FALSE, edge.color=rgb(0,0,0, 0.5), edge.width=4)
-
-# Add tips coloured by species
+# Set the tip shapes and colours
 tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19),
                             "COW"=c(rgb(0,0,1,1), 17),
                             "NA"=c("grey", 15))
-tiplabels(pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="shape", 
-                                                scoreForHerds=FALSE),
-          col=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours, which="colour", 
-                                                scoreForHerds=FALSE), cex=1.25)
 
-# Add scale bar
-addSNPScale(position="bottom", size=10)
+# Open a PDF
+pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
 
-# Add species legend
-legend("right", legend=names(tipShapesAndColours), 
-       pch=as.numeric(unlist(tipShapesAndColours)[c(2, 4, 6)]),
-       col=unlist(tipShapesAndColours)[c(1, 3, 5)], bty="n", cex=1.5)
+plotPhylogeny(tree, tipInfo, tipShapesAndColours=tipShapesAndColours,
+              addBranchColours=FALSE)
+
+plotPhylogeny(tree, tipInfo, tipShapesAndColours=tipShapesAndColours,
+              nodesDefiningClades=nodesDefiningClades, 
+              cladeColours=cladeColours, addBranchColours=TRUE)
 
 # Close the pdf
 dev.off()
@@ -143,18 +142,34 @@ landParcelCoords <- c(landParcelCoordsJuly, landParcelCoordsNovember)
 # Calculate the herd centroids
 landParcelCentroids <- calculateLandParcelCentroids(landParcelCoords)
 
+# Score the herds based upon distances to land parcels
+landParcelCentroids <- calculateDistancesToOverallCentroidForEachHerd(landParcelCentroids,
+                                                                      tipInfo)
+
 #### Plot the sampling locations ####
+
+# Set the shapes and colours
+tipShapesAndColours <- list("BADGER"=c("red", 19, 21),
+                            "COW"=c("blue", 17, 24),
+                            "NA"=c("grey", 15, 15))
 
 # Add herd centroids and sett coordinates into tip information table
 tipInfo <- addHerdCentroidsAndSettLocationsToTipInfo(tipInfo, settLocations,
                                                      landParcelCentroids)
 
-plot(tipInfo[, c("X", "Y")], 
-     pch=ifelse(tipInfo$Species == "BADGER", 19, 17),
-     col=rgb(0,0,0,0.5), cex=2, bty="n", xaxt="n", yaxt="n",
-     xlab="", ylab="")
-addScale(size=10000)
+# Open a PDF
+outputPlotFile <- paste0(path, "Figures\\SamplingLocations_", date, ".pdf")
+pdf(outputPlotFile)
 
+# Plot the sampling locations
+plotSamplingLocations(tipInfo, tipShapesAndColours)
+
+# Plot the sampling locations with land parcels
+plotSamplingLocations(tipInfo, tipShapesAndColours, plotPolygons=TRUE,
+                      cattleShapeFile, landParcelCoords, herdCentroids)
+
+# Close the PDF
+dev.off()
 
 #### Plot the phylogeny and sampling locations together ####
 
@@ -175,7 +190,6 @@ tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19),
                             "COW"=c(rgb(0,0,1,1), 17),
                             "NA"=c("grey", 15))
 
-
 # Open a pdf
 file <- paste0(path, "Figures/", "PhylogenyAndLocations_", date, ".pdf")
 pdf(file, width=20, height=14)
@@ -186,13 +200,15 @@ plotPhylogenyAndLocations(tree, tipInfo, tipShapesAndColours,
                           addTipIndices=TRUE,
                           layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                           tipLabelOffset=10, snpScaleSize=50,
-                          spatialClusters=clusters)
+                          spatialClusters=clusters,
+                          nodesDefiningClades=nodesDefiningClades, 
+                          cladeColours=cladeColours, addBranchColours=TRUE)
 
 # Plot each clade separately
-for(node in c(144, 100, 116, 129)){
+for(i in seq_along(nodesDefiningClades)){
   
   # Extract the clade
-  clade <- extract.clade(tree, node)
+  clade <- extract.clade(tree, nodesDefiningClades[i])
   
   # Extract the tip information
   cladeTipInfo <- tipInfo[clade$tip.label, ]
@@ -202,11 +218,93 @@ for(node in c(144, 100, 116, 129)){
                             tipShapeCexOnPhylogeny=3, scaleCex=3, addTipIndices=TRUE,
                             layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                             tipLabelOffset=1, snpScaleSize=5,
-                            spatialClusters=clusters)
+                            spatialClusters=clusters,
+                            branchColour=cladeColours[i])
 }
 
 # Close the PDF
 dev.off()
+
+
+
+#### FUNCTIONS - plot sampling locations ####
+
+plotSamplingLocations <- function(tipInfo, tipShapesAndColours,
+                                  plotPolygons=FALSE,
+                                  cattleShapeFile=NULL, landParcelCoords=NULL,
+                                  herdCentroids=NULL){
+  
+  
+  # Note the sampled herds
+  sampledHerds <- getSampledHerds(tipInfo)
+  
+  # Create an empty plot
+  par(mar=c(0,0,0,0))
+  plot(tipInfo$X, tipInfo$Y, col="white", xaxt="n", yaxt="n", bty="n", xlab="", ylab="")
+  
+  # Plot the sampled herd land parcels
+  if(plotPolygons){
+    plotHerdLandParcels(sampledHerds, cattleShapeFile, landParcelCoords,
+                        herdCentroids)
+  }
+  
+  # Plot the sampling locations
+  points(tipInfo[, c("X", "Y")], 
+         pch=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours,
+                                               which="shape", shapeIndex=3),
+         bg=getTipShapeOrColourBasedOnSpecies(tipInfo, tipShapesAndColours,
+                                              which="colour", alpha=1),
+         cex=2, bty="n", xaxt="n", yaxt="n",
+         xlab="", ylab="")
+  
+  # Add a scale
+  addScale(size=10000)
+  
+  # Add a legend
+  legend("topright",
+         legend=c("Badger", "Cow"), pch=c(21, 24), text.col=c("red", "blue"),
+         pt.bg=c("red", "blue"), pt.cex=3, xpd=TRUE, horiz=FALSE, bty="n", cex=2)
+  
+  # Add a legend for the cattle herd location certainty
+  range <- range(tipInfo$MeanDistanceToLandParcels, na.rm=TRUE)
+  legendValues <- c(500, 1000, 5000, 10000)
+  legend("topleft", legend=legendValues/1000, pch=24, 
+         pt.bg=c(rgb(0,0,1, 1 - legendValues[1]/range[2]),
+                 rgb(0,0,1, 1 - legendValues[2]/range[2]),
+                 rgb(0,0,1, 1 - legendValues[3]/range[2]),
+                 rgb(0,0,1, 1 - 1)),
+         bty="n", pt.cex=2, col="black",
+         title="Mean distance to land parcels (km)", xpd=TRUE)
+}
+
+plotHerdLandParcels <- function(sampledHerds, cattleShapeFile, landParcelCoords,
+                                herdCentroids){
+  
+  # Plot the land parcels
+  for(herd in sampledHerds){
+    
+    # Get the polygon set ID for the current herd
+    polygonSetID <- which(cattleShapeFile@data$HERD_NO == herd)[1]
+    fieldIndex <- 0
+    
+    # Plot each of the current herds land parcels
+    for(coords in landParcelCoords[[polygonSetID]]){
+      
+      # Increment the field index
+      fieldIndex <- fieldIndex + 1
+      
+      # Plot the current field
+      polygon(coords)
+      
+      # Plot line from current field to centroid of all fields
+      points(x=c(herdCentroids[[herd]]$X, 
+                 herdCentroids[[herd]]$CentroidXs[fieldIndex]),
+             y=c(herdCentroids[[herd]]$Y, 
+                 herdCentroids[[herd]]$CentroidYs[fieldIndex]),
+             type="l", col=rgb(0,0,1, 0.5))
+    }
+  }
+}
 
 #### FUNCTIONS - Identify genetic and spatial clusters ####
 
@@ -531,7 +629,9 @@ plotPhylogenyAndLocations <- function(tree, tipInfo, tipShapesAndColours,
                                       clusterLty=2, clusterLwd=2, 
                                       clusterBorder=rgb(0.5,0.5,0.5,1), 
                                       clusterFill=rgb(0,0,0, 0.1), snpScaleSize=2,
-                                      clusterPCH=23, clusterPointCex=10){
+                                      clusterPCH=23, clusterPointCex=10,
+                                      nodesDefiningClades, cladeColours,
+                                      addBranchColours=FALSE, branchColour="dimgrey"){
 
   # Get and set the margins
   currentMar <- par()$mar
@@ -549,7 +649,10 @@ plotPhylogenyAndLocations <- function(tree, tipInfo, tipShapesAndColours,
   plotPhylogeny(tree, tipInfo, tipCex=tipShapeCexOnPhylogeny, scaleCex=scaleCex,
                 tipShapesAndColours=tipShapesAndColours,
                 addTipIndices=addTipIndices, indexCex=tipLabelCexOnPhylogeny,
-                labelOffset=tipLabelOffset, showTipLabels=showTipLabels, scaleSize=snpScaleSize)
+                labelOffset=tipLabelOffset, showTipLabels=showTipLabels, 
+                scaleSize=snpScaleSize, nodesDefiningClades=nodesDefiningClades, 
+                cladeColours=cladeColours, addBranchColours=addBranchColours,
+                branchColour=branchColour)
   
   # Note the tip coordinates
   tipCoordsOnPhylogeny <- getTipCoordinatesOnPhylogeny(tree$tip.label)
@@ -786,11 +889,19 @@ getTipCoordinatesOnPhylogeny <- function(tipLabels){
 plotPhylogeny <- function(tree, tipInfo, tipCex=1.25, 
                           scaleCex=1, tipShapesAndColours,
                           addTipIndices=FALSE, indexCex=1, labelOffset=1,
-                          showTipLabels=FALSE, scaleSize=2){
+                          showTipLabels=FALSE, scaleSize=2, nodesDefiningClades=NULL, 
+                          cladeColours=NULL, addBranchColours=TRUE, branchColour="dimgrey"){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
   par(mar=c(3,0,0,0))
+  
+  # Define the branch colours - branches in clades are coloured by clade
+  branchColours <- branchColour
+  if(addBranchColours){
+    branchColours <- defineBranchColoursOfClades(tree, nodesDefiningClades,
+                                                 cladeColours, "lightgrey")
+  }
   
   # Plot the phylogeny
   if(addTipIndices){
@@ -799,17 +910,17 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
     tree$tip.label <- 1:length(tree$tip.label)
     
     # Plot tree with tip labels
-    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+    plot.phylo(tree, show.tip.label=TRUE, edge.color=branchColours, edge.width=4,
                cex=indexCex, label.offset=labelOffset, xpd=TRUE,
                tip.color=getTipShapeOrColourBasedOnSpecies(tipInfo,
                                                            tipShapesAndColours,
                                                            which="colour",
                                                            scoreForHerds=FALSE))
   }else if(showTipLabels){
-    plot.phylo(tree, show.tip.label=TRUE, edge.color="dimgrey", edge.width=4,
+    plot.phylo(tree, show.tip.label=TRUE, edge.color=branchColours, edge.width=4,
                cex=indexCex, label.offset=labelOffset, xpd=TRUE)
   }else{
-    plot.phylo(tree, show.tip.label=FALSE, edge.color="dimgrey", edge.width=4)
+    plot.phylo(tree, show.tip.label=FALSE, edge.color=branchColours, edge.width=4)
   }
   
   # Add tips coloured by species
@@ -828,7 +939,29 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
   par(mar=currentMar)
 }
 
+defineBranchColoursOfClades <- function(tree, nodesDefiningClades,
+                                        CladeColours, defaultColour){
+  branchColours <- rep(defaultColour, dim(tree$edge)[1])
+  for(i in 1:length(nodesDefiningClades)){
+    clade <- tips(tree, node=nodesDefiningClades[i])
+    branchesInClades <- which.edge(tree, clade)
+    branchColours[branchesInClades] <- cladeColours[i]
+  }
+  return(branchColours)
+}
+
+
 #### FUNCTIONS - spatial data ####
+
+getSampledHerds <- function(tipInfo){
+  
+  # Get a list of the sampled herds
+  sampledHerds <- tipInfo[is.na(tipInfo$Species) == FALSE & 
+                            tipInfo$Species == "COW" & 
+                            is.na(tipInfo$HerdOrSettID) == FALSE, "HerdOrSettID"]
+  
+  return(sampledHerds)
+}
 
 addScale <- function(size, xPad=0.1, yPad=0.1, lwd=1, labelCex=2){
   
@@ -857,6 +990,8 @@ addHerdCentroidsAndSettLocationsToTipInfo <- function(tipInfo, settLocations,
   # Initialise columns to store the coordinates
   tipInfo$X <- NA
   tipInfo$Y <- NA
+  tipInfo$HerdCentroidScore <- NA
+  tipInfo$MeanDistanceToLandParcels <- NA
   
   # Examine each row of the tip information
   for(row in 1:nrow(tipInfo)){
@@ -879,7 +1014,11 @@ addHerdCentroidsAndSettLocationsToTipInfo <- function(tipInfo, settLocations,
       # Store herd centroid
       tipInfo[row, "X"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$X
       tipInfo[row, "Y"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$Y
-    
+      
+      # Store the herd score
+      tipInfo[row, "HerdCentroidScore"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$Score
+      tipInfo[row, "MeanDistanceToLandParcels"] <- landParcelCentroids[[tipInfo[row, "HerdOrSettID"]]]$SummaryOfDistancesToCentroid$Mean
+          
     # Otherwise if badger store sett coordinates
     }else{
       
@@ -981,6 +1120,59 @@ getPolygonCoords <- function(spatialDataFrame){
   return(output)
 }
 
+calculateDistancesToOverallCentroidForEachHerd <- function(herdCentroids, tipInfo){
+  
+  # Get a list of the sampled herds
+  sampledHerds <- getSampledHerds(tipInfo)
+  
+  # Create vector to store each herd's mean distance of land parcels to overall centroid
+  meanDistancesToCentroids <- c()
+  
+  # Examine each herd
+  for(herdID in names(herdCentroids)){
+    
+    # Skip unsampled herds
+    if(herdID %in% sampledHerds == FALSE){
+      next
+    }
+    
+    # Initialise vector to store distance of each land parcel centroid to overall centroid
+    distances <- c()
+    
+    # Examine each land parcel centroid
+    for(index in seq_along(herdCentroids[[herdID]]$CentroidXs)){
+      
+      # Calculate the distance of the current land parcel centroid to overall centroid
+      distances[index] <- euclideanDistance(herdCentroids[[herdID]]$X, 
+                                            herdCentroids[[herdID]]$Y,
+                                            herdCentroids[[herdID]]$CentroidXs[index],
+                                            herdCentroids[[herdID]]$CentroidYs[index])
+    }
+    
+    # Store the distances and summarise the distribution
+    herdCentroids[[herdID]]$DistancesToCentroid <- distances
+    herdCentroids[[herdID]]$SummaryOfDistancesToCentroid <- list("Mean"=mean(distances), 
+                                                                 "Variance"=var(distances),
+                                                                 "Min"=min(distances),
+                                                                 "Max"=max(distances))
+    
+    # Store the mean distance for the current herd
+    meanDistancesToCentroids[length(meanDistancesToCentroids) + 1] <- 
+      herdCentroids[[herdID]]$SummaryOfDistancesToCentroid$Mean
+  }
+  
+  # Calculate the maximum mean distance of land parcels to a centroid
+  maxMean <- max(meanDistancesToCentroids)
+  
+  # Score each herd based upon how close its land parcels are to its centroid
+  for(herdID in names(herdCentroids)){
+    herdCentroids[[herdID]]$Score <- 1 - (herdCentroids[[herdID]]$SummaryOfDistancesToCentroid$Mean
+                                          / maxMean)
+  }
+  
+  return(herdCentroids)
+}
+
 #### FUNCTIONS - plotting temporal sampling ####
 
 plotTemporalSamplingRange <- function(tipInfo){
@@ -1008,13 +1200,13 @@ plotTemporalSamplingRange <- function(tipInfo){
   # Add an X axis
   at <- as.Date(c("2018-05-15", "2018-08-15", "2018-11-15", "2019-02-15", "2019-05-15"),  format="%Y-%m-%d")
   axis(side=1, at=at, labels=FALSE, xpd=TRUE)
-  axis(side=1, at=at, labels=format(at, "%d-%m-%Y"), tick=FALSE, cex.axis=1,
+  axis(side=1, at=at, labels=format(at, "%d-%m-%Y"), tick=FALSE, cex.axis=1.5,
        line=1, xpd=TRUE)
   
   # Add y axis
   species <- c("BADGER", "COW")
-  axis(side=2, at=yLocations, labels=species, las=1, tick=FALSE, cex.axis=1.25,
-       line=-0.5)
+  axis(side=2, at=yLocations, labels=species, las=1, tick=FALSE, cex.axis=1.5,
+       line=-2)
   
   # Examine the sampling of each species
   for(speciesIndex in seq_along(species)){
@@ -1037,7 +1229,7 @@ plotTemporalSamplingRange <- function(tipInfo){
          y=yLocations[speciesIndex], adj=0, xpd=TRUE,
          labels=paste0("     ", length(dates), "/",
                        length(which(tipInfo$Species == species[speciesIndex]))),
-         cex=1.25)
+         cex=1.5)
   }
   
   # Reset the plotting margins
