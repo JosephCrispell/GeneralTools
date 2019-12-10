@@ -3,6 +3,7 @@
 # Load libraries
 library(MASS) # glm model with negative binomial distribution
 library(basicPlotteR) # alpha colours in plotting
+library(broom) # simple table from model outputs
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -32,6 +33,12 @@ eggCounts$Gender <- factor(eggCounts$Gender)
 
 #### Plot the data ####
 
+# Open a PDF
+pdf(paste0("ExaminingFarmEggCounts_", date, ".pdf"), width=10.5)
+
+# Create a grid of plots in the plotting window
+par(mfrow=c(2, 3))
+
 # Plot exploratory plots for the strongyles
 generateExploratoryPlots(response="strongyles", 
                          columns=c("Farm.code", "Age", "Category", "Gender", "Species", "parascaris"),
@@ -42,18 +49,27 @@ generateExploratoryPlots(response="parascaris",
                          columns=c("Farm.code", "Age", "Category", "Gender", "Species", "strongyles"),
                          data=eggCounts)
 
+# Close the PDF
+dev.off()
+
 #### Fit a negative binomial model on the strongyles egg counts ####
 
-nbModel <- glm.nb(strongyles ~ Farm.code + Species + Gender + Age + Category, data=eggCounts)
+# Drop donkeys
+eggCounts <- eggCounts[eggCounts$Species == "horse", ]
+
+nbModel <- glm.nb(strongyles ~ Species + Category + Farm.code, data=eggCounts)
+write.table(tidy(nbModel), file=paste("NegativeBinomial_Strongyles_", date, ".csv"), quote=FALSE, sep=",",
+            row.names=FALSE)
+summary(nbModel)
 
 #### Fit an ANOVA model on the strongyles egg counts ####
 
-anovaModel <- aov(strongyles ~ Farm.code + Gender + Category, data=eggCounts)
+anovaModel <- aov(strongyles ~ Species + Category + Farm.code, data=eggCounts)
 
 #### FUNCTIONS ####
 
-generateExploratoryPlots <- function(response, columns, data){
-  
+generateExploratoryPlots <- function(response, columns, data, ...){
+
   # Examine each of the columns
   for(column in columns){
     
@@ -62,7 +78,7 @@ generateExploratoryPlots <- function(response, columns, data){
       
       # Produce a boxplot
       boxplot(eggCounts[, response] ~ eggCounts[, column], las=1, frame=FALSE, outcol=rgb(0,0,0, 0),
-              ylab="Faecal egg count (eggs/gram)", main=response, xlab=column)
+              ylab="Faecal egg count (eggs/gram)", main=response, xlab=column, ...)
       spreadPointsMultiple(data=eggCounts, responseColumn=response, categoriesColumn=column, plotOutliers=TRUE,
                            pointCex=0.5, col="red")
       
@@ -70,7 +86,7 @@ generateExploratoryPlots <- function(response, columns, data){
       
       # Plot a scatter plot
       plot(x=eggCounts[, column], y=eggCounts[, response], las=1, pch=19, col=rgb(0,0,0, 0.1),
-           ylab="Faecal egg count (eggs/gram)", main=response, xlab=column, bty="n")
+           ylab="Faecal egg count (eggs/gram)", main=response, xlab=column, bty="n", ...)
     }
   }
 }
