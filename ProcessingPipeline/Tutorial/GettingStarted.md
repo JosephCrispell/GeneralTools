@@ -189,26 +189,108 @@ sudo apt install samtools
 We're going to use `samtools` to process our `SAM` file and get it ready for us to examine the variation. Run these commands:
 
 ```
-# Note the name of the SAM file
-SAMFILE="48-MBovis_aligned.sam"
-
 # Set the number of threads
 NTHREADS=4
 
+# Note the name of the SAM file
+SAMFILE="48-MBovis_aligned.sam"
+
 # Convert SAM to BAM
-BAMFILE=$NAME"_aligned.bam"
+BAMFILE="48-MBovis_aligned.bam"
 samtools view --threads $NTHREADS -b $SAMFILE > $BAMFILE
 
 # Sort the aligned reads
-SORTEDBAMFILE=$NAME"_aligned_sorted.bam"
+SORTEDBAMFILE="48-MBovis_aligned_sorted.bam"
 samtools sort $BAMFILE -o $SORTEDBAMFILE --threads $NTHREADS
 
 # Index the sorted reads
 samtools index $SORTEDBAMFILE -@ $NTHREADS
 
 # Remove duplicates
-NODUPLICATES=$NAME"_aligned_sorted_rmDuplicates.bam"
+NODUPLICATES="48-MBovis_aligned_sorted_rmDuplicates.bam"
 samtools rmdup $SORTEDBAMFILE $NODUPLICATES
 ```
 
-This is a quick test!
+## Calling variants against reference genome
+
+Now we have our aligned data stored in a `BAM` format, which is a compressed form of the `SAM` file. In the `BAM` file each read is stored with quality information and coordinates on the reference genome. If we visualise the `BAM` it might look something like this:
+![Screenshot of output from fastqc](Images/AligningRawReads.png)
+
+The next stage is see how different our sample is from the reference genome, this is known as calling variants.
+
+> QUESTION:<br>
+> 1. Can you see any variation in the example above?
+
+We can use [`bcftools`](https://samtools.github.io/bcftools/) to call variants present in a `BAM` file. You can install `bcftools` on Linux using (more info [here](https://samtools.github.io/bcftools/)):
+```
+sudo apt install bcftools
+```
+
+Now, we can use `bcftools` to call the variants in our data with the following commands:
+```
+# Set the number of threads
+NTHREADS=4
+
+# Set some quality filters
+ADJUST=50 # Parameter to adjust quality scores
+MAPQUALITY=30 # Skip aligned reads with quality score less than this
+BASEQUALITY=20 # Skip bases with quality score less than this
+
+# Note the name of the BAM file without duplicates
+NODUPLICATES="48-MBovis_aligned_sorted_rmDuplicates.bam"
+
+# Create a BCF file (compressed form of VCF)
+BCFFILE="48-MBovis_variants.bcf"
+bcftools mpileup $NODUPLICATES --threads $NTHREADS --adjust-MQ $ADJUST --min-MQ $MAPQUALITY --min-BQ $BASEQUALITY --fasta-ref $REFERENCE --output-type b --output $BCFFILE
+
+# Convert BCF to VCF
+VCFFILE="48-MBovis_variants.vcf"
+bcftools call $BCFFILE --ploidy 1 --multiallelic-caller --output-type v --threads $NTHREADS --variants-only --output-type v --output $VCFFILE
+```
+
+> QUESTION:<br>
+> 1. Why is setting a mapping quality filter important?
+
+The `VCF` (Variant Calling Format) file was produced using the code above, it stores information about variants. Variants are differences between a sample and a reference, these can be single nucleotide differences (SNPs) or small sequences being present or absent (INDELs).
+
+> QUESTIONS:<br>
+> 1. What does SNP stand for?
+> 2. What does INDEL stand for?
+
+Here is the first few lines of the `VCF` file we produced.
+```
+##fileformat=VCFv4.2
+##FILTER=<ID=PASS,Description="All filters passed">
+##bcftoolsVersion=1.9+htslib-1.9
+##bcftoolsCommand=mpileup --threads 4 --adjust-MQ 50 --min-MQ 30 --min-BQ 20 --fasta-ref Reference/Mbovis_LT708304-1.fasta --output-type b --output 48-MBovis_variants.bcf 48-MBovis_aligned_sorted_rmDuplicates.bam
+##reference=file://Reference/Mbovis_LT708304-1.fasta
+##contig=<ID=LT708304.1,length=4349904>
+##ALT=<ID=*,Description="Represents allele(s) other than observed.">
+##INFO=<ID=INDEL,Number=0,Type=Flag,Description="Indicates that the variant is an INDEL.">
+##INFO=<ID=IDV,Number=1,Type=Integer,Description="Maximum number of reads supporting an indel">
+##INFO=<ID=IMF,Number=1,Type=Float,Description="Maximum fraction of reads supporting an indel">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Raw read depth">
+##INFO=<ID=VDB,Number=1,Type=Float,Description="Variant Distance Bias for filtering splice-site artefacts in RNA-seq data (bigger is better)",Version="3">
+##INFO=<ID=RPB,Number=1,Type=Float,Description="Mann-Whitney U test of Read Position Bias (bigger is better)">
+##INFO=<ID=MQB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality Bias (bigger is better)">
+##INFO=<ID=BQB,Number=1,Type=Float,Description="Mann-Whitney U test of Base Quality Bias (bigger is better)">
+##INFO=<ID=MQSB,Number=1,Type=Float,Description="Mann-Whitney U test of Mapping Quality vs Strand Bias (bigger is better)">
+##INFO=<ID=SGB,Number=1,Type=Float,Description="Segregation based metric.">
+##INFO=<ID=MQ0F,Number=1,Type=Float,Description="Fraction of MQ0 reads (smaller is better)">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="List of Phred-scaled genotype likelihoods">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##INFO=<ID=ICB,Number=1,Type=Float,Description="Inbreeding Coefficient Binomial test (bigger is better)">
+##INFO=<ID=HOB,Number=1,Type=Float,Description="Bias in the number of HOMs number (smaller is better)">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=DP4,Number=4,Type=Integer,Description="Number of high-quality ref-forward , ref-reverse, alt-forward and alt-reverse bases">
+##INFO=<ID=MQ,Number=1,Type=Integer,Description="Average mapping quality">
+##bcftools_callVersion=1.9+htslib-1.9
+##bcftools_callCommand=call --ploidy 1 --multiallelic-caller --output-type v --threads 4 --variants-only --output-type v --output 48-MBovis_variants.vcf 48-MBovis_variants.bcf; Date=Wed Dec 11 14:17:27 2019
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  48-MBovis_aligned_sorted_rmDuplicates.bam
+LT708304.1      1057    .       A       G       225     .       DP=115;VDB=0.429871;SGB=-0.693147;MQSB=0.972083;MQ0F=0;AC=1;AN=1;DP4=0,0,64,39;MQ=46    GT:PL   1:255,0
+LT708304.1      8741    .       T       C       225     .       DP=134;VDB=0.99467;SGB=-0.693147;MQSB=0.893286;MQ0F=0;AC=1;AN=1;DP4=0,0,68,45;MQ=46     GT:PL   1:255,0
+...
+```
+
+[here](https://samtools.github.io/hts-specs/VCFv4.2.pdf)
