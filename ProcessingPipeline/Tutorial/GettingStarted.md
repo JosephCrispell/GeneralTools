@@ -25,26 +25,26 @@ Line 2: is a single read sequence, which corresponds to a short fragment of a ge
 
 Line 4: contains the quality scores. Each character represents a single number based on the ASCII code of each character (more info [here](https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/QualityScoreEncoding_swBS.htm)):
 
-| Symbol | ASCII code | Q Score ||| Symbol | ASCII code | Q Score |
-|--------|------------|---------|||--------|------------|---------|
-| \!     | 33         | 0       ||| 3      | 51         | 18      |
-| "      | 34         | 1       ||| 4      | 52         | 19      |
-| \#     | 35         | 2       ||| 5      | 53         | 20      |
-| $      | 36         | 3       ||| 6      | 54         | 21      |
-| %      | 37         | 4       ||| 7      | 55         | 22      |
-| &      | 38         | 5       ||| 8      | 56         | 23      |
-| '      | 39         | 6       ||| 9      | 57         | 24      |
-| \(     | 40         | 7       ||| :      | 58         | 25      |
-| \)     | 41         | 8       ||| ;      | 59         | 26      |
-| *      | 42         | 9       ||| <      | 60         | 27      |
-| +      | 43         | 10      ||| =      | 61         | 28      |
-| ,      | 44         | 11      ||| >      | 62         | 29      |
-| -      | 45         | 12      ||| ?      | 63         | 30      |
-| .      | 46         | 13      ||| @      | 64         | 31      |
-| /      | 47         | 14      ||| A      | 65         | 32      |
-| 0      | 48         | 15      ||| B      | 66         | 33      |
-| 1      | 49         | 16      ||| C      | 67         | 34      |
-| 2      | 50         | 17      ||| D      | 68         | 35      |
+| Symbol | ASCII code | Q Score | | Symbol | ASCII code | Q Score |
+|--------|------------|---------|-|--------|------------|---------|
+| \!     | 33         | 0       | | 3      | 51         | 18      |
+| "      | 34         | 1       | | 4      | 52         | 19      |
+| \#     | 35         | 2       | | 5      | 53         | 20      |
+| $      | 36         | 3       | | 6      | 54         | 21      |
+| %      | 37         | 4       | | 7      | 55         | 22      |
+| &      | 38         | 5       | | 8      | 56         | 23      |
+| '      | 39         | 6       | | 9      | 57         | 24      |
+| \(     | 40         | 7       | | :      | 58         | 25      |
+| \)     | 41         | 8       | | ;      | 59         | 26      |
+| *      | 42         | 9       | | <      | 60         | 27      |
+| +      | 43         | 10      | | =      | 61         | 28      |
+| ,      | 44         | 11      | | >      | 62         | 29      |
+| -      | 45         | 12      | | ?      | 63         | 30      |
+| .      | 46         | 13      | | @      | 64         | 31      |
+| /      | 47         | 14      | | A      | 65         | 32      |
+| 0      | 48         | 15      | | B      | 66         | 33      |
+| 1      | 49         | 16      | | C      | 67         | 34      |
+| 2      | 50         | 17      | | D      | 68         | 35      |
 
 ### How well did the sequencing run go?
 
