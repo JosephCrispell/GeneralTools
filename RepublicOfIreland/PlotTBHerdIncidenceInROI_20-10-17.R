@@ -58,6 +58,28 @@ plotCountyTrends(summaryTables, column="ProportionHerds", county="MONAGHAN", cou
 
 dev.off()
 
+pdf(paste0(path, "RepublicOfIreland/Mbovis/BTBGENIE_collaborations.pdf"))
+
+# Plot the BTBGENIE collaborative network
+plotCountyOutlines(countyCoords, countyNames, greyNI=FALSE)
+locations <- data.frame(Names=c("UCD", "CVRL", "AFBINI", "Queens"),
+                        Longitude=c(-6.2263217, -6.5013827, -5.8264364,-5.936238),
+                        Latitude=c(53.3082312, 53.342504, 54.6006229, 54.5844087))
+for(i in 1:nrow(locations)){
+  for(j in 1:nrow(locations)){
+    
+    # Skip lower half
+    if(i > j){
+      next
+    }
+    
+    points(x=c(locations$Longitude[i], locations$Longitude[j]), y=c(locations$Latitude[i], locations$Latitude[j]), type="l", lwd=2, col=rgb(1,0,0, 0.5))
+  }
+}
+points(x=locations$Longitude, y=locations$Latitude, pch=19, cex=1, col=rgb(0,0,1, 1))
+
+dev.off()
+
 #############
 # FUNCTIONS #
 #############
@@ -129,7 +151,7 @@ plotCounty <- function(countyCoords, countyNames, name){
   polygon(countyCoords[[countyIndex]], border=rgb(0,0,0, 1), col=rgb(0,0,1, 0), lwd=4)
 }
 
-plotCountyOutlines <- function(countyCoords, countyNames){
+plotCountyOutlines <- function(countyCoords, countyNames, greyNI=TRUE){
 
   # Get and set the margins
   currentMar <- par("mar")
@@ -152,7 +174,7 @@ plotCountyOutlines <- function(countyCoords, countyNames){
     }
 
     # Plot the Northern Ireland counties greyed out
-    if(countyNames[[key]] %in% niCounties){
+    if(greyNI && countyNames[[key]] %in% niCounties){
       polygon(countyCoords[[key]], border=rgb(0,0,0, 1), col=rgb(0,0,0, 0.75), lwd=2)
       next
     }
