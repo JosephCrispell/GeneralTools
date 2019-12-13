@@ -2,7 +2,7 @@
 path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/InterSpeciesClusters/"
 
 # Read in the sampled and in-contact animal life history information
-table <- read.table(paste0(path, "sampledAnimalsLifeHistories_05-04-2018.txt"), header=TRUE, sep="\t", stringsAsFactors=FALSE)
+table <- read.table(paste0(path, "sampledAnimalsLifeHistories_22-11-2018.txt"), header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Get the animals associated with the clusters 
 clusterAnimals <- table[grepl(table$Clusters, pattern="0|1|2|3|4") == TRUE & is.na(table$Isolates) == FALSE, ]
