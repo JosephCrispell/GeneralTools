@@ -6,7 +6,7 @@
 library(ape)
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 #################################
 # Note the Genome Size examined #
@@ -319,7 +319,7 @@ getBestModel <- function(aicmScores){
   return(model)
 }
 
-plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfTransitionRates, nSampledBadgers, nSampledCattle){
+plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(transitionCountEstimates, nSampledBadgers, nSampledCattle){
   
   # Set the margin sizes
   currentMar <- par("mar")
@@ -329,7 +329,7 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   columns <- c("Count_BB", "Count_CC", "Count_BC", "Count_CB")
   
   # Calculate the range of the transition rates
-  yLim <- range(weightedSampleOfTransitionRates[, columns])
+  yLim <- range(transitionCountEstimates[, columns])
 
   # Create an empty plot
   plot(x=NULL, y=NULL, bty="n", 
@@ -341,11 +341,11 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
   for(i in 1:length(columns)){
 
     # Calculate the quantiles for the current rate
-    quantiles <- quantile(weightedSampleOfTransitionRates[, columns[i]], probs=c(0.025, 0.975))
+    quantiles <- quantile(transitionCountEstimates[, columns[i]], probs=c(0.025, 0.975))
     
     # Plot a line from the lower to the upper thresholds
     lines(x=c(i, i), y=c(quantiles[1], quantiles[2]))
-    points(x=i, y=median(weightedSampleOfTransitionRates[, columns[i]]), pch=19, col="black")
+    points(x=i, y=median(transitionCountEstimates[, columns[i]]), pch=19, col="black")
   }
   
   # Add separator for within and between rates
@@ -359,14 +359,14 @@ plotSummaryOfTransitionCountsBasedOnPosteriorTrees <- function(weightedSampleOfT
                   paste0("N. cow tips = ", nSampledCattle)))
   
   # Calculate some summary statistics
-  quantilesBB <- quantile(weightedSampleOfTransitionRates[, "Count_BB"], probs=c(0.025, 0.975))
-  medianBB <- median(weightedSampleOfTransitionRates[, "Count_BB"])
-  quantilesBC <- quantile(weightedSampleOfTransitionRates[, "Count_BC"], probs=c(0.025, 0.975))
-  medianBC <- median(weightedSampleOfTransitionRates[, "Count_BC"])
-  quantilesCB <- quantile(weightedSampleOfTransitionRates[, "Count_CB"], probs=c(0.025, 0.975))
-  medianCB <- median(weightedSampleOfTransitionRates[, "Count_CB"])
-  quantilesCC <- quantile(weightedSampleOfTransitionRates[, "Count_CC"], probs=c(0.025, 0.975))
-  medianCC <- median(weightedSampleOfTransitionRates[, "Count_CC"])
+  quantilesBB <- quantile(transitionCountEstimates[, "Count_BB"], probs=c(0.025, 0.975))
+  medianBB <- median(transitionCountEstimates[, "Count_BB"])
+  quantilesBC <- quantile(transitionCountEstimates[, "Count_BC"], probs=c(0.025, 0.975))
+  medianBC <- median(transitionCountEstimates[, "Count_BC"])
+  quantilesCB <- quantile(transitionCountEstimates[, "Count_CB"], probs=c(0.025, 0.975))
+  medianCB <- median(transitionCountEstimates[, "Count_CB"])
+  quantilesCC <- quantile(transitionCountEstimates[, "Count_CC"], probs=c(0.025, 0.975))
+  medianCC <- median(transitionCountEstimates[, "Count_CC"])
   
   # Get the axis limits
   axisLimits <- par("usr")
@@ -834,6 +834,19 @@ calculateMeanEstimatedTransitionRatesBetweenCattleAndBadgerPopulationsWeightedBy
            y=modelCowToBadgerRateUpper[i] + (0.025 * (axisLimits[4] - axisLimits[3])), 
            labels=round(modelCowToBadgerFlagMeans[i], digits=2), col="blue", cex=0.7, xpd=TRUE)
     }
+    
+    ## Summarise the estimates from the 2 Deme equal model
+    
+    modelIndex <- which(grepl(analyses, pattern="2Deme_equal"))
+    medianBC <- modelBadgerToCowRateMedians[modelIndex]
+    lowerBC <- modelBadgerToCowRateLower[modelIndex]
+    upperBC <- modelBadgerToCowRateUpper[modelIndex]
+    
+    medianCB <- modelCowToBadgerRateMedians[modelIndex]
+    lowerCB <- modelCowToBadgerRateLower[modelIndex]
+    upperCB <- modelCowToBadgerRateUpper[modelIndex]
+    
+    multiplier <- medianBC / medianCB
     
     # # Model average - badgers to cattle
     # quantiles <- quantile(badgerToCowRatePosteriorSumSamples, probs=c(0.025, 0.975), na.rm=TRUE)

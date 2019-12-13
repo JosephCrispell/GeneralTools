@@ -11,7 +11,7 @@ library(mapplots) # For plotting pie charts
 #### Path and Date ####
 #~~~~~~~~~~~~~~~~~~~~~#
 
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 date <- format(Sys.Date(), "%d-%m-%y")
 

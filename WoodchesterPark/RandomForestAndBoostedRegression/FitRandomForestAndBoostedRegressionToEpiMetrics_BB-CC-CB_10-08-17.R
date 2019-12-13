@@ -11,7 +11,7 @@ library(gplots)
 library(gbm)
 library(dismo)
 library(codetools) # To fix weird error when loading RData file
-library(plotteR)
+library(basicPlotteR)
 
 #### Open the Genetic Vs Epidemiological distances table ####
 
@@ -19,7 +19,7 @@ library(plotteR)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
 # Read in the table
 file <- paste(path, "GeneticVsEpidemiologicalDistances_05-04-18.txt", sep="")
@@ -210,7 +210,7 @@ remove(list= c("infoRF", "stepOutput", "trainRows", "geneticVsEpi", "colsToIgnor
                "predictedGeneticDistancesBR"))
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/GeneticVsEpidemiologicalDistances/"
 
 # Note the column to use for the importance measure
 colToUseForRF <- "%IncMSE"
