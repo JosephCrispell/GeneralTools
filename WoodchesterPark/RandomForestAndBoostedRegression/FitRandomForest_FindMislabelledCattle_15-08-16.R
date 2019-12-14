@@ -8,7 +8,7 @@ suppressMessages(library(randomForest))
 #####################################################
 
 # Get the path to the necessary files
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read Genetic V.s Epi Distances table
 file <- paste(path, "Mislabelling/Cattle-RF-BR/",
@@ -29,7 +29,7 @@ table <- table[, -which(names(table) == "iSpeciesJSpecies")]
 #################################
 
 # Set threshold 
-threshold <- 40 # TRYING THIS OUT
+threshold <- 15 # TRYING THIS OUT
 
 par(mfrow=c(3,1))
 
@@ -147,7 +147,9 @@ smoothScatter(predictions, table[-trainRows, "GeneticDistance"],
               ylab="Actual",
               nrpoints=0, las=1)
 abline(lm(table$GeneticDistance ~ table$predictions), col="red")
-correlation <- round(cor(table[-trainRows, "GeneticDistance"], predictions), digits=2)
+corr <- cor(table[-trainRows, "GeneticDistance"], predictions)
+correlation <- round(corr, digits=2)
+rSq <- round(corr^2, digits=2)
 legend("topleft", legend=c(paste("corr =", correlation), paste("Rsq =", rSq)), bty="n", cex = 1)
 
 # Isolate Prediction
@@ -169,156 +171,156 @@ write.table(meanValues, file, quote=FALSE, row.names=FALSE, sep=",")
 # FUNCTIONS #
 #############
 
-removeColumnsIfNotRelevant <- function(table){
-  
-  # For particular comparisons: Badger-Badger, Badger-Cattle, Cattle-Cattle
-  # some epidemiological metrics aren't relevant and column will be filled 
-  # with -1
-  
-  colsToRemove <- c()
-  index <- 0
-  
-  for(col in 3:(ncol(table)-2)){
+  removeColumnsIfNotRelevant <- function(table){
     
-    if(sd(table[, col]) == 0){
-      index <- index + 1
-      colsToRemove[index] <- col
-      cat(paste("Removed: ", colnames(table)[col], "\n", sep=""))
-    }
-  }
-  return(table[, -colsToRemove])
-}
-
-runRandomForestTuning <- function(inputTable, initialMtry, nTrees, cols){
-  
-  tuneOutput <- tuneRF(inputTable[, cols], inputTable$Genetic, mtryStart=initialMtry,
-                       ntreeTry=nTrees, stepFactor=1.5, improve=0.0001, trace=TRUE,
-                       plot=TRUE)
-  
-  return(tuneOutput)
-}
-
-plotMeanValues <- function(inputTable, column, title, yLabel, cex.main, cex.leg){
-  
-  ## Plotting the Mean Difference between the predicted and actual genetic distances for 
-  #  each isolate
-  
-  # Input table structure:
-  # Mean  Median  Lower Upper Range
-  # 1     2       3     4     5    
-  
-  # Find the Boundary where 95% of data lie below
-  bound95<- quantile(inputTable[,column], c(0.95))
-  
-  # Highlight and Label Outliers
-  plot(inputTable[,column],
-       ylab=yLabel,
-       main=title, cex.main=cex.main,
-       pch=20, bty="n", xlab="", xaxt="n", las=1)
-  text(x=1:nrow(inputTable), y=inputTable[,column], labels=rownames(inputTable),
-       col=ifelse(inputTable[,column] >= bound95, rgb(1,0,0), rgb(0,0,0, 0)), xpd=TRUE)
-  abline(h=bound95, col="red")
-  legend("topright", paste("Upper = ", round(bound95, digits=3)), bty="n",
-         cex=cex.leg)
-  
-  # A histogram
-  hist(inputTable[,column], breaks=20, main="Isolate Prediction", xlab=paste(column, " difference", sep=""))
-  
-  # Print the outliers
-  print(rownames(inputTable)[inputTable[,column] >= bound95])
-}
-
-examinePredictedVersusActual <- function(inputTable){
-  
-  ## Store a distribution of the difference between the predicted
-  ## and actual genetic distances for each isolate
-  
-  # Input table structure:
-  # GeneticDistance iSpeciesJSpecies  EpiMetricA  EpiMetricB  ... IsolateI  IsolateJ  Predicted
-  # 0               1                 2           3           ... -2        -1        ncol(table)
-  
-  # Ensure the Isolate ID columns are vectors of strings
-  inputTable$IsolateI <- as.character(inputTable$IsolateI)
-  inputTable$IsolateJ <- as.character(inputTable$IsolateJ)
-  
-  # Initialise a list to store the difference distributions for each isolate
-  isolates <- list()
-  
-  # Examine each row of the input table
-  for(row in 1:nrow(inputTable)){
+    # For particular comparisons: Badger-Badger, Badger-Cattle, Cattle-Cattle
+    # some epidemiological metrics aren't relevant and column will be filled 
+    # with -1
     
-    ## Check the I Isolate ID
-    # Have we envountered this isolate before?
-    if(is.null(isolates[[inputTable[row, ncol(inputTable) - 2]]]) == TRUE){
-      
-      # Calculate the difference between the predicted and actual values
-      difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
-      
-      # Store the array of calculated differences
-      isolates[[inputTable[row, ncol(inputTable) - 2]]] <- c(difference)
-      
-      # We have encountered this isolate - append the difference
-    }else{
-      
-      # Calculate the difference between the predicted and actual values
-      difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
-      
-      # Append the calculated difference to the array
-      isolates[[inputTable[row, ncol(inputTable) - 2]]] <- c(isolates[[inputTable[row, ncol(inputTable) - 2]]], difference)
-    }
+    colsToRemove <- c()
+    index <- 0
     
-    ## Check the J Isolate ID
-    # Have we envountered this isolate before?
-    if(is.null(isolates[[inputTable[row, ncol(inputTable) - 1]]]) == TRUE){
+    for(col in 3:(ncol(table)-2)){
       
-      # Calculate the difference between the predicted and actual values
-      difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
-      
-      # Store the array of calculated differences
-      isolates[[inputTable[row, ncol(inputTable) - 1]]] <- c(difference)
-      
-      # We have encountered this isolate - append the difference  
-    }else{
-      
-      # Calculate the difference between the predicted and actual values
-      difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
-      
-      # Append the calculated difference to the array
-      isolates[[inputTable[row, ncol(inputTable) - 1]]] <- c(isolates[[inputTable[row, ncol(inputTable) - 1]]], difference)
+      if(sd(table[, col]) == 0){
+        index <- index + 1
+        colsToRemove[index] <- col
+        cat(paste("Removed: ", colnames(table)[col], "\n", sep=""))
+      }
     }
+    return(table[, -colsToRemove])
   }
   
-  ## Summarise the distributions of differences for each isolate
-  
-  # Initialise a table to store a summary of the difference distributions for each isolate
-  summaryTable <- data.frame(Mean=rep(0, length(isolates)),
-                             Median=rep(0, length(isolates)),
-                             Lower=rep(0, length(isolates)),
-                             Upper=rep(0, length(isolates)),
-                             Range=rep(0, length(isolates)),
-                             NumberDistances=rep(0, length(isolates)))
-  
-  # Get a list of the isolate IDs
-  ids <- names(isolates)
-  rownames(summaryTable) <- ids
-  
-  # Examine each isolates difference distribution
-  for(i in 1:nrow(summaryTable)){
+  runRandomForestTuning <- function(inputTable, initialMtry, nTrees, cols){
     
-    # Get the distribution of differences for the current isolate
-    differences <- isolates[[ids[i]]]
+    tuneOutput <- tuneRF(inputTable[, cols], inputTable$Genetic, mtryStart=initialMtry,
+                         ntreeTry=nTrees, stepFactor=1.5, improve=0.0001, trace=TRUE,
+                         plot=TRUE)
     
-    # Calculate the quantiles of the distribution
-    quantiles <- quantile(differences, c(0.025, 0.975))
-    
-    # Summarise the difference distribution
-    summaryTable[i,"Mean"] <- mean(differences)
-    summaryTable[i,"Median"] <- median(differences)
-    summaryTable[i,"Lower"] <- quantiles[[1]]
-    summaryTable[i,"Upper"] <- quantiles[[2]]
-    summaryTable[i,"Range"] <- quantiles[[2]] - quantiles[[1]]
-    summaryTable[i,"NumberDistances"] <- length(differences)
+    return(tuneOutput)
   }
   
-  return(summaryTable)
-}
+  plotMeanValues <- function(inputTable, column, title, yLabel, cex.main, cex.leg){
+    
+    ## Plotting the Mean Difference between the predicted and actual genetic distances for 
+    #  each isolate
+    
+    # Input table structure:
+    # Mean  Median  Lower Upper Range
+    # 1     2       3     4     5    
+    
+    # Find the Boundary where 95% of data lie below
+    bound95<- quantile(inputTable[,column], c(0.95))
+    
+    # Highlight and Label Outliers
+    plot(inputTable[,column],
+         ylab=yLabel,
+         main=title, cex.main=cex.main,
+         pch=20, bty="n", xlab="", xaxt="n", las=1)
+    text(x=1:nrow(inputTable), y=inputTable[,column], labels=rownames(inputTable),
+         col=ifelse(inputTable[,column] >= bound95, rgb(1,0,0), rgb(0,0,0, 0)), xpd=TRUE)
+    abline(h=bound95, col="red")
+    legend("topright", paste("Upper = ", round(bound95, digits=3)), bty="n",
+           cex=cex.leg)
+    
+    # A histogram
+    hist(inputTable[,column], breaks=20, main="Isolate Prediction", xlab=paste(column, " difference", sep=""))
+    
+    # Print the outliers
+    print(rownames(inputTable)[inputTable[,column] >= bound95])
+  }
+  
+  examinePredictedVersusActual <- function(inputTable){
+    
+    ## Store a distribution of the difference between the predicted
+    ## and actual genetic distances for each isolate
+    
+    # Input table structure:
+    # GeneticDistance iSpeciesJSpecies  EpiMetricA  EpiMetricB  ... IsolateI  IsolateJ  Predicted
+    # 0               1                 2           3           ... -2        -1        ncol(table)
+    
+    # Ensure the Isolate ID columns are vectors of strings
+    inputTable$IsolateI <- as.character(inputTable$IsolateI)
+    inputTable$IsolateJ <- as.character(inputTable$IsolateJ)
+    
+    # Initialise a list to store the difference distributions for each isolate
+    isolates <- list()
+    
+    # Examine each row of the input table
+    for(row in 1:nrow(inputTable)){
+      
+      ## Check the I Isolate ID
+      # Have we envountered this isolate before?
+      if(is.null(isolates[[inputTable[row, ncol(inputTable) - 2]]]) == TRUE){
+        
+        # Calculate the difference between the predicted and actual values
+        difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
+        
+        # Store the array of calculated differences
+        isolates[[inputTable[row, ncol(inputTable) - 2]]] <- c(difference)
+        
+        # We have encountered this isolate - append the difference
+      }else{
+        
+        # Calculate the difference between the predicted and actual values
+        difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
+        
+        # Append the calculated difference to the array
+        isolates[[inputTable[row, ncol(inputTable) - 2]]] <- c(isolates[[inputTable[row, ncol(inputTable) - 2]]], difference)
+      }
+      
+      ## Check the J Isolate ID
+      # Have we envountered this isolate before?
+      if(is.null(isolates[[inputTable[row, ncol(inputTable) - 1]]]) == TRUE){
+        
+        # Calculate the difference between the predicted and actual values
+        difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
+        
+        # Store the array of calculated differences
+        isolates[[inputTable[row, ncol(inputTable) - 1]]] <- c(difference)
+        
+        # We have encountered this isolate - append the difference  
+      }else{
+        
+        # Calculate the difference between the predicted and actual values
+        difference <- abs(inputTable[row, ncol(inputTable)] - inputTable[row, 1])
+        
+        # Append the calculated difference to the array
+        isolates[[inputTable[row, ncol(inputTable) - 1]]] <- c(isolates[[inputTable[row, ncol(inputTable) - 1]]], difference)
+      }
+    }
+    
+    ## Summarise the distributions of differences for each isolate
+    
+    # Initialise a table to store a summary of the difference distributions for each isolate
+    summaryTable <- data.frame(Mean=rep(0, length(isolates)),
+                               Median=rep(0, length(isolates)),
+                               Lower=rep(0, length(isolates)),
+                               Upper=rep(0, length(isolates)),
+                               Range=rep(0, length(isolates)),
+                               NumberDistances=rep(0, length(isolates)))
+    
+    # Get a list of the isolate IDs
+    ids <- names(isolates)
+    rownames(summaryTable) <- ids
+    
+    # Examine each isolates difference distribution
+    for(i in 1:nrow(summaryTable)){
+      
+      # Get the distribution of differences for the current isolate
+      differences <- isolates[[ids[i]]]
+      
+      # Calculate the quantiles of the distribution
+      quantiles <- quantile(differences, c(0.025, 0.975))
+      
+      # Summarise the difference distribution
+      summaryTable[i,"Mean"] <- mean(differences)
+      summaryTable[i,"Median"] <- median(differences)
+      summaryTable[i,"Lower"] <- quantiles[[1]]
+      summaryTable[i,"Upper"] <- quantiles[[2]]
+      summaryTable[i,"Range"] <- quantiles[[2]] - quantiles[[1]]
+      summaryTable[i,"NumberDistances"] <- length(differences)
+    }
+    
+    return(summaryTable)
+  }

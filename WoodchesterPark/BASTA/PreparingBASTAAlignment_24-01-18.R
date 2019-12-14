@@ -21,7 +21,7 @@ library(lubridate)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Set the path
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read in the newick tree
 # NOTE!!! Isolate selection for BASTA clade already done in BuildAndPlotPhylogeny_08-02-18.R!!!

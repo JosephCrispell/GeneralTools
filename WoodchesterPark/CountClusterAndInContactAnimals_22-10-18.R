@@ -12,11 +12,16 @@ incontactAnimals <- table[grepl(table$Clusters, pattern="0|1|2|3|4") == TRUE & i
 nClusterBadgers <- length(which(clusterAnimals$Species == "BADGER"))
 nInContactBadgers <- length(which(incontactAnimals$Species == "BADGER"))
 nInContactPositiveBadgers <- length(which(incontactAnimals$Species == "BADGER" & is.na(incontactAnimals$DetectionDate) == FALSE))
+propPositive <- nInContactPositiveBadgers / nInContactBadgers
 
 # Count number of positive cluster and in-contact cattle
 nClusterCattle <- length(which(clusterAnimals$Species == "COW"))
 nInContactCattle <- length(which(incontactAnimals$Species == "COW"))
 nInContactPositiveCattle <- length(which(incontactAnimals$Species == "COW" & is.na(incontactAnimals$CattleTestDates) == FALSE))
+propInContactCattlePositive <- nInContactPositiveCattle / nInContactCattle
+
+
+
 
 ## Get numbers just for cluster 3 (zero indexed - actually cluster 4)
 clusterAnimals <- table[grepl(table$Clusters, pattern="3") == TRUE & is.na(table$Isolates) == FALSE, ]
@@ -26,8 +31,10 @@ incontactAnimals <- table[grepl(table$Clusters, pattern="3") == TRUE & is.na(tab
 nClusterBadgers <- length(which(clusterAnimals$Species == "BADGER"))
 nInContactBadgers <- length(which(incontactAnimals$Species == "BADGER"))
 nInContactPositiveBadgers <- length(which(incontactAnimals$Species == "BADGER" & is.na(incontactAnimals$DetectionDate) == FALSE))
+propPositive <- nInContactPositiveBadgers / nInContactBadgers
 
 # Count number of positive cluster and in-contact cattle
 nClusterCattle <- length(which(clusterAnimals$Species == "COW"))
 nInContactCattle <- length(which(incontactAnimals$Species == "COW"))
 nInContactPositiveCattle <- length(which(incontactAnimals$Species == "COW" & is.na(incontactAnimals$CattleTestDates) == FALSE))
+propInContactCattlePositive <- nInContactPositiveCattle / nInContactCattle

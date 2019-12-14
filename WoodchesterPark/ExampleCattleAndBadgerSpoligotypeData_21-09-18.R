@@ -1,7 +1,7 @@
 #### Load the cattle spoligotype data ####
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read in the spoligotype table
 spoligotypes <- read.table(paste0(path, "Spoligo_APHA_2013-09-09.csv"), header=TRUE, sep=",",

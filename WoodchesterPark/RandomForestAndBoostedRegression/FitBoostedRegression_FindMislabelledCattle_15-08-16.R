@@ -6,7 +6,7 @@ library(dismo)
 #####################################################
 
 # Get the path to the necessary files
-path <- "/home/josephcrispell/Desktop/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
+path <- "/home/josephcrispell/storage/Research/Woodchester_CattleAndBadgers/NewAnalyses_22-03-18/"
 
 # Read Genetic V.s Epi Distances table
 file <- paste(path, "Mislabelling/Cattle-RF-BR/",
@@ -30,7 +30,7 @@ table <- table[, -which(names(table) == "iSpeciesJSpecies")]
 threshold <- 15
 
 # Open an output PDF file
-file <- paste(path, "Mislabelling/Badger-RF-BR/",
+file <- paste(path, "Mislabelling/Cattle-RF-BR/",
               "GeneticDistanceDistribution_24-03-2018.pdf", sep="")
 pdf(file)
 
@@ -127,7 +127,7 @@ pdf(file)
 par(mfrow=c(1,1))
 
 # Plot the forest building output
-plot(infoRF, las=1)
+plot(stepOutput, las=1)
 
 # Predicted Versus Actual
 smoothScatter(predictions, table[-trainRows, "GeneticDistance"],
@@ -137,7 +137,9 @@ smoothScatter(predictions, table[-trainRows, "GeneticDistance"],
               ylab="Actual",
               nrpoints=0, las=1)
 abline(lm(table$GeneticDistance ~ table$predictions), col="red")
-correlation <- round(cor(table[-trainRows, "GeneticDistance"], predictions), digits=2)
+corr <- cor(table[-trainRows, "GeneticDistance"], predictions)
+correlation <- round(corr, digits=2)
+rSq <- round(corr^2, digits=2)
 legend("topleft", legend=c(paste("corr =", correlation), paste("Rsq =", rSq)), bty="n", cex = 1)
 
 # Isolate Prediction
