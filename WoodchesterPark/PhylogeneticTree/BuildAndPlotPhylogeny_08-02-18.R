@@ -53,6 +53,10 @@ cattleInfoFile <- paste(path, "IsolateData/",
 badgerInfoFile <- paste(path, "IsolateData/",
                         "BadgerInfo_08-04-15_LatLongs_XY_Centroids.csv", sep="")
 
+# Count the number of sampled herds
+herds <- countNumberOfSampledHerds(cattleInfoFile, treeBS$tip.label)
+length(unique(herds))
+
 #~~~~~~~~~~~~~~~~~~~~~~~~#
 #### Clade definition ####
 #~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -165,6 +169,23 @@ writeBASTATree(treeBS, node=node, plot=TRUE, filePath=path,
 #-----------------#
 #### FUNCTIONS ####
 #-----------------#
+
+countNumberOfSampledHerds <- function(cattleInfoFile, tipLabels){
+  
+  # Read in the cattle sampling information
+  cattleInfo <- read.table(cattleInfoFile, header=TRUE, sep=",", stringsAsFactors=TRUE)
+  
+  # Find the rows for the tips
+  indices <- c()
+  for(row in 1:nrow(cattleInfo)){
+    
+    if(cattleInfo[row, "StrainId"] %in% tipLabels){
+      indices[length(indices) + 1] <- row
+    }
+  }
+  
+  return(cattleInfo[indices, "CPHH"])
+}
 
 plotClades <- function(tree, nodesDefiningClades, cladeColours){
   
