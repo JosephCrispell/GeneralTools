@@ -7,12 +7,13 @@ library(grid) # Used to plot lines between plot panels
 library(raster) # Binding two shape files
 library(OpenStreetMap) # Great tutorial here: https://www.r-bloggers.com/the-openstreetmap-package-opens-up/
 library(geiger) # For the tips function
+library(phyloHelpeR) # Building phylogeny with RAxML
 
 #### Read in the sample data ####
 
 # Set the path 
-path <- "J:\\WGS_Monaghan\\"
-#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Monaghan/"
+# path <- "J:\\WGS_Monaghan\\"
+path <- "/home/josephcrispell/storage/Research/RepublicOfIreland/Mbovis/Monaghan/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -26,7 +27,7 @@ file <- paste0(path, "Animal_HerdIDs_04-07-19.csv")
 herdIDs <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Read in the FASTA file
-fastaFile <- paste0(path, "vcfFiles/sequences_Prox-10_24-09-2019.fasta")
+fastaFile <- paste0(path, "vcfFiles/sequences_Prox-10_17-12-2019.fasta")
 sequences <- read.dna(fastaFile, as.character=TRUE, format="fasta")
 nSites <- ncol(sequences)
 
@@ -54,7 +55,7 @@ settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors
 #### Build the phylogeny ####
 
 # Build a phylogeny using RAxML
-tree <- runRAXML(fastaFile, date="24-09-19", path, alreadyRun=TRUE, outgroup="\\>Ref-1997")
+tree <- phyloHelpeR::runRAXML(fastaFile, date="17-12-19", path, outgroup="\\>Ref-1997", nThreads=10)
 
 # Remove Reference
 tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997")])
