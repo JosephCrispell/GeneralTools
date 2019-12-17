@@ -12,18 +12,18 @@ library(phyloHelpeR) # Building phylogeny with RAxML
 #### Read in the sample data ####
 
 # Set the path 
-# path <- "J:\\WGS_Monaghan\\"
-path <- "/home/josephcrispell/storage/Research/RepublicOfIreland/Mbovis/Monaghan/"
+path <- "J:\\WGS_Monaghan\\"
+#path <- "/home/josephcrispell/storage/Research/RepublicOfIreland/Mbovis/Monaghan/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Read in the animal IDs
-file <- paste0(path, "EartagsAndSettIDs_08-08-19.csv")
+file <- paste0(path, "EartagsAndSettIDs_17-12-19.csv")
 animalTags <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Read in the cattle herd IDs
-file <- paste0(path, "Animal_HerdIDs_04-07-19.csv")
+file <- paste0(path, "Animal_HerdIDs_17-12-19.csv")
 herdIDs <- read.table(file, header=TRUE, sep=",", stringsAsFactors=FALSE)
 
 # Read in the FASTA file
@@ -32,7 +32,7 @@ sequences <- read.dna(fastaFile, as.character=TRUE, format="fasta")
 nSites <- ncol(sequences)
 
 # Read in the coverage information
-coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_24-09-2019.txt")
+coverageFile <- paste0(path, "vcfFiles/isolateCoverageSummary_DP-20_17-12-2019.txt")
 coverage <- read.table(coverageFile, header=TRUE, sep="\t", stringsAsFactors=FALSE)
 
 # Read in the test summaries tables
@@ -55,7 +55,7 @@ settCaptureEventData <- read.table(file, header=TRUE, sep="\t", stringsAsFactors
 #### Build the phylogeny ####
 
 # Build a phylogeny using RAxML
-tree <- phyloHelpeR::runRAXML(fastaFile, date="17-12-19", path, outgroup="\\>Ref-1997", nThreads=10)
+tree <- runRAXML(fastaFile, date="17-12-19", path, outgroup="\\>Ref-1997", alreadyRun=TRUE)
 
 # Remove Reference
 tree <- drop.tip(tree, tree$tip.label[grepl(tree$tip.label, pattern=">Ref-1997")])
@@ -86,10 +86,6 @@ tipInfo[tipInfo$Coverage < 0.9, c("Tip", "Aliquot", "Coverage", "Species")]
 
 #### Plot the phylogeny ####
 
-# Define the nodes defining clades of interest
-nodesDefiningClades <- c(144, 100, 116, 129)
-cladeColours <- c("cyan", "magenta", "green", "darkorchid4")
-
 # Set the tip shapes and colours
 tipShapesAndColours <- list("BADGER"=c(rgb(1,0,0,1), 19),
                             "COW"=c(rgb(0,0,1,1), 17),
@@ -101,11 +97,25 @@ pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_", date, ".pdf"), height=14)
 plotPhylogeny(tree, tipInfo, tipShapesAndColours=tipShapesAndColours,
               addBranchColours=FALSE)
 
-plotPhylogeny(tree, tipInfo, tipShapesAndColours=tipShapesAndColours,
-              nodesDefiningClades=nodesDefiningClades, 
-              cladeColours=cladeColours, addBranchColours=TRUE)
+
 
 # Close the pdf
+dev.off()
+
+pdf(paste0(path, "Figures/MbovisAnnotatedPhylogeny_FAN_", date, ".pdf"), width=14)
+
+plotPhylogeny(tree, tipInfo, tipShapesAndColours=tipShapesAndColours,
+              addBranchColours=FALSE, type="fan", scaleSize=50)
+
+# Close the pdf
+dev.off()
+
+
+
+# Look at the node numbers
+pdf("test.pdf", width=50, height=20)
+plot.phylo(tree, show.tip.label=FALSE)
+nodelabels(frame="none")
 dev.off()
 
 
@@ -167,7 +177,7 @@ plotSamplingLocations(tipInfo, tipShapesAndColours)
 
 # Plot the sampling locations with land parcels
 plotSamplingLocations(tipInfo, tipShapesAndColours, plotPolygons=TRUE,
-                      cattleShapeFile, landParcelCoords, herdCentroids)
+                      cattleShapeFile, landParcelCoords, landParcelCentroids)
 
 # Close the PDF
 dev.off()
@@ -201,31 +211,19 @@ plotPhylogenyAndLocations(tree, tipInfo, tipShapesAndColours,
                           addTipIndices=TRUE,
                           layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
                           tipLabelOffset=10, snpScaleSize=50,
-                          spatialClusters=clusters,
-                          nodesDefiningClades=nodesDefiningClades, 
-                          cladeColours=cladeColours, addBranchColours=TRUE)
-
-# Plot each clade separately
-for(i in seq_along(nodesDefiningClades)){
-  
-  # Extract the clade
-  clade <- extract.clade(tree, nodesDefiningClades[i])
-  
-  # Extract the tip information
-  cladeTipInfo <- tipInfo[clade$tip.label, ]
-  
-  # Plot the phylogeny linked to sampling locations
-  plotPhylogenyAndLocations(clade, cladeTipInfo, tipShapesAndColours,
-                            tipShapeCexOnPhylogeny=3, scaleCex=3, addTipIndices=TRUE,
-                            layoutMatrix=matrix(c(1,1,2,2,2), nrow=1, ncol=5, byrow=TRUE),
-                            tipLabelOffset=1, snpScaleSize=5,
-                            spatialClusters=clusters,
-                            branchColour=cladeColours[i])
-}
+                          spatialClusters=clusters)
 
 # Close the PDF
 dev.off()
 
+
+#### DATA I NEED ####
+
+# Update:
+#   - Cattle herd land parcels - Guy
+#   - Badger sett information - Guy
+#   - Sampling information for new genomes - Kevin
+#   - Sampled cattle testing histories - Dan
 
 
 #### FUNCTIONS - plot sampling locations ####
@@ -891,7 +889,8 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
                           scaleCex=1, tipShapesAndColours,
                           addTipIndices=FALSE, indexCex=1, labelOffset=1,
                           showTipLabels=FALSE, scaleSize=2, nodesDefiningClades=NULL, 
-                          cladeColours=NULL, addBranchColours=TRUE, branchColour="dimgrey"){
+                          cladeColours=NULL, addBranchColours=TRUE, branchColour="dimgrey",
+                          type="phylogram"){
   
   # Get and set the plotting margins
   currentMar <- par()$mar
@@ -912,16 +911,16 @@ plotPhylogeny <- function(tree, tipInfo, tipCex=1.25,
     
     # Plot tree with tip labels
     plot.phylo(tree, show.tip.label=TRUE, edge.color=branchColours, edge.width=4,
-               cex=indexCex, label.offset=labelOffset, xpd=TRUE,
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE, type=type,
                tip.color=getTipShapeOrColourBasedOnSpecies(tipInfo,
                                                            tipShapesAndColours,
                                                            which="colour",
                                                            scoreForHerds=FALSE))
   }else if(showTipLabels){
     plot.phylo(tree, show.tip.label=TRUE, edge.color=branchColours, edge.width=4,
-               cex=indexCex, label.offset=labelOffset, xpd=TRUE)
+               cex=indexCex, label.offset=labelOffset, xpd=TRUE, type=type)
   }else{
-    plot.phylo(tree, show.tip.label=FALSE, edge.color=branchColours, edge.width=4)
+    plot.phylo(tree, show.tip.label=FALSE, edge.color=branchColours, edge.width=4, type=type)
   }
   
   # Add tips coloured by species
@@ -1344,8 +1343,14 @@ getTipInfo <- function(tipLabels, animalTags, coverage, herdIDs){
   # Examine each of the tips
   for(index in seq_along(tipLabels)){
     
+    # Split the tip label if dash
+    aliquot <- tipLabels[index]
+    if(grepl(tipLabels[index], pattern="-")){
+      aliquot <- strsplit(tipLabels[index], split="-")[[1]][2]
+    }
+    
     # Build an aliquot code for the current isolate
-    aliquot <- paste0("TB19-", paste(rep(0, 6-nchar(tipLabels[index])), collapse=""), tipLabels[index])
+    aliquot <- paste0("TB19-", paste(rep(0, 6-nchar(aliquot)), collapse=""), aliquot)
     tipInfo[index, "Aliquot"] <- aliquot
     
     # Find the row in the coverage information for the current tip
