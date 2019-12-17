@@ -7,7 +7,7 @@ library(rgdal) # For reading in shape files
 library(sp)
 
 # Set the path variable
-path <- "/home/josephcrispell/Desktop/Research/"
+path <- "/home/josephcrispell/storage/Research/"
 
 # Get the current date
 date <- format(Sys.Date(), "%d-%m-%y")
@@ -44,9 +44,9 @@ par(mar=c(0,0,0,0))
 plotPolygons(ukPolygons, roiPolygons, xLim=c(-10.5,1.6), yLim=c(50,61), lwd=1.5)
 
 # Plot the locations of interest
-# UCD, Glasgow, Roslin, AFBNI, Woodchester & Weybridge
-xCoords <- c(-6.2187348, -4.3278438, -3.2020387, -5.8265013, -2.277601, -0.4957386)
-yCoords <- c(53.3052183, 55.9096218, 55.8508271, 54.600598, 51.710962, 51.3535598)
+# UCD, Glasgow, Roslin, AFBNI, Woodchester, Weybridge, and Oxford
+xCoords <- c(-6.2187348, -4.3278438, -3.2020387, -5.8265013, -2.277601, -0.4957386,-1.2565447)
+yCoords <- c(53.3052183, 55.9096218, 55.8508271, 54.600598, 51.710962, 51.3535598, 51.754843)
 for(i in seq_along(xCoords)){
   for(j in seq_along(xCoords)){
     
