@@ -66,6 +66,21 @@ summary(nbModel)
 
 anovaModel <- aov(strongyles ~ Species + Category + Farm.code, data=eggCounts)
 
+#### TO DO ####
+
+# Add in new variables:
+# - Season
+# - Time since last treatment (test date - treatment date)
+# - Treatment drug used
+
+# Plot egg counts as a histogram
+
+# Run the analyses of Donkey and horses seperately and create separate figures
+
+# Plot egg counts in horses versus donkeys
+
+# Plot egg counts for each farm
+
 #### FUNCTIONS ####
 
 generateExploratoryPlots <- function(response, columns, data, ...){
