@@ -8,9 +8,6 @@ today <- format(Sys.Date(), "%d-%m-%y")
 # Note the path
 path <- file.path("~", "storage", "Research", "RepublicOfIreland", "Mbovis")
 
-# Create a directory to store all data
-createDirectory(file.path(path, "ROI_18-12-19"))
-
 #### Note the FASTQ nad VCF info ####
 
 # Get the FASTQ files
@@ -23,13 +20,70 @@ fastqs <- rbind(fastqs, getFASTQs(path, directory="Wicklow", date="15-03-19", ig
 
 # Get the VCF files
 vcfs <- getVCFs(path, "Monaghan")
+vcfs <- rbind(vcfs, getVCFs(path, "Wicklow"))
 
+# Combine the FASTQ and VCF information into a single table
+sampleInfo <- merge(x=fastqs, y=vcfs, by="SeqID", all=TRUE) # Outer join
 
-#### Note the VCF file names ####
+# Note FASTQ files that can't find VCF - duplicates or poor coverage
+noVCFs <- sampleInfo[is.na(sampleInfo$VCF), ]
+noVCFs[noVCFs$NumberMapped > 100000 & noVCFs$MappingProp > 0.1, c("SeqID", "Forward", "NumberMapped", "MappingProp", "County", "VCF", "Coverage", "Date")]
 
-#### Construct single sample information table ####
+# Remove FASTQs if no VCF present
+sampleInfo <- sampleInfo[is.na(sampleInfo$VCF) == FALSE, ]
+
+#### Create a new directory structure for ROI data ####
+
+# Copy all the files into a structured set of directories
+copyFiles(sampleInfo, date="18-12-19")
+
+# Copy each of the FASTQ and vcfFiles
+
+#### Construct an aliquot for each sequence ID ####
+
+#### Get an animal ID and species for each sequence ####
+
+#### Create sample information file ####
 
 #### FUNCTIONS ####
+
+copyFiles <- function(sampleInfo, date){
+  
+  # Create a directory to store all data
+  home <- file.path(path, paste0("ROI_", date))
+  createDirectory(home)
+  
+  # Examine each of the file information lines
+  for(row in 1:nrow(sampleInfo)){
+    
+    # Create county directory, if doesn't already exist
+    countyDirectory <- file.path(home, sampleInfo[row, "County"])
+    createDirectory(countyDirectory)
+    
+    # Create folder for FASTQ files, if doesn't already exist
+    fastqDirectory <- file.path(countyDirectory, paste0("Fastqs_", sampleInfo[row, "Date"]))
+    createDirectory(fastqDirectory)
+    
+    # Create folder for vcf file, if doesn't already exist
+    vcfDirectory <- file.path(countyDirectory, "vcfFiles")
+    createDirectory(vcfDirectory)
+    
+    # Copy the FASTQ files
+    forward <- file.path(sampleInfo[row, "PathToFASTQ"], sampleInfo[row, "Forward"])
+    reverse <- file.path(sampleInfo[row, "PathToFASTQ"], sampleInfo[row, "Reverse"])
+    file.copy(forward, fastqDirectory)
+    file.copy(reverse, fastqDirectory)
+    
+    # Copy the VCF file into county folder
+    vcf <- file.path(sampleInfo[row, "PathToVCF"], sampleInfo[row, "VCF"])
+    file.copy(vcf, vcfDirectory)
+    
+    # Copy the VCF file into All folder
+    vcfDirectory <- file.path(home, "vcfFiles")
+    createDirectory(vcfDirectory)
+    file.copy(vcf, vcfDirectory)
+  }
+}
 
 getVCFs <- function(path, directory){
   
@@ -46,7 +100,6 @@ getVCFs <- function(path, directory){
                         "VCF"=vcfFiles,
                         "Coverage"=rep(NA, length(vcfFiles)),
                         "AverageDepth"=rep(NA, length(vcfFiles)),
-                        "County"=rep(directory, length(vcfFiles)),
                         "PathToVCF"=rep(folder, length(vcfFiles)),
                         stringsAsFactors=FALSE)
   
@@ -79,6 +132,7 @@ getFASTQs <- function(path, directory, date, ignore=NULL){
   fastqInfo <- data.frame("SeqID"=rep(NA, length(fastqs)),
                           "Forward"=fastqs,
                           "Reverse"=rep(NA, length(fastqs)),
+                          "NumberMapped"=rep(NA, length(fastqs)),
                           "MappingProp"=rep(NA, length(fastqs)),
                           "Date"=rep(date, length(fastqs)),
                           "County"=rep(directory, length(fastqs)),
@@ -99,6 +153,7 @@ getFASTQs <- function(path, directory, date, ignore=NULL){
     propMapped <- mapping[mappingRow, "NumberMappedReads"] / 
       (mapping[mappingRow, "NumberMappedReads"] + mapping[mappingRow, "NumberUnmappedReads"])
     fastqInfo[index, "MappingProp"] <- propMapped
+    fastqInfo[index, "NumberMapped"] <- mapping[mappingRow, "NumberMappedReads"]
   }
   
   return(fastqInfo)
