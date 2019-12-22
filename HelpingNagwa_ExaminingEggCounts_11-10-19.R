@@ -9,7 +9,7 @@ library(broom) # simple table from model outputs
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Set the working directory
-setwd(file.path("~", "Desktop", "HelpingNagwa"))
+setwd(file.path("~", "Desktop", "HelpingNagwa", "ComparingEggCountMethods"))
 
 #### Read in the data ####
 
