@@ -69,14 +69,18 @@ dev.off()
 # Fit for the horses data
 nbModel <- glm.nb(strongyles ~ Farm.code + Category + TimeSinceTreatment + Season + Type_treatment,
                   data=horseEggCounts, maxit=50)
-write.table(tidy(nbModel), file=paste("NegativeBinomial_Strongyles_HORSES_", date, ".csv"),
+write.table(tidy(nbModel), file=paste0("NegativeBinomial_Strongyles_HORSES_", date, ".csv"),
             quote=FALSE, sep=",", row.names=FALSE)
+summary(nbModel)
+
+nbModel <- glm.nb(strongyles ~ Category + TimeSinceTreatment + Season + Type_treatment,
+                  data=horseEggCounts, maxit=50)
 summary(nbModel)
 
 # Fit for the donkey data
 nbModel <- glm.nb(strongyles ~ Farm.code + Category + TimeSinceTreatment + Season,
-                  data=horseEggCounts, maxit=50)
-write.table(tidy(nbModel), file=paste("NegativeBinomial_Strongyles_DONKEYS_", date, ".csv"),
+                  data=donkeyEggCounts, maxit=50)
+write.table(tidy(nbModel), file=paste0("NegativeBinomial_Strongyles_DONKEYS_", date, ".csv"),
             quote=FALSE, sep=",", row.names=FALSE)
 summary(nbModel)
 
