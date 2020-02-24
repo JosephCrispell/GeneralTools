@@ -1,3 +1,5 @@
+# Load libraries
+library(basicPlotteR)
 
 # Create some random points
 x <- rnorm(20)
