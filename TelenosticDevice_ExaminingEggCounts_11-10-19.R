@@ -9,7 +9,7 @@ library(broom) # simple table from model outputs
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Set the working directory
-setwd(file.path("~", "Desktop", "HelpingNagwa", "ComparingEggCountMethods"))
+setwd(file.path("~", "Desktop", "HelpingNagwa", "ComparingEggCountsMethods"))
 
 #### Read in the data ####
 
@@ -24,8 +24,10 @@ rawEggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALS
 #### Plot a data summary ####
 
 # Plot the raw data
-pdf(paste0("NagwaAnalysis_Figures_", date, ".pdf"))
+jpeg(paste0("NagwaAnalysis_Figures_corrected_", date, ".jpeg"))
 plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)")
+dev.off()
+jpeg(paste0("NagwaAnalysis_Figures_raw_", date, ".jpeg"))
 plotRawEggCounts(rawEggCounts, yLab="Faecal egg count (raw)")
 dev.off()
 
@@ -151,6 +153,9 @@ plotRawEggCounts <- function(eggCounts, yLab){
   # Note the colour for each method
   methodColours <- list("MC"="red", "MiniFLOTAC"="green", "TelenosticManual"="blue", "TelenosticAutomatic"="black")
   
+  # Note the names to be used for the legend for each method
+  methodNames <- list("MC"="McMaster", "MiniFLOTAC"="MiniFLOTAC", "TelenosticManual"="TelenosticManual", "TelenosticAutomatic"="TelenosticAutomatic")
+  
   # Note the sample replicate locations
   sampleXPositions <- list("Sample 1.1"=0.66, "Sample 1.2"=1, "Sample 1.3"=1.33,
                            "Sample 2.1"=1.66, "Sample 2.2"=2, "Sample 2.3"=2.33,
@@ -192,7 +197,7 @@ plotRawEggCounts <- function(eggCounts, yLab){
   }
   
   # Add a legend
-  legend("topright", legend=names(methodColours), text.col=unlist(methodColours), bty="n")
+  legend("topright", legend=unlist(methodNames), text.col=unlist(methodColours), bty="n")
   
   # Reset the plotting margins
   par(mar=currentMar)
