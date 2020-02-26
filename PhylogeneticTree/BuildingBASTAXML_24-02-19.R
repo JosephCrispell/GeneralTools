@@ -608,7 +608,7 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   fileLines <- addDemeAssignmentBlock(fileLines, metadata)
   
   # Add substitution model block
-  fileLines <- addSubstitutionModelBlock(fileLines, metadata, relaxedOrStrict,
+  fileLines <- addSubstitutionModelBlock(fileLines, sequences, relaxedOrStrict,
                                          sampleFromPrior)
   
   # Add branch rates model - if relaxed
