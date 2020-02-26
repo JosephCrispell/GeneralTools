@@ -18,7 +18,7 @@
 # Find Directories #
 ####################
 
-# Get a list of the directories in teh current directory
+# Get a list of the directories in the current directory
 DIRECTORIES=(`ls -d */`)
 
 #######################################################
@@ -44,7 +44,7 @@ do
 	# Wait a second to let java initialise
 	sleep 1
 	
-	# Get the PID of tyhe submitted job
+	# Get the PID of the submitted job
 	PID=`ps -u | grep "java" | grep $XML | awk '{ split($0, array, " +"); print(array[2]) }'`
 	
 	# Move out of current directory
