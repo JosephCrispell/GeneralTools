@@ -30,7 +30,7 @@ constantSiteCounts <- generateConstantSiteCounts(nSites=ncol(sequences))
 #### Build BASTA xml(s) ####
 
 # Set the options to be used in the BASTA analyses
-popSizeEstimation <- "equal" # "equal" or "varying" ?
+equalOrVaryingPopSizes <- "equal" # "equal" or "varying" ?
 relaxedOrStrict <- "relaxed" # "relaxed" or "strict" ?
 chainLength <- 300000000
 sampleFromPrior <- FALSE
@@ -526,7 +526,7 @@ addSequenceBlock <- function(fileLines, sequences, metadata, sampleFromPrior){
     name <- paste0(metadata[row, "ID"], "_", metadata[row, "Species"])
     
     # Build the sequence
-    sequence <- paste(sequences[metadata[row, "ID"], 1:ncol(sequences)], collapse="")
+    sequence <- paste(sequences[as.character(metadata[row, "ID"]), 1:ncol(sequences)], collapse="")
     
     # Build the file lines using the name and sequence
     fileLines[length(fileLines) + 1] <- paste0("\t\t<sequence taxon=\"", name, "\">")
@@ -575,21 +575,21 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   nDemes <- 2
   
   # Note the output XML name
-  outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
-                          "_", date, sep="")
+  outputFileName <- paste0("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
+                          "_", date)
   if(sampleFromPrior == TRUE){
     outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
-                            "_PRIOR_", date, sep="")
+                            "_PRIOR_", date)
   }
   
   # Create a directory for the output file
-  dir.create(paste(path, outputFileName, "/", sep=""))
+  dir.create(file.path(path, outputFileName), showWarnings=FALSE)
   
   # Create an array of file lines and add in each necessary block
   fileLines <- startBuildingOutputFileLines()
   
   # Add Sequenced block
-  fileLines <- addSequenceBlock(sequences, metadata, sampleFromPrior)
+  fileLines <- addSequenceBlock(fileLines, sequences, metadata, sampleFromPrior)
   
   # Add distribution block - if relaxed
   if(relaxedOrStrict == "relaxed"){
@@ -630,8 +630,7 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   fileLines <- addMigrationRateLikelihoodBlock(fileLines)
   
   # Add Beast settings block
-  fileLines <- addBeastSettingsBlock(fileLines, demeStructure,
-                                     equalOrVaryingPopSizes == "varying", outputFileName,
+  fileLines <- addBeastSettingsBlock(fileLines, equalOrVaryingPopSizes == "varying", outputFileName,
                                      initialValue = 0.1, chainLength, relaxedOrStrict,
                                      migrationRateMatrix, nDemes=nDemes)
   
@@ -639,6 +638,6 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   fileLines <- addEnd(fileLines)
   
   # Write the file out
-  writeXMLFile(fileLines, paste(path, outputFileName, "/", outputFileName, ".xml", sep=""))
+  writeXMLFile(fileLines, paste0(file.path(path, outputFileName, outputFileName), ".xml"))
 }
 
