@@ -35,7 +35,7 @@ relaxedOrStrict <- "relaxed" # "relaxed" or "strict" ?
 chainLength <- 300000000
 sampleFromPrior <- FALSE
 
-# Build the BASTA xml - I AM HERE!!!!!!!!!!!
+# Build the BASTA xml
 buildXMLFile(sequences, metadata, equalOrVaryingPopSizes, path, date, 
              constantSiteCounts, chainLength, relaxedOrStrict, sampleFromPrior)
 
