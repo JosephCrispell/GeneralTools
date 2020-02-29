@@ -26,6 +26,11 @@ files <- list.files(file.path(path, "BASTA_equal_relaxed_25-02-20"), full.names=
 logFile <- files[grepl(files, pattern=".log")]
 logTable <- readLogFile(logFile, burnInProp=0.1)
 
+#### Create summary plots for log table ####
+
+migrationRateEstimates <- summarisePosteriorLogTable(logFile, logTable, demes, code=2, arrowFactor=20, nBootstraps=1000,
+                                                     genomeSize, date)
+
 #### Count transitions between demes estimated in .trees file ####
 
 # Note the path to the JAVA jar tool that counts transitions in .trees file
@@ -38,11 +43,212 @@ treesFile <- files[grepl(files, pattern=".trees")]
 countsFile <- paste0(substr(treesFile, 1, nchar(treesFile)-6), "_TransitionCounts.txt")
 countTransitionsOnPosteriorTrees(countsFile, logFile, treesFile, demes, pathToTransitionCountingJarFile)
 
-#### Create summary plots for log table ####
+# Read in the transition count tables
+transitionCountTables <- readInBASTATransitionCounts(countsFile, burnInProp=0.1)
 
+#### Plot the estimated transition counts and rates distributions ####
 
+pdf(paste0(path, "BASTAResults_", date, ".pdf"), width=10, height=17)
+
+par(mfrow=c(2,1))
+
+# Summarise the lineage transition rate estimates
+plotSummaryOfLineageTransitionRates(migrationRateEstimates,"4DemeCumbria", nReplicates, date, flagCex=1, varyingOnly=TRUE,
+                                    label="a")
+
+# Summarise the transition count distributions
+plotTransitionCountDistributionSummaries(transitionCountTables, varyingOnly=TRUE, label="a")
+
+dev.off()
+
+#### Report the AICM score ####
+
+# Examine the AICM scores for the varying and equal models
+pdf(paste0(path, "Cumbria/Figures/BASTAResults_AICM_", date, ".pdf"))
+plotAICMFromVaryingAndEqualModels(migrationRateEstimates)
+dev.off()
+
+#### FUNCTIONS - plot transition rates ####
+
+summariseLineageTransitionRates <- function(migrationRateEstimates, demeStructure, nReplicates, date, priors=FALSE){
+  
+  # Initialise vectors to store summary data for each analysis
+  medians <- c()
+  uppers <- c()
+  lowers <- c()
+  flags <- c()
+  index <- 0
+  
+  # Get the names of the rates
+  names <- names(migrationRateEstimates)[-3]
+      
+  # Examine each of the rates for the current model
+  index <- 0
+  for(rate in names){
+        
+    # Ignore the AICM score
+    if(rate == "AICM"){
+      next
+    }
+        
+    # Get the migration rate values
+    values <- migrationRateEstimates[[rate]]
+        
+    # Estimate the flag proportion support
+    flagSupport <- sum(ifelse(is.na(values), 0, 1)) / length(values)
+        
+    # Calculate median of the values
+    median <- median(values, na.rm=TRUE)
+        
+    # Calculate the upper and lower bounds
+    quantiles <- quantile(values, probs=c(0.025, 0.975), na.rm=TRUE)
+        
+    # Store all the values calculated 
+    index <- index + 1
+    medians[index] <- median
+    uppers[index] <- quantiles[2]
+    lowers[index] <- quantiles[1]
+    flags[index] <- flagSupport
+  }
+  
+  # Create a structure to store the output results
+  output <- list("medians"=medians, "uppers"=uppers, "lowers"=lowers, "flags"=flags, "names"=names)
+  
+  return(output)
+}
+
+plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeStructure, nReplicates, date, flagCex=1,
+                                                priors=FALSE, varyingOnly=FALSE, label=NULL){
+  
+  # Get and set the current margins
+  currentMar <- par()$mar
+  par(mar=c(10,4.1,4,0.5))
+  
+  # Summarise the lineage transition rates
+  rateSummaries <- summariseLineageTransitionRates(migrationRateEstimates, demeStructure, nReplicates, date, priors)
+  
+  # Note the locations of the bars
+  replicatesPad <- seq(from=0.025, to=0.4, length.out=nReplicates)
+  if(varyingOnly){
+    replicatesPad <- seq(from=0.4, to=-0.4, length.out=nReplicates)
+  }
+  rateLocations <- list("badgerCumbria-to-cowCumbria"=1,
+                        "cowCumbria-to-badgerCumbria"=2,
+                        "badgerTVR-to-cowTVR"=3,
+                        "cowTVR-to-badgerTVR"=4,
+                        "cowTVR-to-cowCumbria"=5)
+  
+  # Get the distribution summary information
+  lowers <- rateSummaries$lowers
+  uppers <- rateSummaries$uppers
+  medians <- rateSummaries$medians
+  flags <- rateSummaries$flags
+  names <- rateSummaries$names
+  
+  # Remove estimates from equal model if requested
+  if(varyingOnly){
+    equalIndices <- which(grepl(names, pattern="_equal_"))
+    lowers <- lowers[-equalIndices]
+    uppers <- uppers[-equalIndices]
+    medians <- medians[-equalIndices]
+    flags <- flags[-equalIndices]
+    names <- names[-equalIndices]
+  }
+  
+  # Note the Y axis ticks
+  yRange <- range(c(lowers, uppers))
+  at <- c(yRange[1], 0.001, 0.01, 0.1, 1)
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, ylim=log(range(at)), xlim=c(0.5, 5.5), bty="n", las=1,
+       xaxt="n", ylab="Per lineage transition rate per year", xlab="", yaxt="n")
+  
+  # Create plot label
+  main <- "Estimated using genomic data"
+  if(priors){
+    main <- "Estimated without genomic data (sampling from priors)"
+  }
+  title(main, col.main=ifelse(priors, "red", "black"), line=1, cex.main=1.5)
+  
+  # Add plot label
+  if(is.null(label) == FALSE){
+    mtext(label, side=3, line=1, at=axisLimits[1], cex=2.5)
+  }
+  
+  # Add the Y labels
+  axis(side=2, at=log(at), labels=round(at, digits=3), las=1, xpd=TRUE, line=-0.2)
+  
+  # Get the axisLimits
+  axisLimits <- par()$usr
+  yLength <- axisLimits[4] - axisLimits[3]
+  
+  # Add the X axis labels
+  labels <- c("badgers-to-cattle", "cattle-to-badgers")
+  axis(side=1, at=c(1, 2), labels=labels, las=2)
+  yBracketHeight <- axisLimits[3] - (0.3*yLength)
+  yBracketHeights <- c(yBracketHeight+0.2,
+                       yBracketHeight, yBracketHeight,
+                       yBracketHeight-0.2,
+                       yBracketHeight, yBracketHeight,
+                       yBracketHeight+0.2)
+  points(x=c(1, 1, 1.5, 1.5, 1.5, 2, 2), y=yBracketHeights, xpd=TRUE, type="l")
+  points(x=c(3, 3, 3.5, 3.5, 3.5, 4, 4), y=yBracketHeights, xpd=TRUE, type="l")
+  axis(side=1, at=c(1.5, 3.5), labels=c("Cumbria", "Northern Ireland (NI)"), tick=FALSE, line=8)
+  
+  # Loop through each analysis
+  for(index in seq_along(names)){
+    
+    # Note the indices of the to and from IDs
+    fromIndex <- 6
+    toIndex <- 7
+    if(priors){
+      fromIndex <- 7
+      toIndex <- 8
+    }
+    
+    # Get the location on the X axis for the current analysis
+    parts <- strsplit(names[index], split="_")[[1]]
+    replicate <- as.numeric(parts[4])
+    from <- getDemeNamesForDemeStructure("4DemeCumbria", as.numeric(parts[fromIndex]))
+    to <- getDemeNamesForDemeStructure("4DemeCumbria", as.numeric(parts[toIndex]))
+    pad <- replicatesPad[replicate] 
+    position <- ifelse(parts[2] == "varying", rateLocations[[paste0(from, "-to-", to)]] - pad,
+                       rateLocations[[paste0(from, "-to-", to)]] + pad)
+    
+    # Plot the a summary of the distribution
+    points(x=c(position, position), y=log(c(lowers[index], uppers[index])), type="l", lwd=2,
+           col=ifelse(parts[2] == "varying", "grey", "black"))
+    points(x=position, y=log(medians[index]), pch=19)
+    
+    # Plot the rate flag value (proportion of steps rate turned on for)
+    text(x=position, y=log(uppers[index]), labels=paste0(" ", round(flags[index], digits=2)), srt=90, adj=0, cex=flagCex)
+  }
+  
+  # Add legend
+  if(varyingOnly == FALSE){
+    legend("topleft", legend=c("varying", "equal"), text.col=c("grey", "black"), bty="n")
+  }
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
 
 #### FUNCTIONS - transition counts ####
+
+readInBASTATransitionCounts <- function(countsFile, burnInProp=0.1){
+          
+  # Read in the file as table
+  countTable <- read.table(countsFile, header=TRUE, sep="\t", stringsAsFactors=FALSE, check.names=FALSE)
+          
+  # Re-order the table by the posterior sample
+  countTable <- countTable[order(countTable$Sample), ]
+          
+  # Remove the burn-in
+  burnIn <- round(burnInProp * nrow(countTable), digits=0)
+  countTable <- countTable[burnIn:nrow(countTable), ]
+  
+  return(countTable)
+}
 
 countTransitionsOnPosteriorTrees <- function(countsFile, logFile, treesFile, demes, pathToJarFile){
   
@@ -62,7 +268,213 @@ countTransitionsOnPosteriorTrees <- function(countsFile, logFile, treesFile, dem
 
 #### FUNCTIONS - log file ####
 
-plotMigrationRates <- function(logTable, demes, code, arrowFactor){
+calculateAICM <- function(logLikelihoodValues, nBootstraps){
+  # Calculation taken from:
+  # Baele et al. 2012 - Improving the accuracy of demographic and molecular clock
+  # model comparison while accomodating phylogenetic uncertainty
+  # Equation 10: AICM = k - 2m
+  #   k = effective number of parameters = 2 * variance of the posterior log likehoods
+  #   m = mean of the posterior log likelihoods
+  aicm <- (2 * var(logLikelihoodValues)) - (2 * mean(logLikelihoodValues))
+  
+  # Conduct some bootstrapping
+  bootstrapAICMs <- c()
+  for(i in 1:nBootstraps){
+    
+    sample <- sample(logLikelihoodValues, size=length(logLikelihoodValues), replace=TRUE)
+    bootstrapAICMs[i] <- (2 * var(sample)) - (2 * mean(sample))
+  }
+  
+  # Summarise the bootstraps
+  quantiles <- quantile(bootstrapAICMs, probs=c(0.025, 0.975))
+  output <- c(aicm, quantiles[[1]], quantiles[[2]])
+  
+  return(output)
+}
+
+plotParameterTraces <- function(logTable, colNamesToPlot){
+  
+  # Define a grid of plots
+  nPlots <- ceiling(sqrt(length(colNamesToPlot)))
+  
+  # Set the plotting window dimensions
+  par(mfrow=c(nPlots, nPlots))
+  
+  # Set the margins
+  par(mar=c(0, 0, 2, 0))
+  
+  # Plot a trace for each parameter
+  for(col in colNamesToPlot){
+    plot(logTable[, col], type="l", xlab="", xaxt="n", ylab="", yaxt="n", bty="n",
+         main=col, cex.main=0.5)
+  }
+  
+  # Reset the margins
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  
+  # Reset the plotting window dimensions
+  par(mfrow=c(1,1))
+}
+
+plotMigrationRatePosteriors <- function(logTable, demeNames, alpha=0.5){
+  
+  # Get the forward migration rate estimates and their associated flags
+  rateEstimates <- list()
+  rateFlags <- list()
+  for(col in colnames(logTable)){
+    
+    if(grepl(col, pattern="migModel.forwardRateMatrix_") == TRUE){
+      
+      # Get the demes involved
+      parts <- strsplit(col, split="_")[[1]]
+      a <- parts[2]
+      b <- parts[3]
+      
+      # Skip rate if never estimate e.d. cattle-outer -> badger-inner
+      if(length(unique(logTable[, col])) == 1){
+        next
+      }
+      
+      # Build migration rate name
+      rateName <- paste(demeNames[as.numeric(a) + 1], "->", demeNames[as.numeric(b) + 1])
+      
+      # Store the posterior distribution
+      rateEstimates[[rateName]] <- logTable[, col]
+      
+      # Find the rate flag values for this rate (note that flags will be for backward rate from b to a)
+      rateFlags[[rateName]] <- logTable[, paste("migModel.rateMatrixFlag_", b, "_", a, sep="")]
+    }
+  }
+  
+  # Define a grid of plots
+  nPlots <- ceiling(sqrt(length(rateEstimates)))
+  
+  # Set the plotting window dimensions
+  par(mfrow=c(nPlots, nPlots))
+  
+  # Set the margins
+  origMar <- par("mar")
+  par(mar=c(2, 0, 2, 0))
+  
+  # Plot a trace for each parameter
+  for(key in names(rateEstimates)){
+    
+    values <- rateEstimates[[key]]
+    values[is.na(values)] <- 0
+    
+    hist(values, xlab="", ylab="", yaxt="n", bty="n",
+         main=key, cex.main=0.5)
+  }
+  
+  # Reset the plotting window dimensions
+  par(mfrow=c(1,1))
+  
+  # Change the margin sizes
+  par(mar=c(20, 4.1, 4.1, 2.1))
+  
+  # Plot the rate flags
+  plot(x=NULL, y=NULL, 
+       las=1, bty="n",
+       main="Forward migration rate posterior flags", xlab="", ylab="Proportion MCMC steps flag = ON",
+       ylim=c(0,1), xlim=c(1, length(rateFlags)), xaxt="n")
+  
+  # Add in the points
+  for(i in 1:length(rateFlags)){
+    
+    points(x=i, y=mean(rateFlags[[i]]))
+  }
+  
+  # Get the axis limits
+  axisLimits <- par("usr")
+  
+  # Add X axis
+  axis(side=1, at=1:length(rateFlags), labels=names(rateFlags), cex.axis=0.75, las=2)
+  
+  # Reset the margin sizes
+  par(origMar)
+  
+}
+
+createEmptyPlot <- function(){
+  par(mar=c(0,0,0,0))
+  plot(x=NULL, y=NULL, xlim=c(0,1), ylim=c(0,1), xaxt="n", yaxt="n", bty="n",
+       ylab="", xlab="")
+}
+
+plotDemesAndMigrationRates <- function(arrowWeights, code=2){
+  
+  # Create empty plot
+  createEmptyPlot()
+  
+  # Note the x and y positions
+  x <- c(0.15, 0.85)
+  y <- c(0.5, 0.5)
+  
+  # Add labels
+  text(x=x, y=y, labels=c("badgers", "cattle"), col=c("red", "blue"))
+  
+  # badger -> cow
+  if(arrowWeights[["0_1"]] != 0){
+    arrows(x0=x[1]+0.1, x1=x[2]-0.1, y0=y[1]-0.1, y1=y[2]-0.1,
+           code=code, lwd=arrowWeights[["0_1"]])
+  }
+  # cow -> badger
+  if(arrowWeights[["1_0"]] != 0){
+    arrows(x0=x[2]-0.1, x1=x[1]+0.1, y0=y[2]+0.1, y1=y[1]+0.1,
+           code=code, lwd=arrowWeights[["1_0"]])
+  }
+}
+
+timesValuesInListByValue <- function(list, value){
+  
+  output <- list()
+  for(key in names(list)){
+    output[[key]] <- list[[key]] * value
+  }
+  
+  return(output)
+}
+
+divideValuesInListByMax <- function(arrowRates){
+  max <- max(unlist(arrowRates), na.rm=TRUE)
+  output <- timesValuesInListByValue(arrowRates, 1/max)
+  
+  return(output)
+}
+
+getArrowRates <- function(logTable){
+  
+  # Initialise a list to store the arrow weights
+  arrowRates <- list()
+  
+  # Get the column names
+  colNames <- colnames(logTable)
+  
+  # Examine each column
+  for(col in colNames){
+    
+    # Ignore all columns except the forward rate columns
+    if(grepl(x=col, pattern="forward") == FALSE){
+      next
+    }
+    
+    # Skip rate if never estimate e.d. cattle-outer -> badger-inner
+    if(length(unique(logTable[, col])) <= 2){
+      next
+    }
+    
+    # Get the directional information (i.e. 0_1, 2_0)
+    parts <- strsplit(col, split="_")[[1]]
+    direction <- paste(parts[length(parts) - 1], "_", parts[length(parts)], sep="")
+    
+    # Store a summary statistic for the rate distribution
+    arrowRates[[direction]] <- logTable[, col]
+  }
+  
+  return(arrowRates)
+}
+
+plotMigrationRates <- function(logTable, code, arrowFactor){
   
   # Get the migration rates
   output <- getArrowRates(logTable)
@@ -172,6 +584,46 @@ plotPopulationSizes <- function(logTable, demeNames, alpha=0.5){
   
 }
 
+calculateEffectiveSampleSize <- function(posteriorSample){
+  
+  # Calculate the mean of the sample
+  sampleMean <- mean(posteriorSample)
+  nSamples <- length(posteriorSample)
+  
+  # Create an array to store the correlation values between a[index] vs. a[index + lag]
+  autoCorrelationValues <- c()
+  
+  for(lag in 1:(nSamples - 1)){
+    
+    # Calculate the auto-correlation value for the current lag period
+    # Taken from: http://www.itl.nist.gov/div898/handbook/eda/section3/autocopl.htm
+    a <- posteriorSample[1:(nSamples - lag)] - sampleMean
+    b <- posteriorSample[(1:(nSamples - lag) + lag)] - sampleMean
+    
+    Ch <- (1/nSamples) * sum(a * b)
+    C0 <- sum((posteriorSample - sampleMean)^2) / nSamples
+    autoCorrelationValues[lag] <- Ch / C0
+    
+    # Check if auto-correlation has dropped below zero
+    if(lag != 1 && 
+       (autoCorrelationValues[lag - 1] > 0 && autoCorrelationValues[lag] <= 0 || 
+        autoCorrelationValues[lag - 1] < 0 && autoCorrelationValues[lag] >= 0)){
+      break;
+    }
+    
+    # Monitor progress
+    #if(lag %% 1000 == 0){
+    #  cat(paste("Calculate correlation based upon gap of ", lag, ". Max gap = ", (nSamples - 1), "\n", sep=""))
+    #}
+  }
+  
+  # Calculate the Effective Sample Size
+  # Taken from: http://people.duke.edu/~ccc14/sta-663-2016/16C_PyMC3.html
+  ess <- nSamples / (1 + 2 * (sum(autoCorrelationValues)))
+  
+  return(ess);
+}
+
 plotParameterESSValues <- function(logTable, colNamesToPlot){
   
   essValues <- rep(NA, length(colNamesToPlot))
@@ -277,24 +729,22 @@ summarisePosteriorLogTable <- function(logFile, logTable, demes, code=2, arrowFa
     
   # Produce a migration rate estimation figure - weight by rate flags
   # Diagrams designed with code = 2 (FORWARDS) in mind
-  migrationRateEstimates <- plotMigrationRates(logTable, demeStructure, code, arrowFactor)
+  migrationRateEstimates <- plotMigrationRates(logTable, code, arrowFactor)
     
   # Plot the forward migration rate posterior distributions and their flags
-  plotMigrationRatePosteriors(logTable, demeStructure)
+  plotMigrationRatePosteriors(logTable, demes)
     
   # Plot the parameter traces
   plotParameterTraces(logTable, colsToCalculateESS)
     
   # Calculate the acim
-  migrationRateEstimates[[analysis]][["AICM"]] <- 
-    calculateAICM(logTable$treeLikelihood1, nBootstraps)
+  migrationRateEstimates$AICM <- calculateAICM(logTable$treeLikelihood1, nBootstraps)
     
   # Close the pdf file
   dev.off()
   
   return(migrationRateEstimates)
 }
-
 
 calculateForwardMigrationRates <- function(logTable){
   
