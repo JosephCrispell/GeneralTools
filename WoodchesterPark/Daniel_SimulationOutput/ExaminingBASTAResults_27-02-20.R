@@ -68,6 +68,8 @@ pdf(paste0(path, "Cumbria/Figures/BASTAResults_AICM_", date, ".pdf"))
 plotAICMFromVaryingAndEqualModels(migrationRateEstimates)
 dev.off()
 
+### NOT SURE ABOUT NOT INCLUDING REPLICATES!!!??!?!?!?!?!?!
+
 #### FUNCTIONS - plot transition rates ####
 
 summariseLineageTransitionRates <- function(migrationRateEstimates, demeStructure, nReplicates, date, priors=FALSE){

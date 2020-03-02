@@ -35,9 +35,15 @@ relaxedOrStrict <- "relaxed" # "relaxed" or "strict" ?
 chainLength <- 300000000
 sampleFromPrior <- FALSE
 
-# Build the BASTA xml
-buildXMLFile(sequences, metadata, equalOrVaryingPopSizes, path, date, 
-             constantSiteCounts, chainLength, relaxedOrStrict, sampleFromPrior)
+# Set the number of replicates
+nReplicates <- 3
+
+# Build the BASTA xmls
+for(replicate in seq_len(nReplicates)){
+  buildXMLFile(sequences, metadata, equalOrVaryingPopSizes, path, date, 
+               constantSiteCounts, chainLength, relaxedOrStrict, sampleFromPrior, replicate)
+}
+
 
 #### FUNCTIONS - preparation ####
 
@@ -554,7 +560,7 @@ startBuildingOutputFileLines <- function(){
 
 buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date, 
                          constantSiteCounts, chainLength,
-                         relaxedOrStrict, sampleFromPrior){
+                         relaxedOrStrict, sampleFromPrior, replicate){
   
   # Define the deme structure:
   # Demes:
@@ -576,10 +582,10 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   
   # Note the output XML name
   outputFileName <- paste0("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
-                          "_", date)
+                          "_", replicate, "_", date)
   if(sampleFromPrior == TRUE){
-    outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
-                            "_PRIOR_", date)
+    outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict, "_",
+                            "_PRIOR_", replicate, "_", date)
   }
   
   # Create a directory for the output file
