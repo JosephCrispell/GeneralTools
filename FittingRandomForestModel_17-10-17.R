@@ -29,7 +29,7 @@ nTrees <- 1000
 # select from to build each node of each decision tree
 # Random Forest has a built in tuning program to help you choose the
 # right value for your data
-tuneOutput <- tuneRF(table, table$Response,
+tuneOutput <- tuneRF(table[-which(colnames(table) == "Response"), ], table$Response,
                      mtryStart=3, # Which Mtry to start with
                      ntreeTry=nTrees, # How many decision trees to build to test each Mtry
                      stepFactor=1.5, # Used to move to next Mtry to test (current + 1.5*current)
