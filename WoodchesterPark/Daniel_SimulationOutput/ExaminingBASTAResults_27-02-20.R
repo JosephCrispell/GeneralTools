@@ -52,8 +52,7 @@ pdf(paste0(path, "BASTAResults_", date, ".pdf"), width=10, height=17)
 par(mfrow=c(2,1))
 
 # Summarise the lineage transition rate estimates
-plotSummaryOfLineageTransitionRates(migrationRateEstimates,"4DemeCumbria", nReplicates, date, flagCex=1, varyingOnly=TRUE,
-                                    label="a")
+plotSummaryOfLineageTransitionRates(migrationRateEstimates, demeNames=c("badgers", "cattle"))
 
 # Summarise the transition count distributions
 plotTransitionCountDistributionSummaries(transitionCountTables, varyingOnly=TRUE, label="a")
@@ -68,6 +67,126 @@ plotAICMFromVaryingAndEqualModels(migrationRateEstimates)
 dev.off()
 
 ### NOT SURE ABOUT NOT INCLUDING REPLICATES!!!??!?!?!?!?!?!
+
+
+#### FUNCTIONS - plot transition counts ####
+
+plotSummaryOfTransitionCounts <- function(transitionCountTables, demeNames, flagCex=1, label=NULL){
+  
+  # Get and set the current margins
+  currentMar <- par()$mar
+  par(mar=c(10,4.1,4,0.5))
+  
+  # Summarise the lineage transition rates
+  countSummaries <- summariseTransitionCountTables(transitionCountTables)
+  
+  # Note the number of replicates
+  nReplicates <- length(transitionCountTables)
+  
+  # Note the locations of the bars
+  replicatesPad <- seq(from=-0.2, to=0.2, length.out=nReplicates)
+  
+  # Create an empty plot
+  plot(x=NULL, y=NULL, ylim=countSummaries$range, xlim=c(0.5, 0.5 + (length(countSummaries)-2)), bty="n", las=1,
+       xaxt="n", ylab="Estimated number of transitions", xlab="",
+       main="Estimates count of number of transmission events")
+  
+  # Get the axisLimits
+  axisLimits <- par()$usr
+  yLength <- axisLimits[4] - axisLimits[3]
+  
+  # Add plot label
+  if(is.null(label) == FALSE){
+    mtext(label, side=3, line=1, at=axisLimits[1], cex=2.5)
+  }
+  
+  # Get the event labels
+  eventLabels <- sort(names(countSummaries)[c(-1, -length(countSummaries))])
+  
+  # Initialise a vector to stroe the full names of the events
+  eventFullNames <- c()
+  
+  # Loop through each analysis
+  for(eventIndex in seq_along(eventLabels)){
+    
+    # Get the event string
+    event <- eventLabels[eventIndex]
+    
+    # Build the X axis label for current event
+    parts <- strsplit(strsplit(eventLabels[eventIndex], split="_")[[1]][2], split="-")[[1]]
+    eventFullNames[eventIndex] <- paste0(parts[1], "-to-", parts[2])
+    
+    # Get the summary statistics for the current event for each replicate
+    medians <- countSummaries[[event]]$median
+    uppers <- countSummaries[[event]]$upper
+    lowers <- countSummaries[[event]]$lowers
+    flags <- countSummaries[[event]]$flags
+    
+    # Loop through each replicate
+    for(replicateIndex in seq_len(nReplicates)){
+      
+      # Note X axis position
+      position <- eventIndex + replicatesPad[replicateIndex]
+      
+      # Plot the a summary of the distribution
+      points(x=c(position, position), y=c(lowers[replicateIndex], uppers[replicateIndex]), type="l", lwd=2, col="grey")
+      points(x=position, y=medians[replicateIndex], pch=19)
+    }
+  }
+  
+  # Add X axis
+  axis(side=1, at=seq_along(eventLabels), labels=eventFullNames, las=2)
+  
+  # Reset the margins
+  par(mar=currentMar)
+}
+
+summariseTransitionCountTables <- function(transitionCountTables){
+  
+  # Get the replicate names
+  replicates <- names(transitionCountTables)
+  
+  # Get the names of the different transition events
+  eventLabels <- colnames(transitionCountTables[[1]])[c(-1, -2, -3)]
+
+  # Initialise a list to store a summary of each event from each replicate
+  eventSummaries <- list("names"=replicates)
+  for(label in eventLabels){
+    eventSummaries[[label]] <- list("medians"=c(), "uppers"=c(), "lowers"=c())
+  }
+  
+  # Initialise an array to store the overall range of values observed
+  eventSummaries$range <- c(Inf, -Inf)
+  
+  # Examine each of the replicates
+  for(replicateIndex in seq_along(replicates)){
+    
+    # Examine each of the events for the current replicate
+    for(event in eventLabels){
+      
+      # Get the migration rate values
+      values <- transitionCountTables[[replicates[replicateIndex]]][[event]]
+      
+      # Calculate median of the values
+      median <- median(values, na.rm=TRUE)
+      
+      # Calculate the upper and lower bounds
+      quantiles <- quantile(values, probs=c(0.025, 0.975), na.rm=TRUE)
+      
+      # Store all the values calculated 
+      eventSummaries[[event]]$medians[replicateIndex] <- median
+      eventSummaries[[event]]$uppers[replicateIndex] <- quantiles[2]
+      eventSummaries[[event]]$lowers[replicateIndex] <- quantiles[1]
+
+      # Update the overall range
+      valuesRange <- range(values, na.rm=TRUE)
+      eventSummaries$range[1] <- ifelse(valuesRange[1] < eventSummaries$range[1], valuesRange[1], eventSummaries$range[1])
+      eventSummaries$range[2] <- ifelse(valuesRange[2] > eventSummaries$range[2], valuesRange[2], eventSummaries$range[2])
+    }
+  }
+  
+  return(eventSummaries)
+}
 
 #### FUNCTIONS - plot transition rates ####
 
@@ -85,6 +204,9 @@ summariseLineageTransitionRates <- function(migrationRateEstimates){
   for(label in eventLabels){
     eventSummaries[[label]] <- list("medians"=c(), "uppers"=c(), "lowers"=c(), "flags"=c())
   }
+  
+  # Initialise an array to store the overall range of values observed
+  eventSummaries$range <- c(Inf, -Inf)
 
   # Examine each of the replicates
   for(replicateIndex in seq_along(replicates)){
@@ -109,14 +231,18 @@ summariseLineageTransitionRates <- function(migrationRateEstimates){
       eventSummaries[[event]]$uppers[replicateIndex] <- quantiles[2]
       eventSummaries[[event]]$lowers[replicateIndex] <- quantiles[1]
       eventSummaries[[event]]$flags[replicateIndex] <- flagSupport
+      
+      # Update the overall range
+      valuesRange <- range(values, na.rm=TRUE)
+      eventSummaries$range[1] <- ifelse(valuesRange[1] < eventSummaries$range[1], valuesRange[1], eventSummaries$range[1])
+      eventSummaries$range[2] <- ifelse(valuesRange[2] > eventSummaries$range[2], valuesRange[2], eventSummaries$range[2])
     }
   }
   
   return(eventSummaries)
 }
 
-plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, date, demeNames, flagCex=1,
-                                                priors=FALSE, varyingOnly=FALSE, label=NULL){
+plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeNames, flagCex=1, label=NULL){
   
   # Get and set the current margins
   currentMar <- par()$mar
@@ -129,81 +255,65 @@ plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, date, de
   nReplicates <- length(migrationRateEstimates)
   
   # Note the locations of the bars
-  replicatesPad <- seq(from=-0.4, to=0.4, length.out=nReplicates)
-  
-  # Note the Y axis ticks
-  yRange <- range(c(lowers, uppers))
-  at <- c(yRange[1], 0.001, 0.01, 0.1, 1)
+  replicatesPad <- seq(from=-0.2, to=0.2, length.out=nReplicates)
   
   # Create an empty plot
-  plot(x=NULL, y=NULL, ylim=log(range(at)), xlim=c(0.5, 5.5), bty="n", las=1,
-       xaxt="n", ylab="Per lineage transition rate per year", xlab="", yaxt="n")
+  plot(x=NULL, y=NULL, ylim=rateSummaries$range, xlim=c(0.5, 0.5 + (length(rateSummaries)-2)), bty="n", las=1,
+       xaxt="n", ylab="Per lineage transition rate per year", xlab="",
+       main="Estimated transmission rates")
   
-  # Create plot label
-  main <- "Estimated using genomic data"
-  if(priors){
-    main <- "Estimated without genomic data (sampling from priors)"
-  }
-  title(main, col.main=ifelse(priors, "red", "black"), line=1, cex.main=1.5)
+  # Get the axisLimits
+  axisLimits <- par()$usr
+  yLength <- axisLimits[4] - axisLimits[3]
   
   # Add plot label
   if(is.null(label) == FALSE){
     mtext(label, side=3, line=1, at=axisLimits[1], cex=2.5)
   }
   
-  # Add the Y labels
-  axis(side=2, at=log(at), labels=round(at, digits=3), las=1, xpd=TRUE, line=-0.2)
+  # Get the event labels
+  eventLabels <- sort(names(rateSummaries)[c(-1, -length(rateSummaries))])
   
-  # Get the axisLimits
-  axisLimits <- par()$usr
-  yLength <- axisLimits[4] - axisLimits[3]
-  
-  # Add the X axis labels
-  labels <- c("badgers-to-cattle", "cattle-to-badgers")
-  axis(side=1, at=c(1, 2), labels=labels, las=2)
-  yBracketHeight <- axisLimits[3] - (0.3*yLength)
-  yBracketHeights <- c(yBracketHeight+0.2,
-                       yBracketHeight, yBracketHeight,
-                       yBracketHeight-0.2,
-                       yBracketHeight, yBracketHeight,
-                       yBracketHeight+0.2)
-  points(x=c(1, 1, 1.5, 1.5, 1.5, 2, 2), y=yBracketHeights, xpd=TRUE, type="l")
-  points(x=c(3, 3, 3.5, 3.5, 3.5, 4, 4), y=yBracketHeights, xpd=TRUE, type="l")
-  axis(side=1, at=c(1.5, 3.5), labels=c("Cumbria", "Northern Ireland (NI)"), tick=FALSE, line=8)
+  # Initialise a vector to stroe the full names of the events
+  eventFullNames <- c()
   
   # Loop through each analysis
-  for(index in seq_along(names)){
+  for(eventIndex in seq_along(eventLabels)){
     
-    # Note the indices of the to and from IDs
-    fromIndex <- 6
-    toIndex <- 7
-    if(priors){
-      fromIndex <- 7
-      toIndex <- 8
+    # Get the event string
+    event <- eventLabels[eventIndex]
+    
+    # Extract the deme numbers
+    parts <- as.numeric(strsplit(event, split="_")[[1]]) + 1
+    from <- parts[1]
+    to <- parts[2]
+    
+    # Build the X axis label for current event
+    eventFullNames[eventIndex] <- paste0(demeNames[from], "-to-", demeNames[to])
+    
+    # Get the summary statistics for the current event for each replicate
+    medians <- rateSummaries[[event]]$median
+    uppers <- rateSummaries[[event]]$upper
+    lowers <- rateSummaries[[event]]$lowers
+    flags <- rateSummaries[[event]]$flags
+    
+    # Loop through each replicate
+    for(replicateIndex in seq_len(nReplicates)){
+      
+      # Note X axis position
+      position <- eventIndex + replicatesPad[replicateIndex]
+      
+      # Plot the a summary of the distribution
+      points(x=c(position, position), y=c(lowers[replicateIndex], uppers[replicateIndex]), type="l", lwd=2, col="grey")
+      points(x=position, y=medians[replicateIndex], pch=19)
+      
+      # Plot the rate flag value (proportion of steps rate turned on for)
+      text(x=position, y=uppers[replicateIndex], labels=paste0(" ", round(flags[replicateIndex], digits=2)), srt=90, adj=0, cex=flagCex)
     }
-    
-    # Get the location on the X axis for the current analysis
-    parts <- strsplit(names[index], split="_")[[1]]
-    replicate <- as.numeric(parts[4])
-    from <- getDemeNamesForDemeStructure("4DemeCumbria", as.numeric(parts[fromIndex]))
-    to <- getDemeNamesForDemeStructure("4DemeCumbria", as.numeric(parts[toIndex]))
-    pad <- replicatesPad[replicate] 
-    position <- ifelse(parts[2] == "varying", rateLocations[[paste0(from, "-to-", to)]] - pad,
-                       rateLocations[[paste0(from, "-to-", to)]] + pad)
-    
-    # Plot the a summary of the distribution
-    points(x=c(position, position), y=log(c(lowers[index], uppers[index])), type="l", lwd=2,
-           col=ifelse(parts[2] == "varying", "grey", "black"))
-    points(x=position, y=log(medians[index]), pch=19)
-    
-    # Plot the rate flag value (proportion of steps rate turned on for)
-    text(x=position, y=log(uppers[index]), labels=paste0(" ", round(flags[index], digits=2)), srt=90, adj=0, cex=flagCex)
   }
   
-  # Add legend
-  if(varyingOnly == FALSE){
-    legend("topleft", legend=c("varying", "equal"), text.col=c("grey", "black"), bty="n")
-  }
+  # Add X axis
+  axis(side=1, at=seq_along(eventLabels), labels=eventFullNames, las=2)
   
   # Reset the margins
   par(mar=currentMar)
