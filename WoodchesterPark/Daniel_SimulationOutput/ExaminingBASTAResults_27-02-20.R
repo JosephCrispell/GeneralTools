@@ -47,31 +47,35 @@ transitionCounts <- countTransitionsForEachReplicate(names(logTables), burnInPro
 
 #### Plot the estimated transition counts and rates distributions ####
 
-pdf(paste0(path, "BASTAResults_", date, ".pdf"), width=10, height=17)
-
-par(mfrow=c(2,1))
+pdf(file.path(path, paste0("BASTAResults_", date, ".pdf")))
 
 # Summarise the lineage transition rate estimates
 plotSummaryOfLineageTransitionRates(migrationRateEstimates, demeNames=c("badgers", "cattle"))
 
 # Summarise the transition count distributions
-plotTransitionCountDistributionSummaries(transitionCountTables, varyingOnly=TRUE, label="a")
+plotSummaryOfTransitionCounts(transitionCountTables)
 
 dev.off()
 
 #### Report the AICM score ####
 
-# Examine the AICM scores for the varying and equal models
-pdf(paste0(path, "Cumbria/Figures/BASTAResults_AICM_", date, ".pdf"))
-plotAICMFromVaryingAndEqualModels(migrationRateEstimates)
-dev.off()
+# Report the AICM score from each replicate
+reportAICMScores(migrationRateEstimates)
 
-### NOT SURE ABOUT NOT INCLUDING REPLICATES!!!??!?!?!?!?!?!
+#### FUNCTIONS - report AICM scores ####
 
+reportAICMScores <- function(migrationRateEstimates){
+  
+  cat("Estimated AICM score for each replicate:\n")
+  for(replicateIndex in seq_along(migrationRateEstimates)){
+    values <- migrationRateEstimates[[replicateIndex]]$AICM
+    cat(paste0("\tReplicate ", replicateIndex, " score = ", values[1], "\t (lower 2.5%: ", values[2], ", upper 97.5%: ", values[3], ")\n"))
+  }
+}
 
 #### FUNCTIONS - plot transition counts ####
 
-plotSummaryOfTransitionCounts <- function(transitionCountTables, demeNames, flagCex=1, label=NULL){
+plotSummaryOfTransitionCounts <- function(transitionCountTables, label=NULL){
   
   # Get and set the current margins
   currentMar <- par()$mar
