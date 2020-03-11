@@ -584,7 +584,7 @@ buildXMLFile <- function(sequences, metadata, equalOrVaryingPopSizes, path, date
   outputFileName <- paste0("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
                           "_", replicate, "_", date)
   if(sampleFromPrior == TRUE){
-    outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict, "_",
+    outputFileName <- paste("BASTA_", equalOrVaryingPopSizes, "_", relaxedOrStrict,
                             "_PRIOR_", replicate, "_", date)
   }
   

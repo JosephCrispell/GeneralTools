@@ -17,18 +17,23 @@ demes <- c("badger", "cow")
 # Note the number of sites in genome examined
 genomeSize <- 4345492
 
-#### Read in the BASTA .log file ####
+#### Read in the BASTA .log files ####
 
-# Note the files in BASTA directory
-files <- list.files(file.path(path, "BASTA_equal_relaxed_25-02-20"), full.names=TRUE)
+# Note the number of replicates that were done
+nReplicates <- 3
 
-# Read in the log table
-logFile <- files[grepl(files, pattern=".log")]
-logTable <- readLogFile(logFile, burnInProp=0.1)
+# Note the file prefix - without replicate
+prefix <- "BASTA_equal_relaxed"
 
-#### Create summary plots for log table ####
+# Note the date the BASTA xmls were created
+date <- "02-03-20"
 
-migrationRateEstimates <- summarisePosteriorLogTable(logFile, logTable, demes, code=2, arrowFactor=20, nBootstraps=1000,
+# Read in the log tables into a single log table
+logTables <- readLogFiles(path, nReplicates, prefix, date)
+
+#### Create summary plots for each log table ####
+
+migrationRateEstimates <- summarisePosteriorLogTable(logTables, demes, code=2, arrowFactor=20, nBootstraps=1000,
                                                      genomeSize, date)
 
 #### Count transitions between demes estimated in .trees file ####
@@ -36,15 +41,9 @@ migrationRateEstimates <- summarisePosteriorLogTable(logFile, logTable, demes, c
 # Note the path to the JAVA jar tool that counts transitions in .trees file
 pathToTransitionCountingJarFile <- file.path(path, "CountTransitions_07-06-19.jar")
 
-# Note the name of the .trees file
-treesFile <- files[grepl(files, pattern=".trees")]
-
-# Count the number of transitions between demes
-countsFile <- paste0(substr(treesFile, 1, nchar(treesFile)-6), "_TransitionCounts.txt")
-countTransitionsOnPosteriorTrees(countsFile, logFile, treesFile, demes, pathToTransitionCountingJarFile)
-
-# Read in the transition count tables
-transitionCountTables <- readInBASTATransitionCounts(countsFile, burnInProp=0.1)
+# Count the transitions between demes for each posterior distribution of trees
+transitionCounts <- countTransitionsForEachReplicate(names(logTables), burnInProp=0.1, demes, 
+                                                     pathToTransitionCountingJarFile)
 
 #### Plot the estimated transition counts and rates distributions ####
 
@@ -72,54 +71,51 @@ dev.off()
 
 #### FUNCTIONS - plot transition rates ####
 
-summariseLineageTransitionRates <- function(migrationRateEstimates, demeStructure, nReplicates, date, priors=FALSE){
+summariseLineageTransitionRates <- function(migrationRateEstimates){
   
-  # Initialise vectors to store summary data for each analysis
-  medians <- c()
-  uppers <- c()
-  lowers <- c()
-  flags <- c()
-  index <- 0
+  # Get the replicate names
+  replicates <- names(migrationRateEstimates)
   
-  # Get the names of the rates
-  names <- names(migrationRateEstimates)[-3]
+  # Get the names of the different transition events
+  eventLabels <- names(migrationRateEstimates[[1]])
+  eventLabels <- eventLabels[-length(eventLabels)] # Ignoring AICM score stored at end
+  
+  # Initialise a list to store a summary of each event from each replicate
+  eventSummaries <- list("names"=replicates)
+  for(label in eventLabels){
+    eventSummaries[[label]] <- list("medians"=c(), "uppers"=c(), "lowers"=c(), "flags"=c())
+  }
+
+  # Examine each of the replicates
+  for(replicateIndex in seq_along(replicates)){
+    
+    # Examine each of the events for the current replicate
+    for(event in eventLabels){
       
-  # Examine each of the rates for the current model
-  index <- 0
-  for(rate in names){
-        
-    # Ignore the AICM score
-    if(rate == "AICM"){
-      next
+      # Get the migration rate values
+      values <- migrationRateEstimates[[replicates[replicateIndex]]][[event]]
+      
+      # Estimate the flag proportion support
+      flagSupport <- sum(ifelse(is.na(values), 0, 1)) / length(values)
+      
+      # Calculate median of the values
+      median <- median(values, na.rm=TRUE)
+      
+      # Calculate the upper and lower bounds
+      quantiles <- quantile(values, probs=c(0.025, 0.975), na.rm=TRUE)
+      
+      # Store all the values calculated 
+      eventSummaries[[event]]$medians[replicateIndex] <- median
+      eventSummaries[[event]]$uppers[replicateIndex] <- quantiles[2]
+      eventSummaries[[event]]$lowers[replicateIndex] <- quantiles[1]
+      eventSummaries[[event]]$flags[replicateIndex] <- flagSupport
     }
-        
-    # Get the migration rate values
-    values <- migrationRateEstimates[[rate]]
-        
-    # Estimate the flag proportion support
-    flagSupport <- sum(ifelse(is.na(values), 0, 1)) / length(values)
-        
-    # Calculate median of the values
-    median <- median(values, na.rm=TRUE)
-        
-    # Calculate the upper and lower bounds
-    quantiles <- quantile(values, probs=c(0.025, 0.975), na.rm=TRUE)
-        
-    # Store all the values calculated 
-    index <- index + 1
-    medians[index] <- median
-    uppers[index] <- quantiles[2]
-    lowers[index] <- quantiles[1]
-    flags[index] <- flagSupport
   }
   
-  # Create a structure to store the output results
-  output <- list("medians"=medians, "uppers"=uppers, "lowers"=lowers, "flags"=flags, "names"=names)
-  
-  return(output)
+  return(eventSummaries)
 }
 
-plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeStructure, nReplicates, date, flagCex=1,
+plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, date, demeNames, flagCex=1,
                                                 priors=FALSE, varyingOnly=FALSE, label=NULL){
   
   # Get and set the current margins
@@ -127,35 +123,13 @@ plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeStru
   par(mar=c(10,4.1,4,0.5))
   
   # Summarise the lineage transition rates
-  rateSummaries <- summariseLineageTransitionRates(migrationRateEstimates, demeStructure, nReplicates, date, priors)
+  rateSummaries <- summariseLineageTransitionRates(migrationRateEstimates)
+  
+  # Note the number of replicates
+  nReplicates <- length(migrationRateEstimates)
   
   # Note the locations of the bars
-  replicatesPad <- seq(from=0.025, to=0.4, length.out=nReplicates)
-  if(varyingOnly){
-    replicatesPad <- seq(from=0.4, to=-0.4, length.out=nReplicates)
-  }
-  rateLocations <- list("badgerCumbria-to-cowCumbria"=1,
-                        "cowCumbria-to-badgerCumbria"=2,
-                        "badgerTVR-to-cowTVR"=3,
-                        "cowTVR-to-badgerTVR"=4,
-                        "cowTVR-to-cowCumbria"=5)
-  
-  # Get the distribution summary information
-  lowers <- rateSummaries$lowers
-  uppers <- rateSummaries$uppers
-  medians <- rateSummaries$medians
-  flags <- rateSummaries$flags
-  names <- rateSummaries$names
-  
-  # Remove estimates from equal model if requested
-  if(varyingOnly){
-    equalIndices <- which(grepl(names, pattern="_equal_"))
-    lowers <- lowers[-equalIndices]
-    uppers <- uppers[-equalIndices]
-    medians <- medians[-equalIndices]
-    flags <- flags[-equalIndices]
-    names <- names[-equalIndices]
-  }
+  replicatesPad <- seq(from=-0.4, to=0.4, length.out=nReplicates)
   
   # Note the Y axis ticks
   yRange <- range(c(lowers, uppers))
@@ -237,6 +211,33 @@ plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeStru
 
 #### FUNCTIONS - transition counts ####
 
+countTransitionsForEachReplicate <- function(logFiles, burnInProp=0.1, demes, pathToJarFile){
+  
+  # Initialise a variable to store the combined transition counts tables
+  transitionCountsTables <- list()
+  
+  # Examine each replicate
+  for(logFile in logFiles){
+    
+    # Note the trees file name for the current replicate
+    treesFile <- paste0(substr(logFile, 1, nchar(logFile) - 4), ".trees")
+    
+    # Build the output file for the counts
+    countsFile <- paste0(substr(logFile, 1, nchar(logFile) - 4), "_TransitionCounts.txt")
+    
+    # Count the transitions between demes on the current posterior distribution of trees
+    countTransitionsOnPosteriorTrees(countsFile, logFile, treesFile, demes, pathToJarFile)
+    
+    # Read in the transition count tables
+    transitionCountTable <- readInBASTATransitionCounts(countsFile, burnInProp)
+    
+    # Store the transition counts table
+    transitionCountsTables[[logFile]] <- transitionCountTable
+  }
+  
+  return(transitionCountsTables)
+}
+
 readInBASTATransitionCounts <- function(countsFile, burnInProp=0.1){
           
   # Read in the file as table
@@ -269,6 +270,31 @@ countTransitionsOnPosteriorTrees <- function(countsFile, logFile, treesFile, dem
 }
 
 #### FUNCTIONS - log file ####
+
+readLogFiles <- function(path, nReplicates, prefix, date, samplingFromPriors=FALSE, burnInProp=0.1){
+  
+  # Initialise a store each log table for each replicate
+  logTables <- list()
+  
+  # Examine each replicate
+  for(replicate in seq_len(nReplicates)){
+    
+    # Note the log file name for the current replicate
+    logFile <- file.path(path, paste0(prefix, "_", replicate, "_", date), 
+                         paste0(prefix, "_", replicate, "_", date, ".log"))
+    
+    # Check if sampling from priors
+    if(samplingFromPriors){
+      logFIle <- file.path(path, paste0(prefix, "_PRIOR_", replicate, "_", date), 
+                           paste0(prefix, "_PRIOR_", replicate, "_", date, ".log"))
+    }
+    
+    # Read in the log table
+    logTables[[logFile]] <- logTable
+  }
+  
+  return(logTables)
+}
 
 calculateAICM <- function(logLikelihoodValues, nBootstraps){
   # Calculation taken from:
@@ -706,45 +732,55 @@ plotPosteriorSupportForEachDemeAsRoot <- function(logTable, demes){
   par(mar=currentMar)
 }
 
-summarisePosteriorLogTable <- function(logFile, logTable, demes, code=2, arrowFactor, nBootstraps=1000,
+summarisePosteriorLogTable <- function(logTables, demes, code=2, arrowFactor, nBootstraps=1000,
                                        genomeSize, date){
   
-  # Open a pdf file
-  plotsFile <- paste0(substr(logFile, 1, nchar(logFile)-4), ".pdf")
-  pdf(plotsFile)
-    
-  # Note which parameters to examine posterior support for
-  colsToCalculateESS <- colnames(logTable)[
-    grepl(x=colnames(logTable), pattern="Sample|rateMatrixFlag|forward|Count") == FALSE]
-    
-  # Plot the ESS values of each parameter estimated
-  plotParameterESSValues(logTable, colsToCalculateESS)
-    
-  # Plot the posterior support for each deme as source
-  plotPosteriorSupportForEachDemeAsRoot(logTable, demes)
-    
-  # Plot the population size estimates
-  plotPopulationSizes(logTable, demes, alpha=0.5)
-    
-  # Examine the substitution rate estimates
-  examineSubstitutionRateEstimates(logTable, genomeSize)
-    
-  # Produce a migration rate estimation figure - weight by rate flags
-  # Diagrams designed with code = 2 (FORWARDS) in mind
-  migrationRateEstimates <- plotMigrationRates(logTable, code, arrowFactor)
-    
-  # Plot the forward migration rate posterior distributions and their flags
-  plotMigrationRatePosteriors(logTable, demes)
-    
-  # Plot the parameter traces
-  plotParameterTraces(logTable, colsToCalculateESS)
-    
-  # Calculate the acim
-  migrationRateEstimates$AICM <- calculateAICM(logTable$treeLikelihood1, nBootstraps)
-    
-  # Close the pdf file
-  dev.off()
+  # Initialise a list to store the estimate migration rates from each log table
+  migrationRateEstimates <- list()
   
+  # Examine each of the log tables
+  for(logFile in names(logTables)){
+    
+    # Get the log table for the current logFile
+    logTable <- logTables[[logFile]]
+    
+    # Open an PDF for the plots
+    plotsFile <- paste0(substr(logFile, 1, nchar(logFile) - 4), ".pdf")
+    pdf(plotsFile)
+    
+    # Note which parameters to examine posterior support for
+    colsToCalculateESS <- colnames(logTable)[
+      grepl(x=colnames(logTable), pattern="Sample|rateMatrixFlag|forward|Count") == FALSE]
+    
+    # Plot the ESS values of each parameter estimated
+    plotParameterESSValues(logTable, colsToCalculateESS)
+    
+    # Plot the posterior support for each deme as source
+    plotPosteriorSupportForEachDemeAsRoot(logTable, demes)
+    
+    # Plot the population size estimates
+    plotPopulationSizes(logTable, demes, alpha=0.5)
+    
+    # Examine the substitution rate estimates
+    examineSubstitutionRateEstimates(logTable, genomeSize)
+    
+    # Produce a migration rate estimation figure - weight by rate flags
+    # Diagrams designed with code = 2 (FORWARDS) in mind
+    migrationRateEstimates[[logFile]] <- plotMigrationRates(logTable, code, arrowFactor)
+    
+    # Plot the forward migration rate posterior distributions and their flags
+    plotMigrationRatePosteriors(logTable, demes)
+    
+    # Plot the parameter traces
+    plotParameterTraces(logTable, colsToCalculateESS)
+    
+    # Calculate the acim
+    migrationRateEstimates[[logFile]]$AICM <- calculateAICM(logTable$treeLikelihood1, nBootstraps)
+    
+    # Close the pdf file
+    dev.off()
+  }
+
   return(migrationRateEstimates)
 }
 
