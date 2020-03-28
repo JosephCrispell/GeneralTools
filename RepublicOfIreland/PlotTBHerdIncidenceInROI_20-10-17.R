@@ -58,6 +58,13 @@ plotCountyTrends(summaryTables, column="ProportionHerds", county="MONAGHAN", cou
 
 dev.off()
 
+# Create prevalence figure for manuscript
+pdf(paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019_Wicklow.pdf"))
+par(mar=c(5.1, 6.1, 1.1, 2.1))
+plotCountyTrends(summaryTables, column="ProportionHerds", county="WICKLOW", county.lwd=2, county.col="red", county.label="Wicklow")
+dev.off()
+
+
 pdf(paste0(path, "RepublicOfIreland/Mbovis/BTBGENIE_collaborations.pdf"))
 
 # Plot the BTBGENIE collaborative network
@@ -84,7 +91,7 @@ dev.off()
 # FUNCTIONS #
 #############
 
-plotCountyTrends <- function(summaryTables, column, county=NULL, county.lwd=1, county.col=rgb(1,0,0,1)){
+plotCountyTrends <- function(summaryTables, column, county=NULL, county.lwd=1, county.col=rgb(1,0,0,1), county.label=county){
 
   # Initialise a table to store the column values per county per quarter
   values <- data.frame(matrix(0, nrow=nrow(summaryTables[[1]]), ncol=length(summaryTables)))
@@ -122,7 +129,7 @@ plotCountyTrends <- function(summaryTables, column, county=NULL, county.lwd=1, c
 
   # Add a legend
   if(is.null(county) == FALSE){
-    legend("top", legend=c("Individual county trends", "Country average", county),
+    legend("top", legend=c("Individual county trends", "Country average", county.label),
            text.col=c(rgb(0,0,0,0.5), "blue", county.col),
            bty="n")
   }else{
