@@ -17,7 +17,7 @@ library(randomForest)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-#path <- "/home/josephcrispell/Desktop/Research/RepublicOfIreland/Mbovis/Wicklow/"
+#path <- "/home/josephcrispell/storage/Research/RepublicOfIreland/Mbovis/Wicklow/"
 path <- "J:\\WGS_Wicklow\\"
 
 # Read in table that links original sequence ID to aliquot IDs
@@ -1382,18 +1382,6 @@ plotPhylogenyAndMap <- function(map, tree, tipInfo, tipShapeCexOnPhylogeny=2,
   
   # Reset the margins
   par(mar=currentMar)
-}
-
-setAlpha <- function(colour, alpha){
-  
-  # Convert the input colour into rgb values
-  rgbValues <- col2rgb(colour)
-  
-  # Place rgb values within rgb function and insert alpha value
-  # Note that col2rgb returns rgbvlues from 0 to 255
-  rgbColour <- rgb(rgbValues["red", 1], rgbValues["green", 1], rgbValues["blue", 1],
-                   alpha=alpha*255, maxColorValue=255)
-  return(rgbColour)
 }
 
 plotConnectingLines <- function(tipLabels, tipCoordsOnPhylogeny,
