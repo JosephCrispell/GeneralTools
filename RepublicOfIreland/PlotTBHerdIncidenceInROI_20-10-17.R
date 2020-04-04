@@ -59,7 +59,7 @@ plotCountyTrends(summaryTables, column="ProportionHerds", county="MONAGHAN", cou
 dev.off()
 
 # Create prevalence figure for manuscript
-pdf(paste0(path, "RepublicOfIreland/Mbovis/HerdTbStatistics_2010-2019_Wicklow.pdf"))
+pdf(paste0(path, "RepublicOfIreland/Mbovis/Wicklow/Figures/HerdTbStatistics_2010-2019_Wicklow.pdf"))
 par(mar=c(5.1, 6.1, 1.1, 2.1))
 plotCountyTrends(summaryTables, column="ProportionHerds", county="WICKLOW", county.lwd=2, county.col="red", county.label="Wicklow")
 dev.off()
