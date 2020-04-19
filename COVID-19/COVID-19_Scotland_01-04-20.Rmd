@@ -118,8 +118,6 @@ scotland <- rgdal::readOGR(shapeFile)
 scotland <- spTransform(scotland, CRS("+datum=WGS84 +proj=longlat"))
 ```
 
-
-
 Column {data-width=55%}
 -----------------------------------------------------------------------
   
@@ -168,7 +166,7 @@ leaflet(scotland) %>%
 
 These visualisations are based on non-official numbers and therefore shouldn't inform official decision making. These COVID-19 data were sourced directly from [here](https://github.com/watty62/Scot_covid19/blob/master/data/processed/regional_cases.csv). The geographical shape file was sourced from [here](https://data.gov.uk/dataset/27d0fe5f-79bb-4116-aec9-a8e565ff756a/nhs-health-boards). This dashboard was informed by the following existing [dashboard](https://smazeri.shinyapps.io/Covid19_Scotland/#section-cases).
 
-Column {data-width=45%}
+Column {data-width=45%} {.tabset}
 -----------------------------------------------------------------------
 
 ### COVID-19 confirmed cases in Scotland as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
