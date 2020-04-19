@@ -7,12 +7,16 @@ output:
     source_code: embed # Adds the source code as a popup
 ---
 
-```{r setup, include=FALSE}
+```{r preparation, include=FALSE}
 # Load the required libraries
 library(flexdashboard) # Building the dashboard
 library(leaflet) # Interactive mapping
 library(plotly) # Interactive plots
 library(rgdal) # Reading in shape files
+library(rgeos) # Used for transfomring from UK grid to lat-longs - required for leaflet
+
+# Set the path
+path <- file.path("~", "Desktop", "COVID-19")
 ```
 
 ```{r functions, echo=FALSE}
@@ -72,41 +76,6 @@ calculateNewCasesPerDay <- function(cases){
   
   return(newCases)
 }
-
-# Function to map each region in scotland to health board
-mapRegionsToHealthBoards <- function(scotland){
-  
-  # Define a list mapping each region to its health board
-  regionMapping <- list("South Ayrshire"="Ayrshire and Arran", "East Ayrshire"="Ayrshire and Arran", "North Ayrshire"="Ayrshire and Arran",
-                        "Scottish Borders"="Borders",
-                        "Dumfries and Galloway"="Dumfries and Galloway",
-                        "Fife"="Fife",
-                        "Stirling"="Forth Valley", "Clackmannanshire"="Forth Valley", "Falkirk"="Forth Valley",
-                        "Aberdeenshire"="Grampian", "Moray"="Grampian", "Aberdeen"="Grampian",
-                        "East Renfrewshire"="Greater Glasgow and Clyde", "Renfrewshire"="Greater Glasgow and Clyde", "West Dunbartonshire"="Greater Glasgow and Clyde", "East Dunbartonshire"="Greater Glasgow and Clyde", "Glasgow"="Greater Glasgow and Clyde", "Inverclyde"="Greater Glasgow and Clyde",
-                        "Highland"="Highland", "Argyll and Bute"="Highland",
-                        "North Lanarkshire"="Lanarkshire", "South Lanarkshire"="Lanarkshire",
-                        "East Lothian"="Lothian", "Midlothian"="Lothian", "Edinburgh"="Lothian", "West Lothian"="Lothian",
-                        "Orkney Islands"="Orkney",
-                        "Shetland Islands"="Shetland",
-                        "Perthshire and Kinross"="Tayside", "Angus"="Tayside", "Dundee"="Tayside",
-                        "Eilean Siar"="Western Isles")
-  
-  # Add the health board into the spatial data
-  scotland$HealthBoard <- sapply(scotland$NAME_2, 
-                                 function(region, regionMapping){ 
-                                   return(regionMapping[[as.character(region)]])
-                                 }, regionMapping)
-  
-  # Join the regions by health board
-  gpclibPermit()
-  joined = unionSpatialPolygons(scotland, scotland$HealthBoard) # Needed to install gpclib: install.packages("gpclib", type="source")
-  
-  # Convert the SpatialPolygons into SpatialPolygonsDataframe
-  joined <- SpatialPolygonsDataFrame(joined, data.frame("HealthBoard"=names(joined), row.names=names(joined)))
-
-  return(joined)
-}
 ```
 
 
@@ -118,8 +87,8 @@ regionalCasesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/mas
 cases <- read.csv(regionalCasesFile, stringsAsFactors=FALSE, check.names=FALSE)
 
 # Load the population size in each region of Scotland
-regionPopSizesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/master/data/processed/HB_Populations.csv"
-populationSizes <- read.csv(regionPopSizesFile, stringsAsFactors=FALSE, check.names=FALSE)
+#regionPopSizesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/master/data/processed/HB_Populations.csv"
+#populationSizes <- read.csv(regionPopSizesFile, stringsAsFactors=FALSE, check.names=FALSE)
 
 # Format the date column fo the cases table
 cases$Date <- as.Date(cases$Date, format="%d-%b-%Y")
@@ -138,29 +107,15 @@ threshold <- 10
 daysSince <- buildTableForTimeSinceCasesReachedThreshold(cases, threshold)
 ```
 
-```{r echo=FALSE, eval=FALSE}
-## Read in the Health Boards for Scotland and join into large regions to match those of data
-## NOTE THIS SECTION NO LONGER RAN - ONLY NEEDED TO CREATE A JOINED SHAPE FILE
-
-# Read in the  Scotland region shape file - note I downloaded this from GADM page (https://data.gov.uk/dataset/27d0fe5f-79bb-4116-aec9-a8e565ff756a/nhs-health-boards)
-shapeFile <- file.path("C:", "Users", "j-crispell","Projects", "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019.shp")
-scotland <- rgdal::readOGR(shapeFile)
-
-# Join the regions in teh scotland shapes into health boards
-joined <- mapRegionsToHealthBoards(scotland)
-
-# Write the joined regions into new shape file
-shapeFile <- file.path("C:", "Users", "j-crispell","Projects", "SG_NHS_HealthBoards_2019")
-writeOGR(obj=joined, dsn=shapeFile, layer="SG_NHS_HealthBoards_2019_joined", driver="ESRI Shapefile")
-  
-```
-
-```{r include=FALSE}
+```{r read shape file with regions matching report regions created previously, include=FALSE}
 ## Read in the joined Health Boards
 
-# Read in teh shape file
-shapeFile <- file.path("C:", "Users", "j-crispell","Projects", "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019_joined")
+# Read in the shape file
+shapeFile <- file.path(path, "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019.shp")
 scotland <- rgdal::readOGR(shapeFile)
+
+# Convert to latitude and longitude
+scotland <- spTransform(scotland, CRS("+datum=WGS84 +proj=longlat"))
 ```
 
 
@@ -170,10 +125,10 @@ Column {data-width=55%}
   
 ### Regional patterns of confirmed cases as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
 
-```{r}
+```{r chloropleth of new cases in each region, echo=FALSE}
 
 # Get the latest number of confirmed cases for each region in Scotland
-scotland$NumberConfirmedCases <- as.numeric(cases[nrow(cases), as.character(scotland$HlthBrd)])
+scotland$NumberConfirmedCases <- as.numeric(cases[nrow(cases), as.character(scotland$HBName)])
 
 # Create a colour palette
 qpal <- colorBin("Reds", scotland$NumberConfirmedCases, bins=5)
@@ -181,7 +136,7 @@ qpal <- colorBin("Reds", scotland$NumberConfirmedCases, bins=5)
 # Create labels that will appear on hover
 labels <- sprintf(
   "<strong>%s</strong><br/>%g cases",
-  scotland$HlthBrd, scotland$NumberConfirmedCases) %>% lapply(htmltools::HTML)
+  scotland$HBName, scotland$NumberConfirmedCases) %>% lapply(htmltools::HTML)
 
 
 # Create an initial map
@@ -217,14 +172,14 @@ Column {data-width=45%}
 -----------------------------------------------------------------------
 
 ### COVID-19 confirmed cases in Scotland as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
-```{r}
+```{r summary values for total and new cases, echo=FALSE}
 valueBox(paste0(cases[nrow(cases), "Grand Total"], " cases ",
                 " (", cases[nrow(cases), "NewCases"], " new)"))
 ```
 
 ### Number of confirmed cases through time as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
 
-```{r}
+```{r plot of cumulative number of cases, echo=FALSE}
 ## Plotting confirmed cases through time
 
 # Initialise a figure
@@ -247,7 +202,7 @@ fig
 
 ### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
 
-```{r}
+```{r plotting cumulative case trends since reaching threshold, echo=FALSE}
 ## Plotting the confirmed cases through time for each region
 
 # Initialise a figure
