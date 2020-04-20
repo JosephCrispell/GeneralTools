@@ -76,6 +76,125 @@ calculateNewCasesPerDay <- function(cases){
   
   return(newCases)
 }
+
+# Function to parse scottish case count data
+getCaseCountsForScotland <- function(fileURL){
+  
+  # Load the regional confirmed cases counts for Scotland
+  scotlandCases <- read.csv(fileURL, stringsAsFactors=FALSE, check.names=FALSE)
+  
+  # Format the date column fo the cases table
+  scotlandCases$Date <- as.Date(scotlandCases$Date, format="%d-%b-%Y")
+
+  # Calculate the number of new cases per day
+  scotlandCases$NewCases <- calculateNewCasesPerDay(scotlandCases)
+  
+  return(scotlandCases)
+}
+
+# Function to plot number of cases per region of shape file
+chloropleth <- function(boundaries, nameCol, nCases, centre, zoom=6){
+  
+  # Create a colour palette
+  qpal <- colorBin("Reds", nCases, bins=5)
+
+  # Create labels that will appear on hover
+  labels <- paste0("<strong>", boundaries@data[, nameCol], "</strong><br/>", nCases, " cases") %>% lapply(htmltools::HTML)
+
+  # Create an initial map
+  leaflet(boundaries) %>%
+
+    # Set the starting view
+    setView(lng=centre[1], lat=centre[2], zoom = 6) %>%
+  
+    # Add polygons for the each region
+    addPolygons(weight=2, fillColor=~qpal(nCases), color="white", dashArray = "3",
+                highlight = highlightOptions(
+                              weight=5,
+                              color="#666",
+                              dashArray="",
+                              fillOpacity=0.95,
+                              bringToFront=TRUE),
+                label=labels,
+                labelOptions = labelOptions(
+                                  style=list("font-weight" = "normal", padding = "3px 8px"),
+                                  textsize="15px",
+                                  direction="auto")) %>%
+  
+    # Add a legend
+    addLegend(values=nCases, pal=qpal, title="Number confirmed cases")
+}
+
+# Function to plot the number of confirmed cases  and new cases through time
+plotTotalCasesThroughTime <- function(cases){
+  
+  # Initialise a figure
+  fig <- plot_ly(cases, x=cases$Date) 
+
+  # Add a trace for the confirmed cases
+  fig <- add_trace(fig, y=cases$`Grand Total`, name="Cumulative total", mode="lines+markers", 
+                   hovertemplate=paste0(format(cases$Date, "%b %d"), ": ", cases$`Grand Total`))
+
+  # Add bars for the number of new cases
+  fig <- add_bars(fig, y=cases$NewCases, name="New cases", 
+                  hovertemplate=paste0(format(cases$Date, "%b %d"), ": ", cases$NewCases))
+
+  # Add legend within plot and remove background colour
+  fig <- layout(fig, legend=list(x=0.1, y=0.9, bgcolor = rgb(0,0,0,0)))
+
+  # Plot the figure
+  fig
+}
+
+# Function to plot the number of confirmed cases for each region through time
+plotTotalCasesThroughTimeForEachRegion <- function(daysSince, logYAxis=FALSE){
+  
+  # Initialise a figure
+  fig <- plot_ly(daysSince, x=daysSince$NumberDaysSince) 
+
+  # Add a trace for each region
+  for(column in colnames(daysSince)[-1]){
+  
+    fig <- add_trace(fig, y=daysSince[, column], name=column, mode="lines+markers", 
+                     hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", daysSince[, column]))
+  }
+
+  # Add an X axis label
+  fig <- layout(fig, xaxis=list(title=paste0("Number of days since ", threshold, " cases")))
+
+  # Log the Y-axis - if requested
+  if(logYAxis){
+    fig <- layout(fig, yaxis = list(type="log"))
+  }
+
+  # Set the Y axis limits
+  fig <- layout(fig, yaxis=list(range=c(0, max(daysSince[, -1], na.rm=TRUE)), title="Number of confirmed cases"))
+
+  # Add lines to show doubling every 2 days
+  values <- c(threshold, threshold * exp(log(2) / 2) ^ (1:(nrow(daysSince)-1)))
+  fig <- add_trace(fig, y=values, name="Doubling every 2 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
+                   hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
+                   showlegend = FALSE)
+
+  # Add lines to show doubling every 3 days
+  values <- c(threshold, threshold * 1.260 ^ (1:(nrow(daysSince)-1)))
+  fig <- add_trace(fig, y=values, name="Doubling every 3 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
+                   hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
+                   showlegend = FALSE)
+
+  # Add lines to show doubling every 7 days
+  values <- c(threshold, threshold * 1.104 ^ (1:(nrow(daysSince)-1)))
+  fig <- add_trace(fig, y=values, name="Doubling every 7 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
+                   hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
+                   showlegend = FALSE)
+
+  # Add legend within plot and remove background colour
+  fig <- layout(fig, legend=list(x=0.1, y=1, bgcolor = rgb(0,0,0,0)))
+
+  # Plot the figure
+  fig
+}
+
 ```
 
 
@@ -84,17 +203,7 @@ calculateNewCasesPerDay <- function(cases){
 
 # Load the regional confirmed cases counts for Scotland
 regionalCasesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/master/data/processed/regional_cases.csv"
-cases <- read.csv(regionalCasesFile, stringsAsFactors=FALSE, check.names=FALSE)
-
-# Load the population size in each region of Scotland
-#regionPopSizesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/master/data/processed/HB_Populations.csv"
-#populationSizes <- read.csv(regionPopSizesFile, stringsAsFactors=FALSE, check.names=FALSE)
-
-# Format the date column fo the cases table
-cases$Date <- as.Date(cases$Date, format="%d-%b-%Y")
-
-# Calculate the number of new cases per day
-cases$NewCases <- calculateNewCasesPerDay(cases)
+scotlandCases <- getCaseCountsForScotland(regionalCasesFile)
 ```
 
 ```{r calculate time since X cases, echo=FALSE}
@@ -104,7 +213,7 @@ cases$NewCases <- calculateNewCasesPerDay(cases)
 threshold <- 10
 
 # Get the number of cases for each region once passed threshold
-daysSince <- buildTableForTimeSinceCasesReachedThreshold(cases, threshold)
+daysSince <- buildTableForTimeSinceCasesReachedThreshold(scotlandCases, threshold)
 ```
 
 ```{r read shape file with regions matching report regions created previously, include=FALSE}
@@ -126,47 +235,17 @@ Column {data-width=55%}
 ```{r chloropleth of new cases in each region, echo=FALSE}
 
 # Get the latest number of confirmed cases for each region in Scotland
-scotland$NumberConfirmedCases <- as.numeric(cases[nrow(cases), as.character(scotland$HBName)])
+nCases <- as.numeric(scotlandCases[nrow(scotlandCases), as.character(scotland$HBName)])
 
-# Create a colour palette
-qpal <- colorBin("Reds", scotland$NumberConfirmedCases, bins=5)
-
-# Create labels that will appear on hover
-labels <- sprintf(
-  "<strong>%s</strong><br/>%g cases",
-  scotland$HBName, scotland$NumberConfirmedCases) %>% lapply(htmltools::HTML)
-
-
-# Create an initial map
-leaflet(scotland) %>%
-
-  # Set the starting view
-  setView(lng=-4.6873411, lat=57.7469948, zoom = 6) %>%
-  
-  # Add polygons for the each region
-  addPolygons(weight=2, fillColor=~qpal(scotland$NumberConfirmedCases), color="white", dashArray = "3",
-              highlight = highlightOptions(
-                            weight=5,
-                            color="#666",
-                            dashArray="",
-                            fillOpacity=0.95,
-                            bringToFront=TRUE),
-              label=labels,
-              labelOptions = labelOptions(
-                                style=list("font-weight" = "normal", padding = "3px 8px"),
-                                textsize="15px",
-                                direction="auto")) %>%
-  
-  # Add a legend
-  addLegend(values=scotland$NumberConfirmedCases, pal=qpal, title="Number confirmed cases")
-
+# Plot a leaflet chloropleth illustrating number of cases in each region
+chloropleth(boundaries=scotland, nameCol="HBName", nCases=nCases, centre=c(-4.6873411, 57.7469948))
 ```
 
 ### Data sources {data-height=30%}
 
 These visualisations are based on non-official numbers and therefore shouldn't inform official decision making. These COVID-19 data were sourced directly from [here](https://github.com/watty62/Scot_covid19/blob/master/data/processed/regional_cases.csv). The geographical shape file was sourced from [here](https://data.gov.uk/dataset/27d0fe5f-79bb-4116-aec9-a8e565ff756a/nhs-health-boards). This dashboard was informed by the following existing [dashboard](https://smazeri.shinyapps.io/Covid19_Scotland/#section-cases).
 
-Column {data-width=45%} {.tabset}
+Column {data-width=45%}
 -----------------------------------------------------------------------
 
 ### COVID-19 confirmed cases in Scotland as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
@@ -178,74 +257,15 @@ valueBox(paste0(cases[nrow(cases), "Grand Total"], " cases ",
 ### Number of confirmed cases through time as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
 
 ```{r plot of cumulative number of cases, echo=FALSE}
-## Plotting confirmed cases through time
-
-# Initialise a figure
-fig <- plot_ly(cases, x=cases$Date) 
-
-# Add a trace for the confirmed cases
-fig <- add_trace(fig, y=cases$`Grand Total`, name="Cumulative total", mode="lines+markers", 
-                 hovertemplate=paste0(format(cases$Date, "%b %d"), ": ", cases$`Grand Total`))
-
-# Add bars for the number of new cases
-fig <- add_bars(fig, y=cases$NewCases, name="New cases", 
-                hovertemplate=paste0(format(cases$Date, "%b %d"), ": ", cases$NewCases))
-
-# Add legend within plot and remove background colour
-fig <- layout(fig, legend=list(x=0.1, y=0.9, bgcolor = rgb(0,0,0,0)))
-
-# Plot the figure
-fig
+# Plotting confirmed cases through time
+plotTotalCasesThroughTime(scotlandCases)
 ```
 
 ### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
 
 ```{r plotting cumulative case trends since reaching threshold, echo=FALSE}
-## Plotting the confirmed cases through time for each region
-
-# Initialise a figure
-fig <- plot_ly(daysSince, x=daysSince$NumberDaysSince) 
-
-# Add a trace for each region
-for(column in colnames(daysSince)[-1]){
-  
-  fig <- add_trace(fig, y=daysSince[, column], name=column, mode="lines+markers", 
-                   hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", daysSince[, column]))
-}
-
-# Add an X axis label
-fig <- layout(fig, xaxis=list(title=paste0("Number of days since ", threshold, " cases")))
-
-# Log the Y-axis
-#fig <- layout(fig, yaxis = list(type="log"))
-
-# Set the Y axis limits
-fig <- layout(fig, yaxis=list(range=c(0, max(daysSince[, -1], na.rm=TRUE))))
-
-# Add lines to show doubling every 2 days
-values <- c(threshold, threshold * exp(log(2) / 2) ^ (1:(nrow(daysSince)-1)))
-fig <- add_trace(fig, y=values, name="Doubling every 2 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
-                 hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
-                 showlegend = FALSE)
-
-# Add lines to show doubling every 3 days
-values <- c(threshold, threshold * 1.260 ^ (1:(nrow(daysSince)-1)))
-fig <- add_trace(fig, y=values, name="Doubling every 3 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
-                 hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
-                 showlegend = FALSE)
-
-# Add lines to show doubling every 7 days
-values <- c(threshold, threshold * 1.104 ^ (1:(nrow(daysSince)-1)))
-fig <- add_trace(fig, y=values, name="Doubling every 7 days", mode="lines", line=list(dash="dash", color=rgb(0,0,0, 0.5)),
-                 hovertemplate=paste0(daysSince$NumberDaysSince, " days since: ", round(values, digits=0)),
-                 showlegend = FALSE)
-
-# Add legend within plot and remove background colour
-fig <- layout(fig, legend=list(x=0.1, y=1, bgcolor = rgb(0,0,0,0)))
-
-# Plot the figure
-fig
-
+# Plotting the confirmed cases through time for each region
+plotTotalCasesThroughTimeForEachRegion(daysSince)
 
 ```
 
