@@ -230,7 +230,7 @@ scotland <- spTransform(scotland, CRS("+datum=WGS84 +proj=longlat"))
 Column {data-width=55%}
 -----------------------------------------------------------------------
   
-### Regional patterns of confirmed cases as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
+### Regional patterns of confirmed cases as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
 ```{r chloropleth of new cases in each region, echo=FALSE}
 
@@ -248,20 +248,20 @@ These visualisations are based on non-official numbers and therefore shouldn't i
 Column {data-width=45%}
 -----------------------------------------------------------------------
 
-### COVID-19 confirmed cases in Scotland as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
+### COVID-19 confirmed cases in Scotland as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 ```{r summary values for total and new cases, echo=FALSE}
-valueBox(paste0(cases[nrow(cases), "Grand Total"], " cases ",
-                " (", cases[nrow(cases), "NewCases"], " new)"))
+valueBox(paste0(scotlandCases[nrow(scotlandCases), "Grand Total"], " cases ",
+                " (", scotlandCases[nrow(scotlandCases), "NewCases"], " new)"))
 ```
 
-### Number of confirmed cases through time as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
+### Number of confirmed cases through time as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
 ```{r plot of cumulative number of cases, echo=FALSE}
 # Plotting confirmed cases through time
 plotTotalCasesThroughTime(scotlandCases)
 ```
 
-### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(cases[nrow(cases), "Date"], "%d %B %Y")`
+### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
 ```{r plotting cumulative case trends since reaching threshold, echo=FALSE}
 # Plotting the confirmed cases through time for each region
