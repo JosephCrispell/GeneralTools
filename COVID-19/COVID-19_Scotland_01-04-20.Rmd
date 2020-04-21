@@ -136,7 +136,7 @@ chloropleth <- function(boundaries, nameCol, nCases, centre, zoom=6){
   qpal <- colorBin("Reds", nCases, bins=5)
 
   # Create labels that will appear on hover
-  labels <- paste0("", boundaries@data[, nameCol], "", nCases, " cases") %>% lapply(htmltools::HTML)
+  labels <- paste0("<b>", boundaries@data[, nameCol], "</b> <br>", nCases, " cases") %>% lapply(htmltools::HTML)
 
   # Create an initial map
   leaflet(boundaries) %>%
@@ -232,6 +232,22 @@ plotTotalCasesThroughTimeForEachRegion <- function(daysSince, logYAxis=FALSE){
   fig
 }
 
+# Function to read in and simplify shape file
+readInBoundariesAndSimplify <- function(shapeFile){
+  
+  # Read in the shape file
+  boundaries <- rgdal::readOGR(shapeFile)
+
+  # Convert to latitude and longitude
+  boundaries <- spTransform(boundaries, CRS("+datum=WGS84 +proj=longlat"))
+
+  # Simplify the shape file
+  simplerPolygons <- gSimplify(boundaries, tol=0.05, topologyPreserve=FALSE)
+  boundaries <- SpatialPolygonsDataFrame(simplerPolygons, boundaries@data)
+  
+  return(boundaries)
+}
+
 ```
 
 Scotland
@@ -260,14 +276,7 @@ daysSince <- buildTableForTimeSinceCasesReachedThreshold(scotlandCases, threshol
 
 # Read in the shape file
 shapeFile <- file.path(path, "SG_NHS_HealthBoards_2019", "SG_NHS_HealthBoards_2019.shp")
-scotland <- rgdal::readOGR(shapeFile)
-
-# Convert to latitude and longitude
-scotland <- spTransform(scotland, CRS("+datum=WGS84 +proj=longlat"))
-
-# Simplify the shape file
-simplerPolygons <- gSimplify(scotland, tol=0.05, topologyPreserve=FALSE)
-scotland <- SpatialPolygonsDataFrame(simplerPolygons, scotland@data)
+scotland <- readInBoundariesAndSimplify(shapeFile)
 ```
 
 Column {data-width=55%}
@@ -334,14 +343,7 @@ daysSince <- buildTableForTimeSinceCasesReachedThreshold(ukCases, threshold)
 # Read in the UK shape file
 shapeFile <- file.path(path, "Countries_December_2019_Boundaries_UK_BFE", 
                        "Countries_December_2019_Boundaries_UK_BFE.shp")
-uk <- rgdal::readOGR(shapeFile)
-
-# Convert to latitude and longitude
-uk <- spTransform(uk, CRS("+datum=WGS84 +proj=longlat"))
-
-# Simplify the shape file
-simplerPolygons <- gSimplify(uk, tol=0.05, topologyPreserve=FALSE)
-uk <- SpatialPolygonsDataFrame(simplerPolygons, uk@data)
+uk <- readInBoundariesAndSimplify(shapeFile)
 ```
 
 Column {data-width=55%}
@@ -355,7 +357,7 @@ Column {data-width=55%}
 nCases <- as.numeric(ukCases[nrow(ukCases), as.character(uk$ctry19nm)])
 
 # Plot a leaflet chloropleth illustrating number of cases in each country
-chloropleth(boundaries=uk, nameCol="ctry19nm", nCases=nCases, centre=c(-22.2277193, 53.2202105))
+chloropleth(boundaries=uk, nameCol="ctry19nm", nCases=nCases, centre=c(-2.7181907, 54.921807))
 ```
 
 ### Data sources {data-height=30%}
