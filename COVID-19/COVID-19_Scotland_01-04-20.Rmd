@@ -92,6 +92,43 @@ getCaseCountsForScotland <- function(fileURL){
   return(scotlandCases)
 }
 
+# Function to parse the UK case count data
+getCaseCountsForUK <- function(fileURL){
+  
+  # Read in the uk case count table
+  ukCases <- read.csv(fileURL, stringsAsFactors=FALSE, check.names=FALSE)
+
+  # Convert case counts to numbers
+  ukCases$TotalCases <- as.numeric(ukCases$TotalCases)
+
+  # Collapse to counts for each country on each date
+  ukCases$CountryDate <- paste0(ukCases$Country, "_", ukCases$Date)
+  countsPerCountry <- aggregate(ukCases$TotalCases, by=list(ukCases$CountryDate), FUN=sum, na.rm=TRUE)
+
+  # Extract the country names and dates from aggregated table
+  countsPerCountry$Date <- sapply(countsPerCountry$Group.1, FUN=function(countryWithDate){strsplit(countryWithDate, "_")[[1]][2]})
+  countsPerCountry$Country <- sapply(countsPerCountry$Group.1, FUN=function(countryWithDate){strsplit(countryWithDate, "_")[[1]][1]})
+
+  # Build a table reporting case count in each country on each date
+  casesPerCountry <- data.frame("Date"=sort(unique(countsPerCountry$Date)), "Scotland"=0, "England"=0, "Wales"=0, "Northern Ireland"=0, 
+                                stringsAsFactors=FALSE, check.names=FALSE)
+  rownames(casesPerCountry) <- casesPerCountry$Date
+  for(row in 1:nrow(countsPerCountry)){
+    casesPerCountry[countsPerCountry[row, "Date"], countsPerCountry[row, "Country"]] <- countsPerCountry[row, "x"]
+  }
+
+  # Add a total column
+  casesPerCountry[, "Grand Total"] <- rowSums(casesPerCountry[, 2:4])
+  
+  # Calculate the number of new cases per day
+  casesPerCountry$NewCases <- calculateNewCasesPerDay(casesPerCountry)
+  
+  # Convert the dates column back to dates
+  casesPerCountry$Date <- as.Date(casesPerCountry$Date)
+  
+  return(casesPerCountry)
+}
+
 # Function to plot number of cases per region of shape file
 chloropleth <- function(boundaries, nameCol, nCases, centre, zoom=6){
   
@@ -99,7 +136,7 @@ chloropleth <- function(boundaries, nameCol, nCases, centre, zoom=6){
   qpal <- colorBin("Reds", nCases, bins=5)
 
   # Create labels that will appear on hover
-  labels <- paste0("<strong>", boundaries@data[, nameCol], "</strong><br/>", nCases, " cases") %>% lapply(htmltools::HTML)
+  labels <- paste0("", boundaries@data[, nameCol], "", nCases, " cases") %>% lapply(htmltools::HTML)
 
   # Create an initial map
   leaflet(boundaries) %>%
@@ -197,8 +234,10 @@ plotTotalCasesThroughTimeForEachRegion <- function(daysSince, logYAxis=FALSE){
 
 ```
 
+Scotland
+===================================== 
 
-```{r loading case counts, echo=FALSE}
+```{r loading case counts for scotland, echo=FALSE}
 ## Loading the data
 
 # Load the regional confirmed cases counts for Scotland
@@ -206,7 +245,7 @@ regionalCasesFile <- "https://raw.githubusercontent.com/watty62/Scot_covid19/mas
 scotlandCases <- getCaseCountsForScotland(regionalCasesFile)
 ```
 
-```{r calculate time since X cases, echo=FALSE}
+```{r calculate time since X cases for each region in scotland, echo=FALSE}
 ## Align region cases by time since X cases
 
 # Set X (threshold number of cases)
@@ -216,7 +255,7 @@ threshold <- 10
 daysSince <- buildTableForTimeSinceCasesReachedThreshold(scotlandCases, threshold)
 ```
 
-```{r read shape file with regions matching report regions created previously, include=FALSE}
+```{r read shape file with health departments in scotland, include=FALSE}
 ## Read in the joined Health Boards
 
 # Read in the shape file
@@ -225,6 +264,10 @@ scotland <- rgdal::readOGR(shapeFile)
 
 # Convert to latitude and longitude
 scotland <- spTransform(scotland, CRS("+datum=WGS84 +proj=longlat"))
+
+# Simplify the shape file
+simplerPolygons <- gSimplify(scotland, tol=0.05, topologyPreserve=FALSE)
+scotland <- SpatialPolygonsDataFrame(simplerPolygons, scotland@data)
 ```
 
 Column {data-width=55%}
@@ -232,7 +275,7 @@ Column {data-width=55%}
   
 ### Regional patterns of confirmed cases as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
-```{r chloropleth of new cases in each region, echo=FALSE}
+```{r chloropleth of new cases in each region in scotland, echo=FALSE}
 
 # Get the latest number of confirmed cases for each region in Scotland
 nCases <- as.numeric(scotlandCases[nrow(scotlandCases), as.character(scotland$HBName)])
@@ -249,23 +292,96 @@ Column {data-width=45%}
 -----------------------------------------------------------------------
 
 ### COVID-19 confirmed cases in Scotland as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
-```{r summary values for total and new cases, echo=FALSE}
+```{r summary values for total and new cases in scotland, echo=FALSE}
 valueBox(paste0(scotlandCases[nrow(scotlandCases), "Grand Total"], " cases ",
                 " (", scotlandCases[nrow(scotlandCases), "NewCases"], " new)"))
 ```
 
 ### Number of confirmed cases through time as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
-```{r plot of cumulative number of cases, echo=FALSE}
+```{r plot of cumulative number of cases for scotland, echo=FALSE}
 # Plotting confirmed cases through time
 plotTotalCasesThroughTime(scotlandCases)
 ```
 
 ### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(scotlandCases[nrow(scotlandCases), "Date"], "%d %B %Y")`
 
-```{r plotting cumulative case trends since reaching threshold, echo=FALSE}
+```{r plotting cumulative case trends since reaching threshold for each region in scotland, echo=FALSE}
 # Plotting the confirmed cases through time for each region
 plotTotalCasesThroughTimeForEachRegion(daysSince)
 
 ```
 
+United Kingdom
+===================================== 
+
+```{r loading case counts for uk, include=FALSE}
+## Loading the data
+
+# Load the regional confirmed cases counts for Scotland
+ukCasesFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-cases-uk.csv"
+ukCases <- getCaseCountsForUK(ukCasesFile)
+```
+
+```{r calculate time since X cases for uk, echo=FALSE}
+## Align region cases by time since X cases
+
+# Get the number of cases for each region once passed threshold
+daysSince <- buildTableForTimeSinceCasesReachedThreshold(ukCases, threshold)
+```
+
+```{r read shape file for countries in uk, include=FALSE}
+# Read in the UK shape file
+shapeFile <- file.path(path, "Countries_December_2019_Boundaries_UK_BFE", 
+                       "Countries_December_2019_Boundaries_UK_BFE.shp")
+uk <- rgdal::readOGR(shapeFile)
+
+# Convert to latitude and longitude
+uk <- spTransform(uk, CRS("+datum=WGS84 +proj=longlat"))
+
+# Simplify the shape file
+simplerPolygons <- gSimplify(uk, tol=0.05, topologyPreserve=FALSE)
+uk <- SpatialPolygonsDataFrame(simplerPolygons, uk@data)
+```
+
+Column {data-width=55%}
+-----------------------------------------------------------------------
+  
+### Regional patterns of confirmed cases as of `r format(ukCases[nrow(ukCases), "Date"], "%d %B %Y")`
+
+```{r chloropleth of new cases in each country, echo=FALSE}
+
+# Get the latest number of confirmed cases for each country in UK
+nCases <- as.numeric(ukCases[nrow(ukCases), as.character(uk$ctry19nm)])
+
+# Plot a leaflet chloropleth illustrating number of cases in each country
+chloropleth(boundaries=uk, nameCol="ctry19nm", nCases=nCases, centre=c(-22.2277193, 53.2202105))
+```
+
+### Data sources {data-height=30%}
+
+These visualisations are based on non-official numbers and therefore shouldn't inform official decision making. These COVID-19 data were sourced directly from [here](https://github.com/tomwhite/covid-19-uk-data/master/data/covid-19-cases-uk.csv). The geographical shape file was sourced from [here](https://geoportal.statistics.gov.uk/datasets/countries-december-2019-boundaries-uk-bfe). This dashboard was informed by the following existing [dashboard](https://smazeri.shinyapps.io/Covid19_Scotland/#section-cases).
+
+Column {data-width=45%}
+-----------------------------------------------------------------------
+
+### COVID-19 confirmed cases in United Kingdom as of `r format(ukCases[nrow(ukCases), "Date"], "%d %B %Y")`
+```{r summary values for total and new cases in uk, echo=FALSE}
+valueBox(paste0(ukCases[nrow(ukCases), "Grand Total"], " cases ",
+                " (", ukCases[nrow(ukCases), "NewCases"], " new)"))
+```
+
+### Number of confirmed cases through time as of `r format(ukCases[nrow(ukCases), "Date"], "%d %B %Y")`
+
+```{r plot of cumulative number of cases in uk, echo=FALSE}
+# Plotting confirmed cases through time
+plotTotalCasesThroughTime(ukCases)
+```
+
+### Number of confirmed cases since reaching `r threshold` cases by region as of `r format(ukCases[nrow(ukCases), "Date"], "%d %B %Y")`
+
+```{r plotting cumulative case trends since reaching threshold in each country, echo=FALSE}
+# Plotting the confirmed cases through time for each country
+plotTotalCasesThroughTimeForEachRegion(daysSince)
+
+```
