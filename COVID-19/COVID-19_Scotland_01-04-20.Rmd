@@ -327,6 +327,9 @@ United Kingdom
 ```{r loading case counts for uk, include=FALSE}
 ## Loading the data
 
+CHANGE THIS TO READ IN DATA FOR EACH COUNTRY INDIVIDUALLY - USING THESE FILES: https://github.com/tomwhite/covid-19-uk-data/blob/master/data/covid-19-totals-england.csv
+
+
 # Load the regional confirmed cases counts for Scotland
 ukCasesFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-cases-uk.csv"
 ukCases <- getCaseCountsForUK(ukCasesFile)
@@ -362,7 +365,7 @@ chloropleth(boundaries=uk, nameCol="ctry19nm", nCases=nCases, centre=c(-2.718190
 
 ### Data sources {data-height=30%}
 
-These visualisations are based on non-official numbers and therefore shouldn't inform official decision making. These COVID-19 data were sourced directly from [here](https://github.com/tomwhite/covid-19-uk-data/master/data/covid-19-cases-uk.csv). The geographical shape file was sourced from [here](https://geoportal.statistics.gov.uk/datasets/countries-december-2019-boundaries-uk-bfe). This dashboard was informed by the following existing [dashboard](https://smazeri.shinyapps.io/Covid19_Scotland/#section-cases).
+These visualisations are based on non-official numbers and therefore shouldn't inform official decision making. These COVID-19 data were sourced directly from [here](https://github.com/tomwhite/covid-19-uk-data/blob/master/data/covid-19-cases-uk.csv). The geographical shape file was sourced from [here](https://geoportal.statistics.gov.uk/datasets/countries-december-2019-boundaries-uk-bfe). This dashboard was informed by the following existing [dashboard](https://smazeri.shinyapps.io/Covid19_Scotland/#section-cases).
 
 Column {data-width=45%}
 -----------------------------------------------------------------------
