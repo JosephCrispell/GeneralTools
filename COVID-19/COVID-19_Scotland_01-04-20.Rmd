@@ -92,43 +92,6 @@ getCaseCountsForScotland <- function(fileURL){
   return(scotlandCases)
 }
 
-# Function to parse the UK case count data
-getCaseCountsForUK <- function(fileURL){
-  
-  # Read in the uk case count table
-  ukCases <- read.csv(fileURL, stringsAsFactors=FALSE, check.names=FALSE)
-
-  # Convert case counts to numbers
-  ukCases$TotalCases <- as.numeric(ukCases$TotalCases)
-
-  # Collapse to counts for each country on each date
-  ukCases$CountryDate <- paste0(ukCases$Country, "_", ukCases$Date)
-  countsPerCountry <- aggregate(ukCases$TotalCases, by=list(ukCases$CountryDate), FUN=sum, na.rm=TRUE)
-
-  # Extract the country names and dates from aggregated table
-  countsPerCountry$Date <- sapply(countsPerCountry$Group.1, FUN=function(countryWithDate){strsplit(countryWithDate, "_")[[1]][2]})
-  countsPerCountry$Country <- sapply(countsPerCountry$Group.1, FUN=function(countryWithDate){strsplit(countryWithDate, "_")[[1]][1]})
-
-  # Build a table reporting case count in each country on each date
-  casesPerCountry <- data.frame("Date"=sort(unique(countsPerCountry$Date)), "Scotland"=0, "England"=0, "Wales"=0, "Northern Ireland"=0, 
-                                stringsAsFactors=FALSE, check.names=FALSE)
-  rownames(casesPerCountry) <- casesPerCountry$Date
-  for(row in 1:nrow(countsPerCountry)){
-    casesPerCountry[countsPerCountry[row, "Date"], countsPerCountry[row, "Country"]] <- countsPerCountry[row, "x"]
-  }
-
-  # Add a total column
-  casesPerCountry[, "Grand Total"] <- rowSums(casesPerCountry[, 2:4])
-  
-  # Calculate the number of new cases per day
-  casesPerCountry$NewCases <- calculateNewCasesPerDay(casesPerCountry)
-  
-  # Convert the dates column back to dates
-  casesPerCountry$Date <- as.Date(casesPerCountry$Date)
-  
-  return(casesPerCountry)
-}
-
 # Function to plot number of cases per region of shape file
 chloropleth <- function(boundaries, nameCol, nCases, centre, zoom=6){
   
@@ -248,6 +211,29 @@ readInBoundariesAndSimplify <- function(shapeFile){
   return(boundaries)
 }
 
+readInUKCountryData <- function(scotlandFile, englandFile, walesFile, northernIrelandFile, ukFile){
+  
+  # Read in the files for each country
+  scotland <- read.csv(scotlandFile, stringsAsFactors=FALSE, check.names=FALSE,
+                       col.names=c("Date", "Tests_Scotland",  "ConfirmedCases_Scotland",  "Deaths_Scotland"))
+  england <- read.csv(englandFile, stringsAsFactors=FALSE, check.names=FALSE,
+                       col.names=c("Date", "Tests_England",  "ConfirmedCases_England",  "Deaths_England"))
+  wales <- read.csv(walesFile, stringsAsFactors=FALSE, check.names=FALSE,
+                       col.names=c("Date", "Tests_Wales",  "ConfirmedCases_Wales",  "Deaths_Wales"))
+  northernIreland <- read.csv(northernIrelandFile, stringsAsFactors=FALSE, check.names=FALSE,
+                       col.names=c("Date", "Tests_NI",  "ConfirmedCases_NI",  "Deaths_NI"))
+  uk <- read.csv(ukFile, stringsAsFactors=FALSE, check.names=FALSE,
+                       col.names=c("Date", "Tests_UK",  "ConfirmedCases_UK",  "Deaths_UK"))
+  
+  # Combine the tables by date
+  ukCases <- merge(scotland, england, by="Date", all=TRUE)
+  ukCases <- merge(ukCases, wales, by="Date", all=TRUE)
+  ukCases <- merge(ukCases, northernIreland, by="Date", all=TRUE)
+  ukCases <- merge(ukCases, uk, by="Date", all=TRUE)
+
+  return(ukCases)
+}
+
 ```
 
 Scotland
@@ -327,16 +313,38 @@ United Kingdom
 ```{r loading case counts for uk, include=FALSE}
 ## Loading the data
 
-CHANGE THIS TO READ IN DATA FOR EACH COUNTRY INDIVIDUALLY - USING THESE FILES: https://github.com/tomwhite/covid-19-uk-data/blob/master/data/covid-19-totals-england.csv
+# Note the file names
+englandFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-england.csv"
+scotlandFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-scotland.csv"
+northernIrelandFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-northern-ireland.csv"
+walesFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-wales.csv"
+ukFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-totals-uk.csv"
 
+# Read in the UK data
+ukCases <- readInUKCountryData(scotlandFile, englandFile, walesFile, northernIrelandFile, ukFile)
 
-# Load the regional confirmed cases counts for Scotland
-ukCasesFile <- "https://raw.githubusercontent.com/tomwhite/covid-19-uk-data/master/data/covid-19-cases-uk.csv"
-ukCases <- getCaseCountsForUK(ukCasesFile)
+# Select the confirmed cases counts
+ukCases <- ukCases[, colnames(ukCases) %in% c("Date", "ConfirmedCases_Scotland", "ConfirmedCases_England",
+                                              "ConfirmedCases_Wales", "ConfirmedCases_NI",
+                                              "ConfirmedCases_UK")]
+colnames(ukCases) <- c("Date", "Scotland", "England", "Wales", "Northern Ireland", "Grand Total")
+
+# Calculate the number of new cases per day
+ukCases$NewCases <- calculateNewCasesPerDay(ukCases)
+
+# Remove empty rows
+start <- which(rowSums(ukCases[2:7], na.rm=TRUE) != 0)[1]
+ukCases <- ukCases[start:nrow(ukCases), ]
+
+# Convert the dates column back to dates
+ukCases$Date <- as.Date(ukCases$Date)
 ```
 
 ```{r calculate time since X cases for uk, echo=FALSE}
 ## Align region cases by time since X cases
+
+# Set the threshold
+threshold <- 50
 
 # Get the number of cases for each region once passed threshold
 daysSince <- buildTableForTimeSinceCasesReachedThreshold(ukCases, threshold)
@@ -388,5 +396,4 @@ plotTotalCasesThroughTime(ukCases)
 ```{r plotting cumulative case trends since reaching threshold in each country, echo=FALSE}
 # Plotting the confirmed cases through time for each country
 plotTotalCasesThroughTimeForEachRegion(daysSince)
-
 ```
