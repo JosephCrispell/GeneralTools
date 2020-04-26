@@ -22,6 +22,20 @@ path <- file.path("~", "Desktop", "COVID-19")
 ```{r functions, echo=FALSE}
 ## FUNCTIONS
 
+# Function to get the latest case count for each region/country in case count table
+getLatestCaseCountForEachRegion <- function(cases, columns){
+  
+  # Get the latest counts and ignore NAs
+  nCases <- sapply(columns, 
+                   FUN=function(column, cases){
+                     values <- cases[, column]
+                     values <- values[is.na(values) == FALSE]
+                     return(values[length(values)])
+                   }, cases)
+  
+  return(as.numeric(nCases))
+}
+
 # Function to get the date when each region surpassed tthreshold number of cases
 buildTableForTimeSinceCasesReachedThreshold <- function(cases, threshold){
   
@@ -273,7 +287,7 @@ Column {data-width=55%}
 ```{r chloropleth of new cases in each region in scotland, echo=FALSE}
 
 # Get the latest number of confirmed cases for each region in Scotland
-nCases <- as.numeric(scotlandCases[nrow(scotlandCases), as.character(scotland$HBName)])
+nCases <- getLatestCaseCountForEachRegion(scotlandCases, as.character(scotland$HBName))
 
 # Plot a leaflet chloropleth illustrating number of cases in each region
 chloropleth(boundaries=scotland, nameCol="HBName", nCases=nCases, centre=c(-4.6873411, 57.7469948))
@@ -365,7 +379,7 @@ Column {data-width=55%}
 ```{r chloropleth of new cases in each country, echo=FALSE}
 
 # Get the latest number of confirmed cases for each country in UK
-nCases <- as.numeric(ukCases[nrow(ukCases), as.character(uk$ctry19nm)])
+nCases <- getLatestCaseCountForEachRegion(ukCases, as.character(uk$ctry19nm))
 
 # Plot a leaflet chloropleth illustrating number of cases in each country
 chloropleth(boundaries=uk, nameCol="ctry19nm", nCases=nCases, centre=c(-2.7181907, 54.921807))

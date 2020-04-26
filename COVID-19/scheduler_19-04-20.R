@@ -1,3 +1,6 @@
+# Load the rmarkdown library
+library(rmarkdown)
+
 # Get the current date and time
 timeStamp <- Sys.time()
 
@@ -8,13 +11,13 @@ websiteDirectory <- file.path("~", "Desktop", "JosephCrispell.github.io", "COVID
 scriptsDirectory <- file.path("~", "GeneralTools", "COVID-19")
 
 # Run the COVID-19 dahsboard Rmd file
-source(file.path(scriptsDirectory, "COVID-19_Scotland_01-04-20.Rmd"))
+rmarkdown::render(file.path(scriptsDirectory, "COVID-19_Scotland_01-04-20.Rmd"))
 
 # Copy the html into my website folder
-file.copy(file.path(scriptsDirectory, "COVID-19_Scotland_01-04-20.html"), websiteDirectory)
+file.copy(file.path(scriptsDirectory, "COVID-19_Scotland_01-04-20.html"), websiteDirectory, overwrite=TRUE)
 
 # Push the changes to github
-system(paste0("cd ", websiteDirectory))
+setwd(file.path("~", "Desktop", "JosephCrispell.github.io"))
 system("git add *")
 system(paste0("git commit -m \"Daily COVID-19 dashboard update: ", timeStamp, "\""))
 system("git push")
