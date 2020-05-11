@@ -8,15 +8,15 @@ library(R.utils)
 date <- format(Sys.Date(), "%d-%m-%y")
 
 # Create a path variable
-path <- "/home/josephcrispell/Desktop/Research/spoligotypeR/"
+path <- "/home/josephcrispell/Desktop/spoligotypeR/"
 
-#### Build local blastn database ####
-
-# Note the path to blast
-pathToBlast="/home/josephcrispell/Desktop/Research/ncbi-blast-2.6.0+/bin/"
-
-# Build the local database
-createLocalBlastDatabase(paste0(path, "Spacers/spacer.fasta"), pathToBlast)
+# #### Build local blastn database ####
+# 
+# # Note the path to blast
+# pathToBlast="/home/josephcrispell/Desktop/Research/ncbi-blast-2.6.0+/bin/"
+# 
+# # Build the local database
+# createLocalBlastDatabase(paste0(path, "Spacers/spacer.fasta"), pathToBlast)
 
 #### Dealing with VCF file ####
 
@@ -48,7 +48,7 @@ convertVCFToFASTA(vcf, fastaFile, seqName=sequenceName, depthThreshold=20, suppo
 
 #### FUNCTIONS - general ####
 
-gzip <- function(fileName, unzip=FALSE){
+gzipVCF <- function(fileName, unzip=FALSE){
   
   # Check if zipping or unzipping
   if(unzip){
@@ -172,7 +172,7 @@ readVCF <- function(fileName){
     zipped <- TRUE
     
     # unzip the VCF file
-    fileName <- gzip(fileName, unzip=TRUE)
+    fileName <- gzipVCF(fileName, unzip=TRUE)
   }
   
   # Read in the vcf file
@@ -182,7 +182,7 @@ readVCF <- function(fileName){
   
   # If input file was zipped - zip it back up
   if(zipped){
-    fileName <- gzip(fileName)
+    fileName <- gzipVCF(fileName)
   }
   
   return(vcf)

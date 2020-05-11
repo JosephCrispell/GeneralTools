@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Processing Paired Raw Reads
+# Run 
 # Author: Joseph Crispell
 
 # Command Line Structure:
