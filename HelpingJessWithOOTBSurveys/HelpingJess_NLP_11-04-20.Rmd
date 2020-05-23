@@ -1,0 +1,173 @@
+---
+title: "Working on Jess’s transcripts and questionnaires"
+author: "Joseph Crispell"
+date: "13/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r question class and associated functions, echo=FALSE}
+# Create a question object to store the data associated with each question
+question <- function(name, question, nLinesToSkipAfterQuestion=0, multiLine=FALSE, lineAtFinish=NULL){
+              
+  # Create the question object and store the input information
+  value <- list("name"=name,
+                "question"=question,
+                "nLinesToSkipAfterQuestion"=nLinesToSkipAfterQuestion,
+                "lineAtFinish"=lineAtFinish,
+                "answer"=c())
+
+  # Label as question
+  attr(value, "class") <- "question"
+ 
+  return(value)
+}
+
+# Function to extract answers for questions from file lines
+extractAnswers <- function(questions, fileLines){
+  
+  # Examine each line in the fileLines
+  for(lineIndex in seq_along(fileLines)){
+    
+    # Get the current line
+    line <- fileLines[lineIndex]
+    
+    # Check if current lines matches a question
+    questionName <- NA
+    for(question in questions){
+      
+      # Note the question if current line matches question
+      if(grepl(line, pattern=question$question)){
+        questionName <- question$name
+        break
+      }
+    }
+    
+    # Skip to next line if current line doesn't match question
+    if(is.na(questionName)){
+      next
+    }
+    
+    ## Get the answer for the question found
+    
+    # Note the start line
+    startLine <- lineIndex + 1 + questions[[questionName]]$nLinesToSkipAfterQuestion
+      
+    # Identify the last line of the answer
+    lastLine <- lineIndex + which(grepl(fileLines[(lineIndex+1):length(fileLines)], 
+                                        pattern=questions[[questionName]]$lineAtFinish,
+                                        fixed=TRUE)) - 1
+      
+    # Store the answer
+    questions[[questionName]]$answer <- fileLines[startLine:lastLine]
+    
+    # Jump to line after current question
+    lineIndex <- lastLine + 1
+  }
+  
+  return(questions)
+}
+```
+
+```{r define question structure, echo=FALSE}
+# Note each question of interest
+questions <- list(
+  "hours"=question(name="hours", 
+                   question="Roughly how many hours do you spend at AMS in an average week?",
+                   lineAtFinish="Please indicate your normal times at Abbeymount studios  - always/sometimes/never"),
+  "location"=question(name="location",
+                      question="How does the location of Abbeymount Studios impact on your work?",
+                      lineAtFinish="Do you have any connections to the local community and/or to local businesses? If so can you tell us about them?"),
+  "connections"=question(name="connections",
+                         question="Do you have any connections to the local community and/or to local businesses? If so can you tell us about them?",
+                         lineAtFinish="Partnership/collaboration"),
+  "issues"=question(name="issues",
+                    question="What are the issues and challenges you face with your work? For example, with your workspace, or equipment, with your communication/marketing/audience reach and development, or any others?",
+                    lineAtFinish="What have your responses and adaptations to these challenges been?"),
+  "responses"=question(name="responses",
+                       question="What have your responses and adaptations to these challenges been?",
+                       lineAtFinish="Future Development"),
+  "future"=question(name="future",
+                    question="How would you like to see Out of the Blue Abbeymount Studios develop in the future?",
+                    lineAtFinish="Would you be interested in retail space at AMS?"),
+  "retail"=question(name="retail",
+                    question="Would you be interested in retail space at AMS?",
+                    lineAtFinish="Would you be interested in exhibition space at AMS?"),
+  "exhibition"=question(name="exhibition",
+                        question="Would you be interested in exhibition space at AMS?",
+                        lineAtFinish="What have been your successes and highlights whilst working at Abbeymount?"),
+  "value"=question(name="value",
+                   question="To help us convey the value and impact of Abbeymount Studios, if you have time we would really appreciate it if you are able to to tell us highlights and successes at AMS",
+                   lineAtFinish="We would like to interview a representative cross section of Abbeymount residents across the widely varying practices. Interviews will last for 1 hour and will take place in early February.")
+)
+```
+
+```{r general functions, echo=FALSE}
+
+readQuestionnairesAndExtractAnswers <- function(folder, questions){
+  
+  # Find all files in folder
+  files <- list.files(folder)
+  
+  # Ignore temporary files
+  files <- files[grepl(pattern="^~", files) == FALSE]
+  
+  # Initialise a list to store the answers from each file
+  answers <- questions
+  answers$files <- files
+  
+  # Extract answers from each survey response
+  for(fileIndex in seq_along(files)){
+    
+    # Read in the lines from a questionnaire
+    questionnaireFile <- file.path(folder, files[fileIndex])
+    questionnaire <- read_docx(questionnaireFile)
+
+    # Extract the answers to the questions of interest
+    questionnairesAnswers <- extractAnswers(questions, questionnaire)
+    
+    # Store the answers from the current file
+    for(question in names(questions)){
+      
+      # Combine a multi-line answer into single string
+      answer <- ifelse(is.null(questionnairesAnswers[[question]]$answer), 
+                       " ", 
+                       paste(questionnairesAnswers[[question]]$answer, collapse="\n"))
+      
+      # Check if haven't already added answers for current question
+      if(is.null(answers[[question]]$answer)){
+        answers[[question]]$answer <- rep("", length(files))
+      }
+      
+      # Store the current answer to the current question from the current file
+      answers[[question]]$answer[fileIndex] <- answer
+    }
+  }
+  
+  return(answers)
+}
+```
+
+
+```{r preparation, echo=FALSE}
+# Load required libraries
+library(textreadr) # Reading text from docx files
+
+# Set the path
+path <- file.path("~", "Desktop", "HelpingJess")
+
+# Set the date
+date <- format(Sys.Date(), "%d-%m-%y")
+```
+
+```{r read in questionnaires, echo=FALSE}
+# Note the questionnaires folder
+folder <- file.path(path, "Questionnaires")
+
+# Read in the questionnaires and extract answers
+answers <- readQuestionnairesAndExtractAnswers(folder, questions)
+```
+
