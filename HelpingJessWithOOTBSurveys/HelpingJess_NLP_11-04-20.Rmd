@@ -9,6 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r preparation, include=FALSE}
+# Load required libraries
+library(textreadr) # Reading text from docx files
+library(wordcloud) # Creating word clouds
+library(tm) # Used by wordcloud
+library(textdata) # Download, parse, store, and load text datasets
+
+# Set the path
+path <- file.path("~", "Desktop", "HelpingJess")
+```
+
 ```{r question class and associated functions, echo=FALSE}
 # Create a question object to store the data associated with each question
 question <- function(name, question, nLinesToSkipAfterQuestion=0, multiLine=FALSE, lineAtFinish=NULL){
@@ -77,15 +88,15 @@ extractAnswers <- function(questions, fileLines){
 questions <- list(
   "hours"=question(name="hours", 
                    question="Roughly how many hours do you spend at AMS in an average week?",
-                   lineAtFinish="Please indicate your normal times at Abbeymount studios  - always/sometimes/never"),
+                   lineAtFinish="Please indicate your normal times at Abbeymount studios"),
   "location"=question(name="location",
                       question="How does the location of Abbeymount Studios impact on your work?",
-                      lineAtFinish="Do you have any connections to the local community and/or to local businesses? If so can you tell us about them?"),
+                      lineAtFinish="Do you have any connections to the local community and/or to local businesses?"),
   "connections"=question(name="connections",
-                         question="Do you have any connections to the local community and/or to local businesses? If so can you tell us about them?",
+                         question="Do you have any connections to the local community and/or to local businesses?",
                          lineAtFinish="Partnership/collaboration"),
   "issues"=question(name="issues",
-                    question="What are the issues and challenges you face with your work? For example, with your workspace, or equipment, with your communication/marketing/audience reach and development, or any others?",
+                    question="What are the issues and challenges you face with your work?",
                     lineAtFinish="What have your responses and adaptations to these challenges been?"),
   "responses"=question(name="responses",
                        question="What have your responses and adaptations to these challenges been?",
@@ -101,16 +112,61 @@ questions <- list(
                         lineAtFinish="What have been your successes and highlights whilst working at Abbeymount?"),
   "value"=question(name="value",
                    question="To help us convey the value and impact of Abbeymount Studios, if you have time we would really appreciate it if you are able to to tell us highlights and successes at AMS",
-                   lineAtFinish="We would like to interview a representative cross section of Abbeymount residents across the widely varying practices. Interviews will last for 1 hour and will take place in early February.")
+                   lineAtFinish="We would like to interview a representative cross section of Abbeymount residents across the widely varying practices.")
 )
 ```
 
 ```{r general functions, echo=FALSE}
 
+calculateSentimentScore <- function(sentences){
+  
+  # Get the AFINN-11 sentiment lexicon
+  sentimentLexicon <- as.data.frame(lexicon_afinn())
+  rownames(sentimentLexicon) <- sentimentLexicon$word
+  
+  # Initialise a vector to store the sentiment score for each sentence
+  sentimentScores <- c()
+  
+  # Examine each of sentences
+  for(index in seq_along(sentences)){
+    
+    # Get the words from the current sentence
+    words <- extractWordsFromSentence(sentences[index], wordSizeThreshold=1)
+    
+    # Calculate the sum of the sentiment score for all the words
+    sentimentScores[index] <- sum(sentimentLexicon[words, "value"], na.rm=TRUE)
+  }
+  
+  return(sentimentScores)
+}
+
+extractWordsFromSentence <- function(sentences, wordSizeThreshold){
+  
+  # Convert to lower case
+  sentences <- tolower(sentences)
+  
+  # Replace new line characters with spaces
+  sentences <- gsub(pattern="\n", replacement=" ", sentences)
+  
+  # Extract the words from the sentence
+  arrayOfWords <- unlist(strsplit(sentences, " "))
+
+  # Remove non-character characters from words
+  arrayOfWords <- gsub(pattern="[[:punct:]]", replacement="", x=arrayOfWords)
+
+  # Ignore words with fewer than X characters
+  arrayOfWords <- arrayOfWords[nchar(arrayOfWords) >= wordSizeThreshold]
+  
+  return(arrayOfWords)
+}
+
 readQuestionnairesAndExtractAnswers <- function(folder, questions){
   
   # Find all files in folder
   files <- list.files(folder)
+  
+  # Get the word documents
+  files <- files[grepl(pattern=".docx$", files)]
   
   # Ignore temporary files
   files <- files[grepl(pattern="^~", files) == FALSE]
@@ -151,23 +207,48 @@ readQuestionnairesAndExtractAnswers <- function(folder, questions){
 }
 ```
 
-
-```{r preparation, echo=FALSE}
-# Load required libraries
-library(textreadr) # Reading text from docx files
-
-# Set the path
-path <- file.path("~", "Desktop", "HelpingJess")
-
-# Set the date
-date <- format(Sys.Date(), "%d-%m-%y")
-```
-
 ```{r read in questionnaires, echo=FALSE}
 # Note the questionnaires folder
+# Google drive folder: 
 folder <- file.path(path, "Questionnaires")
 
 # Read in the questionnaires and extract answers
 answers <- readQuestionnairesAndExtractAnswers(folder, questions)
 ```
 
+```{r value of Abbeymount Studios, echo=FALSE}
+# Extract the words from the answers about the value of OOTB
+words <- extractWordsFromSentence(answers$value$answer, wordSizeThreshold=4)
+
+# Create a word cloud
+wordcloud(words, max.words=500, min.freq=2, scale=c(2.5,0.75), colors=brewer.pal(8, "Dark2"))
+```
+
+```{r sentiment analysis of whether retail wanted, echo=FALSE}
+# Calculate the sentiment score for each answer to the retail question
+sentimentScores <- calculateSentimentScore(answers$retail$answer)
+
+# Plot the sentiment scores
+hist(sentimentScores, xlim=c(-5, 5), las=1,
+     xlab="Sentiment score",
+     main="Sentiment of responses about a retail space at AMS")
+```
+
+```{r sentiment analyses, echo=FALSE}
+# Calculate the sentiment score for each answer to the exhibition space question
+sentimentScoresExhibition <- calculateSentimentScore(answers$exhibition$answer)
+
+# Calculate the sentiment score for each answer to the retail space question
+sentimentScoresRetail <- calculateSentimentScore(answers$retail$answer)
+
+# Plot the sentiment scores
+scores <- list(sentimentScoresExhibition, sentimentScoresRetail)
+plotMultipleHistograms(scores, nBins=10, xlim=c(-6, 6), 
+                       colours=c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)),
+                       las=1, xlab="Sentiment score",
+                       main="Comparing sentiment of responses for retail\n or exhibition space at AMS")
+legend("topleft", 
+       legend=c(paste0("Retail space (average=", median(sentimentScoresRetail), ")"),
+                paste0("Exhibition space (average=", median(sentimentScoresExhibition), ")")),
+       text.col=c("blue", "red"), bty="n")
+```
