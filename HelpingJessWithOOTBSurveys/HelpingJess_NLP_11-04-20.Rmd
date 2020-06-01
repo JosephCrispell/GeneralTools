@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(textreadr) # Reading text from docx files
 library(wordcloud) # Creating word clouds
 library(tm) # Used by wordcloud
-library(textdata) # Download, parse, store, and load text datasets
+library(basicPlotteR) # Multiple overlaid histograms
 
 # Set the path
 path <- file.path("~", "Desktop", "HelpingJess")
@@ -118,12 +118,39 @@ questions <- list(
 
 ```{r general functions, echo=FALSE}
 
-calculateSentimentScore <- function(sentences){
+comparisonWordCloud <- function(sentences, sentimentLexicon){
   
-  # Get the AFINN-11 sentiment lexicon
-  sentimentLexicon <- as.data.frame(lexicon_afinn())
-  rownames(sentimentLexicon) <- sentimentLexicon$word
+  # Categorise and score the sentiment for all words from all answers to the exhibition question
+  words <- getSentiment(sentences, sentimentLexicon)
+
+  # Create a table for a comparison word cloud
+  tableForComparison <- data.frame("Negative"=ifelse(words$sentiment == "negative", words$count, 0),
+                                   "Positive"=ifelse(words$sentiment == "positive", words$count, 0))
+  rownames(tableForComparison) <- words$word
+  tableForComparison <- tableForComparison[is.na(tableForComparison$Negative) == FALSE, ]
   
+  # Create a comparison word cloud
+  comparison.cloud(as.matrix(tableForComparison))
+}
+
+getSentiment <- function(sentences, sentimentLexicon){
+
+    # Extract all words from input sentences
+  words <- extractWordsFromSentence(sentences, wordSizeThreshold=1)
+  
+  # Count how many times each word appears
+  wordCounts <- table(words)
+  words <- data.frame("word"=names(wordCounts), "count"=as.numeric(wordCounts))
+  
+  # Assign a sentiment (postive or negative) to each word
+  words$sentiment <- as.factor(sentimentLexicon[words$word, "sentiment"])
+  words$score <- sentimentLexicon[words$word, "value"]
+
+  return(words)
+}
+
+calculateSentimentScore <- function(sentences, sentimentLexicon){
+
   # Initialise a vector to store the sentiment score for each sentence
   sentimentScores <- c()
   
@@ -224,22 +251,29 @@ words <- extractWordsFromSentence(answers$value$answer, wordSizeThreshold=4)
 wordcloud(words, max.words=500, min.freq=2, scale=c(2.5,0.75), colors=brewer.pal(8, "Dark2"))
 ```
 
-```{r sentiment analysis of whether retail wanted, echo=FALSE}
-# Calculate the sentiment score for each answer to the retail question
-sentimentScores <- calculateSentimentScore(answers$retail$answer)
+```{r load AFINN lexicon, echo=FALSE}
 
-# Plot the sentiment scores
-hist(sentimentScores, xlim=c(-5, 5), las=1,
-     xlab="Sentiment score",
-     main="Sentiment of responses about a retail space at AMS")
+# Read in the latest table for github
+url <- "https://raw.githubusercontent.com/fnielsen/afinn/master/afinn/data/AFINN-en-165.txt"
+sentimentLexicon <- read.table(url, header=FALSE, stringsAsFactors=FALSE, sep="\t", quote="")
+
+# Add column and row names
+colnames(sentimentLexicon) <- c("word", "value")
+rownames(sentimentLexicon) <- sentimentLexicon$word
+
+# Add binary sentiment column
+sentimentLexicon$sentiment <- NA
+sentimentLexicon$sentiment[sentimentLexicon$value > 0] <- "positive"
+sentimentLexicon$sentiment[sentimentLexicon$value < 0] <- "negative"
+sentimentLexicon$sentiment <- as.factor(sentimentLexicon$sentiment)
 ```
 
 ```{r sentiment analyses, echo=FALSE}
 # Calculate the sentiment score for each answer to the exhibition space question
-sentimentScoresExhibition <- calculateSentimentScore(answers$exhibition$answer)
+sentimentScoresExhibition <- calculateSentimentScore(answers$exhibition$answer, sentimentLexicon)
 
 # Calculate the sentiment score for each answer to the retail space question
-sentimentScoresRetail <- calculateSentimentScore(answers$retail$answer)
+sentimentScoresRetail <- calculateSentimentScore(answers$retail$answer, sentimentLexicon)
 
 # Plot the sentiment scores
 scores <- list(sentimentScoresExhibition, sentimentScoresRetail)
@@ -251,4 +285,10 @@ legend("topleft",
        legend=c(paste0("Retail space (average=", median(sentimentScoresRetail), ")"),
                 paste0("Exhibition space (average=", median(sentimentScoresExhibition), ")")),
        text.col=c("blue", "red"), bty="n")
+
+# Create a comparison cloud using the words from the answers
+comparisonWordCloud(answers$exhibition$answer, sentimentLexicon)
+
+# Create a comparison cloud using the words from the answers
+comparisonWordCloud(answers$retail$answer, sentimentLexicon)
 ```
