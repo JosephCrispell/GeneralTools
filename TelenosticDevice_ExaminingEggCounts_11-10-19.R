@@ -25,7 +25,7 @@ rawEggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALS
 
 # Plot the raw data
 jpeg(paste0("NagwaAnalysis_Figures_corrected_", date, "_%03d.jpeg"))
-plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)", blackAndWhite=TRUE)
+plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)")
 plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)", blackAndWhite=TRUE)
 dev.off()
 jpeg(paste0("NagwaAnalysis_Figures_raw_", date, "_%03d.jpeg"))
