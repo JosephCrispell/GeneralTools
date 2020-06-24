@@ -24,11 +24,13 @@ rawEggCounts <- read.table(fileName, header=TRUE, sep=",", stringsAsFactors=FALS
 #### Plot a data summary ####
 
 # Plot the raw data
-jpeg(paste0("NagwaAnalysis_Figures_corrected_", date, ".jpeg"))
-plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)")
+jpeg(paste0("NagwaAnalysis_Figures_corrected_", date, "_%03d.jpeg"))
+plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)", blackAndWhite=TRUE)
+plotRawEggCounts(correctedEggCounts, yLab="Faecal egg count (eggs/gram)", blackAndWhite=TRUE)
 dev.off()
-jpeg(paste0("NagwaAnalysis_Figures_raw_", date, ".jpeg"))
+jpeg(paste0("NagwaAnalysis_Figures_raw_", date, "_%03d.jpeg"))
 plotRawEggCounts(rawEggCounts, yLab="Faecal egg count (raw)")
+plotRawEggCounts(rawEggCounts, yLab="Faecal egg count (raw)", blackAndWhite=TRUE)
 dev.off()
 
 #### Transform table structure for use in statistical analyses ####
@@ -144,18 +146,37 @@ transformTableIntoLongform <- function(eggCounts){
   return(output)
 }
 
-plotRawEggCounts <- function(eggCounts, yLab){
+plotRawEggCounts <- function(eggCounts, yLab, blackAndWhite=FALSE){
   
   # Note the padding locations for the analyses
   padding <- seq(from=-0.1, to=0.1, length.out=4)
-  methodPadding <- list("MC"=padding[1], "MiniFLOTAC"=padding[2], "TelenosticManual"=padding[3], "TelenosticAutomatic"=padding[4])
-  
+
   # Note the colour for each method
-  methodColours <- list("MC"="red", "MiniFLOTAC"="green", "TelenosticManual"="blue", "TelenosticAutomatic"="black")
+  methodStyle <- list(
+    "MC"=list(col="red", pch=19, pointAlpha=0.5, lty=1, 
+              name="McMaster", padding=padding[1], pointCex=1),
+    "MiniFLOTAC"=list(col="green", pch=19, pointAlpha=0.5, lty=1, 
+                      name="MiniFLOTAC", padding=padding[2], pointCex=1), 
+    "TelenosticManual"=list(col="blue", pch=19, pointAlpha=0.5, lty=1, 
+                            name="TelenosticManual", padding=padding[3], pointCex=1),
+    "TelenosticAutomatic"=list(col="black", pch=19, pointAlpha=0.5, lty=1, 
+                               name="TelenosticAutomatic", padding=padding[4], pointCex=1)
+  )
   
-  # Note the names to be used for the legend for each method
-  methodNames <- list("MC"="McMaster", "MiniFLOTAC"="MiniFLOTAC", "TelenosticManual"="TelenosticManual", "TelenosticAutomatic"="TelenosticAutomatic")
-  
+  # Change styles if plot is black and white
+  if(blackAndWhite){
+    methodStyle <- list(
+      "MC"=list(col="black", pch=15, pointAlpha=1, lty=5, 
+                name="McMaster", padding=padding[1], pointCex=1),
+      "MiniFLOTAC"=list(col="black", pch=17, pointAlpha=1, lty=4, 
+                        name="MiniFLOTAC", padding=padding[2], pointCex=1), 
+      "TelenosticManual"=list(col="darkgrey", pch=18, pointAlpha=1, lty=3, 
+                              name="TelenosticManual", padding=padding[3], pointCex=1.5),
+      "TelenosticAutomatic"=list(col="darkgrey", pch=19, pointAlpha=1, lty=1, 
+                                 name="TelenosticAutomatic", padding=padding[4], pointCex=1)
+    )
+  }
+ 
   # Note the sample replicate locations
   sampleXPositions <- list("Sample 1.1"=0.66, "Sample 1.2"=1, "Sample 1.3"=1.33,
                            "Sample 2.1"=1.66, "Sample 2.2"=2, "Sample 2.3"=2.33,
@@ -182,22 +203,59 @@ plotRawEggCounts <- function(eggCounts, yLab){
   for(row in 1:nrow(eggCounts)){
     
     # Examine each analysis
-    for(method in names(methodPadding)){
+    for(method in names(methodStyle)){
       
       # Note the X location
-      xPosition <- sampleXPositions[[eggCounts[row, "Sample"]]] + methodPadding[[method]]
+      xPosition <- sampleXPositions[[eggCounts[row, "Sample"]]] + methodStyle[[method]]$padding
       
       # Get the yValues
       values <- eggCounts[row, grepl(colnames(eggCounts), pattern=method)]
       
       # Plot the data for the current sample
-      points(x=c(xPosition, xPosition), y=range(values, na.rm=TRUE), type="l", col=methodColours[[method]], xpd=TRUE)
-      points(x=c(xPosition, xPosition, xPosition), y=values, pch=19, col=setAlpha(methodColours[[method]], 0.5), xpd=TRUE)
+      points(x=c(xPosition, xPosition), y=range(values, na.rm=TRUE), 
+             type="l", lty=methodStyle[[method]]$lty,
+             col=methodStyle[[method]]$col, xpd=TRUE)
+      points(x=c(xPosition, xPosition, xPosition), y=values, 
+             pch=methodStyle[[method]]$pch, cex=methodStyle[[method]]$pointCex,
+             col=setAlpha(methodStyle[[method]]$col, methodStyle[[method]]$pointAlpha), xpd=TRUE)
     }
   }
   
   # Add a legend
-  legend("topright", legend=unlist(methodNames), text.col=unlist(methodColours), bty="n")
+  legend("topright", 
+         legend=sapply(names(methodStyle), 
+                       FUN=function(method, methodStyle){
+                          return(methodStyle[[method]]$name)
+                        }, methodStyle), 
+         text.col=sapply(names(methodStyle), 
+                         FUN=function(method, methodStyle){
+                           return(methodStyle[[method]]$col)
+                         }, methodStyle),
+         bty="n")
+  if(blackAndWhite){
+    legend("topright", 
+           legend=sapply(names(methodStyle), 
+                         FUN=function(method, methodStyle){
+                           return(methodStyle[[method]]$name)
+                         }, methodStyle), 
+           text.col=sapply(names(methodStyle), 
+                           FUN=function(method, methodStyle){
+                             return(methodStyle[[method]]$col)
+                           }, methodStyle),
+           pch=sapply(names(methodStyle), 
+                      FUN=function(method, methodStyle){
+                        return(methodStyle[[method]]$pch)
+                      }, methodStyle),
+           lty=sapply(names(methodStyle), 
+                      FUN=function(method, methodStyle){
+                        return(methodStyle[[method]]$lty)
+                      }, methodStyle),
+           col=sapply(names(methodStyle), 
+                      FUN=function(method, methodStyle){
+                        return(methodStyle[[method]]$col)
+                      }, methodStyle),
+           bty="n")
+  }
   
   # Reset the plotting margins
   par(mar=currentMar)

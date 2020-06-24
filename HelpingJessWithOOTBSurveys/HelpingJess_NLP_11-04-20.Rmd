@@ -15,6 +15,8 @@ library(textreadr) # Reading text from docx files
 library(wordcloud) # Creating word clouds
 library(tm) # Used by wordcloud
 library(basicPlotteR) # Multiple overlaid histograms
+library(topicmodels) # Topic modelling
+library(slam) # Need for topic modelling
 
 # Set the path
 path <- file.path("~", "Desktop", "HelpingJess")
@@ -292,3 +294,25 @@ comparisonWordCloud(answers$exhibition$answer, sentimentLexicon)
 # Create a comparison cloud using the words from the answers
 comparisonWordCloud(answers$retail$answer, sentimentLexicon)
 ```
+
+```{r topic modelling, echo=FALSE}
+
+# Build a Latent Dirichlet allocation topic model
+ldaModel <- LDA(termFreq(answers$value$answer), k=2)
+
+slotNames(ldaModel)
+slot(ldaModel, "alpha")
+slot(ldaModel, "loglikelihood")
+table(as.matrix(slot(ldaModel, "wordassignments"))) 
+
+# Extract the topic matrix
+topicMatrix <- tidy(ldaModel, matrix="beta")
+
+
+```
+
+```{r generating n-grames, echo=FALSE}
+
+```
+
+
