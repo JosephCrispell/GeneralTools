@@ -1,5 +1,5 @@
 # Create a skills point
-skillsPointsCurrent <- data.frame("Programming"=4, 
+skillsPointCurrent <- data.frame("Programming"=4, 
                                   "Statistics"=3,
                                   "Databases"=2,
                                   "Projects"=3,
@@ -7,22 +7,53 @@ skillsPointsCurrent <- data.frame("Programming"=4,
                                   "Versioning"=3)
 
 # Set parameters for radar chart
-min <- 0
-max <- 4
+min <- 1
+max <- 5
+nLevels <- 5
 
 # Normalise the scores to vary between zero and 1
+skillsPointCurrent[2, ] <- rescale(skillsPointsCurrent[1, ], min=min, max=max, newMin=0, newMax=1)
 
+# Generate the axis points (for each skill)
+axesEnds <- generateEquiDistantPointsOnCircle(ncol(skillsPointCurrent))
+skillsPointCurrent[3, ] <- axesEnds[, 1]
+skillsPointCurrent[4, ] <- axesEnds[, 2]
+skillsPointCurrent[5, ] <- axesEnds[, 1] * 1.15
+skillsPointCurrent[6, ] <- axesEnds[, 2] * 1.15
 
-par(mar=c(0,0,0,0))
-plot(x=NULL, y=NULL, xlim=c(-1, 1), ylim=c(-1, 1), bty="n", asp=1)
+# Note the row names
+rownames(skillsPointCurrent) <- c("Score", "NormalisedScore", "X", "Y", "LabelX", "LabelY")
 
-points(x=0, y=0, pch=19, cex=2)
+# Set the plotting margins
+par(mar=c(0,0,4,0))
 
-n <- 10 # number of points you want on the unit circle
-#pts.circle <- t(sapply(1:n,function(r)c(cos(2*r*pi/n),sin(2*r*pi/n))))
-pts.circle <- generateEquiDistantPointsOnCircle(n)
-points(pts.circle, col='red', pch=19, xlab='x', ylab='y')
-points(pts.circle*0.5, col='blue', pch=19, xlab='x', ylab='y')
+# Create an empty plot
+plot(x=NULL, y=NULL, xlim=c(-1, 1), ylim=c(-1, 1), bty="n", asp=1, main="Current")
+
+# Add in axes titles
+text(x=skillsPointCurrent["LabelX", ], y=skillsPointCurrent["LabelY", ],
+     labels=colnames(skillsPointCurrent))
+
+# Add each axis line
+for(column in seq_len(ncol(skillsPointCurrent))){
+  lines(x=c(0, skillsPointCurrent["X", column]),
+        y=c(0, skillsPointCurrent["Y", column]),
+        lwd=0.5, col=rgb(0,0,0, 0.5))
+}
+
+# Add in levels
+for(level in 0:nLevels){
+  
+  points <- generateEquiDistantPointsOnCircle(ncol(skillsPointCurrent), 
+                                              radius=level * (1/nLevels))
+  polygon(points, border=rgb(0,0,0, 0.5), col=rgb(0,0,0, 0))
+}
+
+# Add in a skills polygon
+polygon(x=skillsPointCurrent["NormalisedScore", ] * skillsPointCurrent["X", ],
+        y=skillsPointCurrent["NormalisedScore", ] * skillsPointCurrent["Y", ],
+        border=NA, col=rgb(1,0,0, 0.75))
+
 
 polygon(pts.circle, col=rgb(0,0,0, 0.5), border=NA)
 polygon(pts.circle*0.5, col=rgb(0,0,0, 0.5), border=NA)
@@ -30,12 +61,7 @@ polygon(pts.circle*0.5, col=rgb(0,0,0, 0.5), border=NA)
 
 #### FUNCTIONS ####
 
-rescale <- function(values, newMin, newMax){
-  
-  # Calculate current range of values
-  currentRange <- range(values)
-  min <- currentRange[1]
-  max <- currentRange[2]
+rescale <- function(values, min=min(values), max=max(values), newMin, newMax){
   
   # Rescale the values to vary between new range
   rescaledValues <- (((values - min)/(max - min)) * (newMax - newMin)) + newMin
@@ -48,17 +74,17 @@ generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c
   # Code adapted from: https://stackoverflow.com/questions/40279052/coordinates-of-equally-distanced-n-points-on-a-circle-in-r
   
   # Generate equidistant points on circle
-  points <- sapply(1:n, 
-                   function(position, n){
+  points <- sapply(1:numberOfPoints, 
+                   function(position, numberOfPoints){
                      
                      # Calculate the X coordinate
-                     x <- cos(2 * position * pi/n)
+                     x <- cos(2 * position * pi/numberOfPoints)
                      
                      # Calculate the Y coordinate
-                     y <- sin(2 * position * pi/n)
+                     y <- sin(2 * position * pi/numberOfPoints)
                      
                      return(c(x, y))
-                   }, n)
+                   }, numberOfPoints)
   
   # Transpose the matrix for plotting
   points <- t(points)
@@ -67,8 +93,8 @@ generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c
   points <- points * radius
   
   # Move points based on origin
-  points[, 1] <- points[, 1] + origin[0]
-  points[, 2] <- points[, 2] + origin[1]
+  points[, 1] <- points[, 1] + origin[1]
+  points[, 2] <- points[, 2] + origin[2]
   
   return(points)
 }
