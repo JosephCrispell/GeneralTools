@@ -1,3 +1,16 @@
+# Create a skills point
+skillsPointsCurrent <- data.frame("Programming"=4, 
+                                  "Statistics"=3,
+                                  "Databases"=2,
+                                  "Projects"=3,
+                                  "Web"=3,
+                                  "Versioning"=3)
+
+# Set parameters for radar chart
+min <- 0
+max <- 4
+
+# Normalise the scores to vary between zero and 1
 
 
 par(mar=c(0,0,0,0))
@@ -16,6 +29,19 @@ polygon(pts.circle*0.5, col=rgb(0,0,0, 0.5), border=NA)
 
 
 #### FUNCTIONS ####
+
+rescale <- function(values, newMin, newMax){
+  
+  # Calculate current range of values
+  currentRange <- range(values)
+  min <- currentRange[1]
+  max <- currentRange[2]
+  
+  # Rescale the values to vary between new range
+  rescaledValues <- (((values - min)/(max - min)) * (newMax - newMin)) + newMin
+  
+  return(rescaledValues)
+}
 
 generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c(0,0)){
   
