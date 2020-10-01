@@ -17,7 +17,8 @@ legend(x=4.5, y=5,
 #### FUNCTIONS ####
 
 radarChart <- function(scores, names, levels, col="red", alpha=0.1, 
-                       axisLabelPad=1.2, circles=FALSE, add=FALSE, main=""){
+                       axisLabelPad=1.2, circles=FALSE, add=FALSE, main="",
+                       margins=c(3,3,3,3)){
   
   # Count number of levels
   nLevels <- length(levels)
@@ -28,7 +29,7 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
   
   # Get and set the plotting margins
   currentMar <- par()$mar
-  par(mar=c(3,3,ifelse(main != "", 4, 3),3))
+  par(mar=margins)
   
   # Check not adding to existing plot
   if(add == FALSE){
@@ -110,20 +111,4 @@ generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c
   points[, 2] <- points[, 2] + origin[2]
   
   return(points)
-}
-
-findPointOnLine <- function(destination, radius, origin=c(0,0)){
-  
-  # Maths taken from: https://math.stackexchange.com/questions/175896/finding-a-point-along-a-line-a-certain-distance-away-from-another-point
-  
-  # Store the differences between destination and origin
-  differences <- c(destination[1] - origin[1], destination[2] - origin[2])
-  
-  # Normalise those differences 
-  normalised <- differences / sqrt(sum(differences^2))
-  
-  # Calculate the coordinates of the point on the outer circle
-  point <- origin + (radius * normalised)
-  
-  return(point)
 }
