@@ -18,7 +18,7 @@ legend(x=4.5, y=5,
 
 radarChart <- function(scores, names, levels, col="red", alpha=0.1, 
                        axisLabelPad=1.2, circles=FALSE, add=FALSE, main="",
-                       margins=c(3,3,3,3)){
+                       margins=c(3,3,3,3), addPoints=FALSE){
   
   # Count number of levels
   nLevels <- length(levels)
@@ -67,6 +67,11 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
   polygon(x=scores/nLevels * axesInfo$X,
           y=scores/nLevels * axesInfo$Y,
           border=col, col=basicPlotteR::setAlpha(col, alpha))
+  if(addPoints){
+    points(x=scores/nLevels * axesInfo$X,
+           y=scores/nLevels * axesInfo$Y,
+           pch=19, col=col)
+  }
   
   # Reset plotting margins
   par(mar=currentMar)
