@@ -1,72 +1,85 @@
 # Create a skills point
-skillsPointCurrent <- data.frame("Programming"=4, 
-                                  "Statistics"=3,
-                                  "Databases"=2,
-                                  "Projects"=3,
-                                  "Web"=3,
-                                  "Versioning"=3)
-
-# Set parameters for radar chart
-min <- 1
-max <- 5
-nLevels <- 5
-
-# Normalise the scores to vary between zero and 1
-skillsPointCurrent[2, ] <- rescale(skillsPointsCurrent[1, ], min=min, max=max, newMin=0, newMax=1)
-
-# Generate the axis points (for each skill)
-axesEnds <- generateEquiDistantPointsOnCircle(ncol(skillsPointCurrent))
-skillsPointCurrent[3, ] <- axesEnds[, 1]
-skillsPointCurrent[4, ] <- axesEnds[, 2]
-skillsPointCurrent[5, ] <- axesEnds[, 1] * 1.15
-skillsPointCurrent[6, ] <- axesEnds[, 2] * 1.15
-
-# Note the row names
-rownames(skillsPointCurrent) <- c("Score", "NormalisedScore", "X", "Y", "LabelX", "LabelY")
-
-# Set the plotting margins
-par(mar=c(0,0,4,0))
-
-# Create an empty plot
-plot(x=NULL, y=NULL, xlim=c(-1, 1), ylim=c(-1, 1), bty="n", asp=1, main="Current")
-
-# Add in axes titles
-text(x=skillsPointCurrent["LabelX", ], y=skillsPointCurrent["LabelY", ],
-     labels=colnames(skillsPointCurrent))
-
-# Add each axis line
-for(column in seq_len(ncol(skillsPointCurrent))){
-  lines(x=c(0, skillsPointCurrent["X", column]),
-        y=c(0, skillsPointCurrent["Y", column]),
-        lwd=0.5, col=rgb(0,0,0, 0.5))
-}
-
-# Add in levels
-for(level in 0:nLevels){
-  
-  points <- generateEquiDistantPointsOnCircle(ncol(skillsPointCurrent), 
-                                              radius=level * (1/nLevels))
-  polygon(points, border=rgb(0,0,0, 0.5), col=rgb(0,0,0, 0))
-}
-
-# Add in a skills polygon
-polygon(x=skillsPointCurrent["NormalisedScore", ] * skillsPointCurrent["X", ],
-        y=skillsPointCurrent["NormalisedScore", ] * skillsPointCurrent["Y", ],
-        border=NA, col=rgb(1,0,0, 0.75))
-
-
-polygon(pts.circle, col=rgb(0,0,0, 0.5), border=NA)
-polygon(pts.circle*0.5, col=rgb(0,0,0, 0.5), border=NA)
-
+# Plot a radar chart
+radarChart(scores=c(4,3,2,3,3,3), 
+           names=c("Programming", "Statistics", "Databases", "Projects",
+                   "Web", "Versioning"),
+           levels=c("Unaware","Aware","Working","Practitioner", "Expert"))
+radarChart(scores=c(4,4,3,4,3,5), 
+           names=c("Programming", "Statistics", "Databases", "Projects",
+                   "Web", "Versioning"),
+           levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
+           col="blue", add=TRUE)
+legend(x=4.5, y=5, 
+       legend=c("Current", "Aim"), 
+       text.col=c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)), 
+       bty="n", text.font=2, cex=1.5, xpd=TRUE)
 
 #### FUNCTIONS ####
 
-rescale <- function(values, min=min(values), max=max(values), newMin, newMax){
+radarChart <- function(scores, names, levels, col="red", alpha=0.1, 
+                       axisLabelPad=1.2, circles=FALSE, add=FALSE, main=""){
   
-  # Rescale the values to vary between new range
-  rescaledValues <- (((values - min)/(max - min)) * (newMax - newMin)) + newMin
+  # Count number of levels
+  nLevels <- length(levels)
   
-  return(rescaledValues)
+  # Generate the axis points (for each skill)
+  axesEnds <- generateEquiDistantPointsOnCircle(length(scores), radius=nLevels)
+  axesInfo <- data.frame("X"=axesEnds[, 1], "Y"=axesEnds[, 2])
+  
+  # Get and set the plotting margins
+  currentMar <- par()$mar
+  par(mar=c(3,3,ifelse(main != "", 4, 3),3))
+  
+  # Check not adding to existing plot
+  if(add == FALSE){
+    
+    # Create an empty plot
+    plot(x=NULL, y=NULL, xlim=c(-nLevels, nLevels), ylim=c(-nLevels, nLevels),
+         bty="n", asp=1, main=main, yaxt="n", xaxt="n", xlab="", ylab="")
+    
+    # Add in axes titles
+    text(x=axesInfo$X * axisLabelPad, y=axesInfo$Y * axisLabelPad,
+         labels=names, xpd=TRUE)
+    
+    # Add each axis line
+    for(index in seq_along(scores)){
+      lines(x=c(axesInfo[index, "X"] * 1/nLevels, axesInfo[index, "X"]),
+            y=c(axesInfo[index, "Y"] * 1/nLevels, axesInfo[index, "Y"]),
+            lwd=0.5, col=rgb(0,0,0, 0.5))
+    }
+    
+    # Add in levels
+    for(level in 1:nLevels){
+      points <- generateEquiDistantPointsOnCircle(ifelse(circles, 360, length(scores)), radius=level)
+      polygon(points, border=rgb(0,0,0, 0.5), col=rgb(0,0,0, 0))
+    }
+    
+    # Add level labels
+    if(circles){
+      text(x=0, y=1:nLevels, labels=levels)
+    }else{
+      text(x=0, y=getTickPositionsOnPolygons(axesInfo, nLevels), labels=levels)
+    }
+  }
+  
+  # Add in a skills polygon
+  polygon(x=scores/nLevels * axesInfo$X,
+          y=scores/nLevels * axesInfo$Y,
+          border=col, col=basicPlotteR::setAlpha(col, alpha))
+  
+  # Reset plotting margins
+  par(mar=currentMar)
+}
+
+getTickPositionsOnPolygons <- function(axesInfo, nLevels){
+  
+  # Get highest Y value when X is closest to zero
+  maxY <- max(axesInfo$Y[which.min(abs(axesInfo$X))])
+  
+  # Calculate equidistant Y values for each level
+  Y <- ((1:5)/nLevels) * maxY
+  
+  return(Y)
 }
 
 generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c(0,0)){
