@@ -20,6 +20,11 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
                        axisLabelPad=1.2, circles=FALSE, add=FALSE, main="",
                        margins=c(3,3,3,3), addPoints=FALSE){
   
+  # Check scores and names are the same length
+  if(length(scores) != length(names)){
+    stop(paste0("The number of scores (", length(scores), ") provided doesn't match the number of levels provided (", length(names), ")"))
+  }
+  
   # Count number of levels
   nLevels <- length(levels)
   
@@ -56,11 +61,7 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
     }
     
     # Add level labels
-    if(circles){
-      text(x=0, y=1:nLevels, labels=levels)
-    }else{
-      text(x=0, y=getTickPositionsOnPolygons(axesInfo, nLevels), labels=levels)
-    }
+    text(x=0, y=1:nLevels, labels=levels)
   }
   
   # Add in a skills polygon
@@ -77,43 +78,19 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
   par(mar=currentMar)
 }
 
-getTickPositionsOnPolygons <- function(axesInfo, nLevels){
+generateEquiDistantPointsOnCircle <- function(nPoints, radius=1, origin=c(0,0)){
   
-  # Get highest Y value when X is closest to zero
-  maxY <- max(axesInfo$Y[which.min(abs(axesInfo$X))])
+  # Code taken from: https://stackoverflow.com/questions/5300938/calculating-the-position-of-points-in-a-circle
   
-  # Calculate equidistant Y values for each level
-  Y <- ((1:5)/nLevels) * maxY
+  # Define theta
+  start <- 0
+  end <- (2*pi) - (2*pi)/nPoints
+  theta <- seq(start, end, length.out=nPoints)
   
-  return(Y)
-}
-
-generateEquiDistantPointsOnCircle <- function(numberOfPoints, radius=1, origin=c(0,0)){
+  # Calculate the coordinates
+  x <- origin[2] + (radius * sin(theta))
+  y <- origin[1] + (radius * cos(theta))
   
-  # Code adapted from: https://stackoverflow.com/questions/40279052/coordinates-of-equally-distanced-n-points-on-a-circle-in-r
-  
-  # Generate equidistant points on circle
-  points <- sapply(1:numberOfPoints, 
-                   function(position, numberOfPoints){
-                     
-                     # Calculate the X coordinate
-                     x <- cos(2 * position * pi/numberOfPoints)
-                     
-                     # Calculate the Y coordinate
-                     y <- sin(2 * position * pi/numberOfPoints)
-                     
-                     return(c(x, y))
-                   }, numberOfPoints)
-  
-  # Transpose the matrix for plotting
-  points <- t(points)
-  
-  # Move points based on radius
-  points <- points * radius
-  
-  # Move points based on origin
-  points[, 1] <- points[, 1] + origin[1]
-  points[, 2] <- points[, 2] + origin[2]
-  
-  return(points)
+  # Store the coordinates in a dataframe
+  return(data.frame("X"=x, "Y"=y, "Theta"=theta))
 }
