@@ -1,6 +1,6 @@
 # Create a skills point
 # Plot a radar chart
-radarChart(scores=c(4,3,2,3,3,3), 
+radarChart(scores=c(4,3.5,2,3,3,3), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
            levels=c("Unaware","Aware","Working","Practitioner", "Expert"))
@@ -8,21 +8,30 @@ radarChart(scores=c(4,4,3,4,3,5),
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
            levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
-           col="blue", add=TRUE)
-legend(x=4.5, y=5, 
+           polygon.col="blue", add=TRUE)
+legend(x=4.5, y=6, 
        legend=c("Current", "Aim"), 
        text.col=c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)), 
        bty="n", text.font=2, cex=1.5, xpd=TRUE)
 
 #### FUNCTIONS ####
 
-radarChart <- function(scores, names, levels, col="red", alpha=0.1, 
+radarChart <- function(scores, names, levels, 
+                       polygon.col="red", polygon.alpha=0.1, polygon.pch=19,
                        axisLabelPad=1.2, circles=FALSE, add=FALSE, main="",
-                       margins=c(3,3,3,3), addPoints=FALSE){
+                       margins=c(3,3,3,3), addPoints=FALSE, 
+                       radar.col=rgb(0,0,0, 0.5), radar.lty=1, radar.lwd=0.5,
+                       levels.font=1, levels.cex=1, labels.font=2, labels.cex=1){
   
   # Check scores and names are the same length
   if(length(scores) != length(names)){
-    stop(paste0("The number of scores (", length(scores), ") provided doesn't match the number of levels provided (", length(names), ")"))
+    stop(paste0("The number of scores (", length(scores), ") provided doesn't match the number of names provided (", length(names), ")"))
+  }
+  
+  # Check scores aren't outside levels
+  levelsRange <- 1:length(levels)
+  if(sum(scores < 1) > 0 || sum(scores > length(levels)) > 0){
+    stop("The scores provided don't fall on or within the specified levels.")
   }
   
   # Count number of levels
@@ -45,33 +54,33 @@ radarChart <- function(scores, names, levels, col="red", alpha=0.1,
     
     # Add in axes titles
     text(x=axesInfo$X * axisLabelPad, y=axesInfo$Y * axisLabelPad,
-         labels=names, xpd=TRUE)
+         labels=names, xpd=TRUE, font=labels.font, cex=labels.cex)
     
     # Add each axis line
     for(index in seq_along(scores)){
       lines(x=c(axesInfo[index, "X"] * 1/nLevels, axesInfo[index, "X"]),
             y=c(axesInfo[index, "Y"] * 1/nLevels, axesInfo[index, "Y"]),
-            lwd=0.5, col=rgb(0,0,0, 0.5))
+            lwd=radar.lwd, lty=radar.lty, col=radar.col)
     }
     
     # Add in levels
     for(level in 1:nLevels){
       points <- generateEquiDistantPointsOnCircle(ifelse(circles, 360, length(scores)), radius=level)
-      polygon(points, border=rgb(0,0,0, 0.5), col=rgb(0,0,0, 0))
+      polygon(points, border=radar.col, col=rgb(0,0,0, 0), lwd=radar.lwd, lty=radar.lty)
     }
     
     # Add level labels
-    text(x=0, y=1:nLevels, labels=levels)
+    text(x=0, y=1:nLevels, labels=levels, font=levels.font, cex=levels.cex)
   }
   
   # Add in a skills polygon
   polygon(x=scores/nLevels * axesInfo$X,
           y=scores/nLevels * axesInfo$Y,
-          border=col, col=basicPlotteR::setAlpha(col, alpha))
+          border=polygon.col, col=basicPlotteR::setAlpha(polygon.col, polygon.alpha))
   if(addPoints){
     points(x=scores/nLevels * axesInfo$X,
            y=scores/nLevels * axesInfo$Y,
-           pch=19, col=col)
+           pch=polygon.pch, col=polygon.col)
   }
   
   # Reset plotting margins
