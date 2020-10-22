@@ -1,10 +1,11 @@
 # Create a skills point
 # Plot a radar chart
-radarChart(scores=c(4,3.5,2,3,3,3), 
+radarChart(scores=c(4,3,2,3,3,3), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
-           levels=c("Unaware","Aware","Working","Practitioner", "Expert"))
-radarChart(scores=c(4,4,3,4,3,5), 
+           levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
+           levelsAxesAngle=75, levelsLabelsAngle=90)
+radarChart(scores=c(4,3,3,4,3,5), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
            levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
@@ -21,7 +22,8 @@ radarChart <- function(scores, names, levels,
                        axisLabelPad=1.2, circles=FALSE, add=FALSE, main="",
                        margins=c(3,3,3,3), addPoints=FALSE, 
                        radar.col=rgb(0,0,0, 0.5), radar.lty=1, radar.lwd=0.5,
-                       levels.font=1, levels.cex=1, labels.font=2, labels.cex=1){
+                       levels.font=1, levels.cex=1, labels.font=2, labels.cex=1,
+                       levelsAxesAngle=0, levelsLabelsAngle=0){
   
   # Check scores and names are the same length
   if(length(scores) != length(names)){
@@ -52,11 +54,11 @@ radarChart <- function(scores, names, levels,
     plot(x=NULL, y=NULL, xlim=c(-nLevels, nLevels), ylim=c(-nLevels, nLevels),
          bty="n", asp=1, main=main, yaxt="n", xaxt="n", xlab="", ylab="")
     
-    # Add in axes titles
+    # Add in category titles
     text(x=axesInfo$X * axisLabelPad, y=axesInfo$Y * axisLabelPad,
          labels=names, xpd=TRUE, font=labels.font, cex=labels.cex)
     
-    # Add each axis line
+    # Add each category line
     for(index in seq_along(scores)){
       lines(x=c(axesInfo[index, "X"] * 1/nLevels, axesInfo[index, "X"]),
             y=c(axesInfo[index, "Y"] * 1/nLevels, axesInfo[index, "Y"]),
@@ -70,7 +72,8 @@ radarChart <- function(scores, names, levels,
     }
     
     # Add level labels
-    text(x=0, y=1:nLevels, labels=levels, font=levels.font, cex=levels.cex)
+    axesCoords <- calculateAxesCoordinatesAtEachLevel(axesInfo, nLevels, circles, levelsAxesAngle)
+    text(axesCoords, labels=levels, font=levels.font, cex=levels.cex, srt=360-levelsLabelsAngle)
   }
   
   # Add in a skills polygon
@@ -85,6 +88,24 @@ radarChart <- function(scores, names, levels,
   
   # Reset plotting margins
   par(mar=currentMar)
+}
+
+calculateAxesCoordinatesAtEachLevel <- function(axesInfo, nLevels, circles, angle){
+  
+  # Calculate the possible positions on the edges of polygon or circle
+  possibleAxesLocations <- generatePointsAlongPolygon(axesInfo, nPoints=360)
+  if(circles){
+    possibleAxesLocations <- generateEquiDistantPointsOnCircle(360, radius=nLevels)
+  }
+  
+  # Select the position using angle specified
+  axesLocation <- possibleAxesLocations[(angle %% 360)+1, ]
+  
+  # Calculate the level coordinates from centre to point selected
+  coords <- data.frame(X=((1/nLevels)*(1:nLevels)) * axesLocation$X,
+                       Y=((1/nLevels)*(1:nLevels)) * axesLocation$Y)
+  
+  return(coords)
 }
 
 generateEquiDistantPointsOnCircle <- function(nPoints, radius=1, origin=c(0,0)){
@@ -102,4 +123,31 @@ generateEquiDistantPointsOnCircle <- function(nPoints, radius=1, origin=c(0,0)){
   
   # Store the coordinates in a dataframe
   return(data.frame("X"=x, "Y"=y, "Theta"=theta))
+}
+
+generatePointsAlongPolygon <- function(coords, nPoints){
+  
+  # Calculate the points per edge on polygon
+  nPointsPerEdge <- floor((nPoints - nrow(coords)) / nrow(coords))
+  
+  # Create a dataframe to store the point coordinates
+  points <- data.frame(X=NA, Y=NA)
+  
+  # Examine each edge
+  for(start in seq_len(nrow(coords))){
+    
+    # Note the end point
+    end <- ifelse(start == 6, 1, end + 1)
+    
+    # Position points on edge
+    pointsOnEdge <- data.frame(X=coords[start, "X"] + ((1/nPointsPerEdge)*(1:nPointsPerEdge)) * (coords[end, "X"] - coords[start, "X"]),
+                               Y=coords[start, "Y"] + ((1/nPointsPerEdge)*(1:nPointsPerEdge)) * (coords[end, "Y"] - coords[start, "Y"]))
+    points <- rbind(points, c(coords[start, "X"], coords[start, "Y"]))
+    points <- rbind(points, pointsOnEdge)
+  }
+  
+  # Remove first NA row
+  points <- points[is.na(points$X) == FALSE, ]
+  
+  return(points)
 }
