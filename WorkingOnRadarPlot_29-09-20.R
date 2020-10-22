@@ -1,19 +1,24 @@
 # Create a skills point
 # Plot a radar chart
-radarChart(scores=c(4,3,2,3,3,3), 
+radarChart(scores=c(4,3.5,2,3,3,3), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
-           levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
-           levelsAxesAngle=75, levelsLabelsAngle=90)
-radarChart(scores=c(4,3,3,4,3,5), 
+           levels=c("Unaware","Aware","Working","Practitioner", "Expert"))
+radarChart(scores=c(4,3.75,3,4,3,4), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
            levels=c("Unaware","Aware","Working","Practitioner", "Expert"),
            polygon.col="blue", add=TRUE)
-legend(x=4.5, y=6, 
+legend("topright", 
        legend=c("Current", "Aim"), 
        text.col=c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)), 
        bty="n", text.font=2, cex=1.5, xpd=TRUE)
+
+# How I am aiming to improve:
+# - Statistics - using new-to-me spatial geospatial machine learning techniques to map HIV
+# - Databases - working with team in Vanuatu to explore trade statistics data with MySQL in R
+# - Projects - scrum master training
+# - Versioning - exploring unit testing and GitHub Actions
 
 #### FUNCTIONS ####
 
