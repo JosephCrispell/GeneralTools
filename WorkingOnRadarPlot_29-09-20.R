@@ -1,5 +1,6 @@
 # Create a skills point
 # Plot a radar chart
+png("thumnail.png", height=4800, width=4800)
 radarChart(scores=c(4,3.5,2,3,3,3), 
            names=c("Programming", "Statistics", "Databases", "Projects",
                    "Web", "Versioning"),
@@ -13,6 +14,7 @@ legend("topright",
        legend=c("Current", "Aim"), 
        text.col=c(rgb(1,0,0, 0.5), rgb(0,0,1, 0.5)), 
        bty="n", text.font=2, cex=1.5, xpd=TRUE)
+dev.off()
 
 # How I am aiming to improve:
 # - Statistics - using new-to-me spatial geospatial machine learning techniques to map HIV

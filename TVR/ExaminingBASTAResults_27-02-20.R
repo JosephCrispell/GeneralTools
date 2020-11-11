@@ -399,12 +399,12 @@ readLogFiles <- function(path, nReplicates, prefix, date, samplingFromPriors=FAL
     
     # Check if sampling from priors
     if(samplingFromPriors){
-      logFIle <- file.path(path, paste0(prefix, "_PRIOR_", replicate, "_", date), 
+      logFile <- file.path(path, paste0(prefix, "_PRIOR_", replicate, "_", date), 
                            paste0(prefix, "_PRIOR_", replicate, "_", date, ".log"))
     }
     
     # Read in the log table
-    logTables[[logFile]] <- logTable
+    logTables[[logFile]] <- readLogFile(logFile, burnInProp)
   }
   
   return(logTables)
