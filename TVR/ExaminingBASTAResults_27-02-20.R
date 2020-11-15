@@ -39,6 +39,7 @@ migrationRateEstimates <- summarisePosteriorLogTable(logTables, demes, code=2, a
 #### Count transitions between demes estimated in .trees file ####
 
 # Note the path to the JAVA jar tool that counts transitions in .trees file
+# You can download the jar tool for counting transitions here: https://github.com/JosephCrispell/Java/blob/master/ExecutableJarFiles/CountTransitions_07-06-19.jar
 pathToTransitionCountingJarFile <- file.path(path, "CountTransitions_07-06-19.jar")
 
 # Count the transitions between demes for each posterior distribution of trees
