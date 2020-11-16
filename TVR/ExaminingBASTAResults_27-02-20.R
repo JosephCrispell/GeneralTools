@@ -341,7 +341,9 @@ countTransitionsForEachReplicate <- function(logFiles, burnInProp=0.1, demes, pa
     countsFile <- paste0(substr(logFile, 1, nchar(logFile) - 4), "_TransitionCounts.txt")
     
     # Count the transitions between demes on the current posterior distribution of trees
-    countTransitionsOnPosteriorTrees(countsFile, logFile, treesFile, demes, pathToJarFile)
+    if(file.exists(countsFile) == FALSE){
+      countTransitionsOnPosteriorTrees(countsFile, logFile, treesFile, demes, pathToJarFile)
+    }
     
     # Read in the transition count tables
     transitionCountTable <- readInBASTATransitionCounts(countsFile, burnInProp)
