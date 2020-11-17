@@ -54,7 +54,7 @@ pdf(file.path(path, paste0("BASTAResults_", date, ".pdf")))
 plotSummaryOfLineageTransitionRates(migrationRateEstimates, demeNames=c("badgers", "cattle"))
 
 # Summarise the transition count distributions
-plotSummaryOfTransitionCounts(transitionCountTables)
+plotSummaryOfTransitionCounts(transitionCounts)
 
 dev.off()
 
