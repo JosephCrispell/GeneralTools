@@ -51,10 +51,10 @@ transitionCounts <- countTransitionsForEachReplicate(names(logTables), burnInPro
 pdf(file.path(path, paste0("BASTAResults_", date, ".pdf")))
 
 # Summarise the lineage transition rate estimates
-plotSummaryOfLineageTransitionRates(migrationRateEstimates, demeNames=c("badgers", "cattle"))
+rateSummaries <- plotSummaryOfLineageTransitionRates(migrationRateEstimates, demeNames=c("badgers", "cattle"))
 
 # Summarise the transition count distributions
-plotSummaryOfTransitionCounts(transitionCounts)
+transitionCountSummaries <- plotSummaryOfTransitionCounts(transitionCounts)
 
 dev.off()
 
@@ -144,6 +144,8 @@ plotSummaryOfTransitionCounts <- function(transitionCountTables, label=NULL){
   
   # Reset the margins
   par(mar=currentMar)
+  
+  return(countSummaries)
 }
 
 summariseTransitionCountTables <- function(transitionCountTables){
@@ -322,6 +324,8 @@ plotSummaryOfLineageTransitionRates <- function(migrationRateEstimates, demeName
   
   # Reset the margins
   par(mar=currentMar)
+  
+  return(rateSummaries)
 }
 
 #### FUNCTIONS - transition counts ####
